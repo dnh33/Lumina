@@ -107,7 +107,7 @@ export function ChatThread({
                   key={c}
                   type="button"
                   onClick={() => void send(c)}
-                  className="rounded-full bg-white/[0.05] px-3.5 py-2 text-[0.8rem] text-mist-300 ring-1 ring-white/10 transition hover:bg-gold-400/15 hover:text-gold-300 hover:ring-gold-400/30"
+                  className="cursor-pointer rounded-full bg-white/[0.05] px-3.5 py-2 text-[0.8rem] text-mist-300 ring-1 ring-white/10 transition hover:bg-gold-400/15 hover:text-gold-300 hover:ring-gold-400/30"
                 >
                   {c}
                 </button>
@@ -124,13 +124,13 @@ export function ChatThread({
           <>
             <MessageBubble role="user" content={stream.userText} />
             {stream.contextNote && (
-              <p className="flex items-center gap-1.5 text-[0.7rem] italic text-mist-400/80">
+              <p className="flex items-center gap-1.5 text-2xs italic text-mist-400">
                 <Sparkles className="h-3 w-3 text-gold-400/70" />
                 {stream.contextNote}
               </p>
             )}
             {stream.activeTool && (
-              <div className="flex items-center gap-2 text-[0.78rem] text-gold-300/90">
+              <div className="flex items-center gap-2 text-[0.8rem] text-gold-300/90">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 {TOOL_LABELS[stream.activeTool] ?? "Working"}…
               </div>
@@ -138,7 +138,7 @@ export function ChatThread({
             {stream.assistantText ? (
               <MessageBubble role="assistant" content={stream.assistantText} streaming />
             ) : !stream.activeTool ? (
-              <div className="flex items-center gap-2 text-[0.78rem] text-mist-400">
+              <div className="flex items-center gap-2 text-[0.8rem] text-mist-400">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-gold-400" />
                 Thinking…
               </div>
@@ -167,14 +167,15 @@ export function ChatThread({
             }}
             rows={Math.min(4, Math.max(1, draft.split("\n").length))}
             placeholder="Ask about anything you've watched — or should watch…"
-            className="max-h-36 min-h-[38px] w-full resize-none bg-transparent py-2 text-[0.925rem] leading-relaxed text-mist-200 placeholder-mist-400/45 outline-none"
+            className="max-h-36 min-h-[38px] w-full resize-none bg-transparent py-2 text-[0.95rem] leading-relaxed text-mist-200 placeholder-mist-400/60 outline-none"
           />
           {isStreaming ? (
             <button
               type="button"
               onClick={stop}
               title="Stop"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.08] text-mist-300 ring-1 ring-white/15 transition hover:bg-white/[0.14]"
+              aria-label="Stop generating"
+              className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-white/[0.08] text-mist-300 ring-1 ring-white/15 transition hover:bg-white/[0.14]"
             >
               <Square className="h-4 w-4" />
             </button>
@@ -184,7 +185,8 @@ export function ChatThread({
               onClick={submit}
               disabled={!draft.trim()}
               title="Send"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold-400 text-ink-950 transition hover:bg-gold-300 disabled:opacity-35"
+              aria-label="Send message"
+              className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-gold-400 text-ink-950 transition hover:bg-gold-300 disabled:opacity-35"
             >
               <Send className="h-4 w-4" />
             </button>

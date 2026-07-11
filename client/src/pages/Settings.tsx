@@ -32,7 +32,7 @@ function Row({
       </span>
       <div>
         <p className="text-sm font-medium text-mist-200">{label}</p>
-        <p className="text-[0.78rem] text-mist-400">{detail}</p>
+        <p className="text-xs text-mist-400">{detail}</p>
       </div>
     </div>
   );
@@ -113,7 +113,7 @@ export default function Settings() {
           )}
 
           <div className="border-t border-white/[0.06] pt-4">
-            <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-wider text-mist-400">
+            <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-mist-400">
               Chat model (any OpenRouter slug)
             </p>
             <div className="flex gap-2">
@@ -121,20 +121,21 @@ export default function Settings() {
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder={health.data?.model ?? "anthropic/claude-sonnet-5"}
-                className="flex-1 rounded-xl bg-ink-800/80 px-3.5 py-2.5 text-sm text-mist-200 placeholder-mist-400/40 outline-none ring-1 ring-white/10 transition focus:ring-gold-400/50"
+                className="flex-1 rounded-xl bg-ink-800/80 px-3.5 py-2.5 text-sm text-mist-200 placeholder-mist-400/60 outline-none ring-1 ring-white/10 transition focus:ring-gold-400/50"
               />
               <button
                 type="button"
                 disabled={!model.trim() || saveModel.isPending}
                 onClick={() => saveModel.mutate(model.trim())}
-                className="rounded-xl bg-gold-400 px-4 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-gold-300 disabled:opacity-40"
+                className="btn-primary"
               >
                 {modelSaved ? "Saved ✦" : "Save"}
               </button>
             </div>
-            <p className="mt-2 text-[0.72rem] text-mist-400/80">
+            <p className="mt-2 text-2xs text-mist-400">
               Try anthropic/claude-sonnet-5 for the finest conversation, or a
-              cheaper slug for casual browsing.
+              cheaper slug for casual browsing. Heads-up: the chat needs a
+              model with tool-calling support.
             </p>
           </div>
         </section>
@@ -144,11 +145,11 @@ export default function Settings() {
           <h2 className="mb-1 flex items-center gap-2 font-display text-lg font-semibold text-mist-200">
             <Brain className="h-[18px] w-[18px] text-gold-400" /> What the AI knows about you
           </h2>
-          <p className="mb-4 text-[0.78rem] text-mist-400">
+          <p className="mb-4 text-xs text-mist-400">
             The live taste profile assembled from your library — this exact
             text grounds every conversation.
           </p>
-          <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-xl bg-ink-900/80 p-4 font-sans text-[0.82rem] leading-relaxed text-mist-300 ring-1 ring-white/[0.06]">
+          <pre className="inset-block max-h-72 overflow-y-auto whitespace-pre-wrap p-4 font-sans text-[0.82rem] leading-relaxed text-mist-300">
             {profile.data?.rendered ?? "…"}
           </pre>
         </section>
@@ -164,24 +165,20 @@ export default function Settings() {
               tracked · ≈{stats.data.estimatedHours} hours of viewing — all in
               a single SQLite file on your machine
               {health.data?.dataDir ? (
-                <span className="mt-1 block truncate font-mono text-[0.72rem] text-mist-400/70">
+                <span className="mt-1 block truncate font-mono text-2xs text-mist-400">
                   {health.data.dataDir}
                 </span>
               ) : null}
             </p>
           )}
           <div className="flex flex-wrap gap-2.5">
-            <a
-              href="/api/export"
-              download
-              className="flex items-center gap-2 rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-mist-200 ring-1 ring-white/10 transition hover:bg-white/[0.1]"
-            >
+            <a href="/api/export" download className="btn-ghost">
               <Download className="h-4 w-4 text-gold-400" /> Export everything (JSON)
             </a>
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-2 rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-mist-200 ring-1 ring-white/10 transition hover:bg-white/[0.1]"
+              className="btn-ghost"
             >
               {importCsv.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin text-gold-400" />
@@ -198,16 +195,16 @@ export default function Settings() {
               onChange={(e) => void onFile(e.target.files?.[0])}
             />
           </div>
-          <p className="text-[0.72rem] leading-relaxed text-mist-400/80">
+          <p className="text-2xs leading-relaxed text-mist-400">
             CSV columns: title, year, type (movie/tv), rating (1–10), status,
             notes — only the title is required. Each row is matched against
             TMDB automatically.
           </p>
 
           {importReport && (
-            <div className="max-h-56 overflow-y-auto rounded-xl bg-ink-900/80 p-3 ring-1 ring-white/[0.06]">
+            <div className="inset-block max-h-56 overflow-y-auto p-3">
               {importReport.map((r, i) => (
-                <p key={i} className="py-0.5 text-[0.78rem]">
+                <p key={i} className="py-0.5 text-xs">
                   <span
                     className={
                       r.status === "added"
@@ -223,7 +220,7 @@ export default function Settings() {
                   {r.matched && r.matched !== r.input && (
                     <span className="text-mist-400"> → {r.matched}</span>
                   )}
-                  {r.detail && <span className="text-mist-400/70"> ({r.detail})</span>}
+                  {r.detail && <span className="text-mist-400"> ({r.detail})</span>}
                 </p>
               ))}
             </div>

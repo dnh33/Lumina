@@ -2,6 +2,8 @@ import type {
   CatalogItem,
   EpisodeInfo,
   MediaType,
+  PersonDetails,
+  RawPerson,
   RawSeason,
   RawTmdbDetails,
   RawTmdbItem,
@@ -56,21 +58,26 @@ export function normalizeDetails(
   if (!base) throw new Error("Unrecognized TMDB payload");
 
   let director: string | null = null;
+  let directorId: number | null = null;
   if (mediaType === "movie") {
-    director =
-      raw.credits?.crew?.find((c) => c.job === "Director")?.name ?? null;
+    const d = raw.credits?.crew?.find((c) => c.job === "Director");
+    director = d?.name ?? null;
+    directorId = d?.id ?? null;
   } else {
     director = raw.created_by?.[0]?.name ?? null;
+    directorId = raw.created_by?.[0]?.id ?? null;
   }
 
   const cast =
     mediaType === "tv" && raw.aggregate_credits?.cast?.length
       ? raw.aggregate_credits.cast.slice(0, 14).map((c) => ({
+          id: c.id ?? null,
           name: c.name,
           character: c.roles?.[0]?.character,
           profilePath: c.profile_path ?? null,
         }))
       : (raw.credits?.cast ?? []).slice(0, 14).map((c) => ({
+          id: c.id ?? null,
           name: c.name,
           character: c.character,
           profilePath: c.profile_path ?? null,
@@ -98,6 +105,7 @@ export function normalizeDetails(
     seasonsCount: raw.number_of_seasons ?? null,
     episodesCount: raw.number_of_episodes ?? null,
     director,
+    directorId,
     cast,
     releaseDate: raw.release_date ?? raw.first_air_date ?? null,
     status: raw.status ?? null,
@@ -123,4 +131,64 @@ export function normalizeSeason(raw: RawSeason): EpisodeInfo[] {
     runtime: e.runtime ?? null,
     overview: e.overview ?? "",
   }));
+}
+
+/** Deduplicate credits by title, keep the most popular occurrence. */
+function dedupeCredits(items: CatalogItem[]): CatalogItem[] {
+  const byKey = new Map<string, CatalogItem>();
+  for (const item of items) {
+    const key = `${item.mediaType}:${item.tmdbId}`;
+    const existing = byKey.get(key);
+    if (!existing || (item.popularity ?? 0) > (existing.popularity ?? 0)) {
+      byKey.set(key, item);
+    }
+  }
+  return [...byKey.values()].sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
+}
+
+export function normalizePerson(raw: RawPerson): PersonDetails {
+  const castCredits = dedupeCredits(
+    (raw.combined_credits?.cast ?? [])
+      .map((c) => normalizeItem(c))
+      .filter((x): x is CatalogItem => x !== null && !!x.posterPath),
+  );
+
+  const crew = raw.combined_credits?.crew ?? [];
+  const directing = dedupeCredits(
+    crew
+      .filter((c) => c.job === "Director")
+      .map((c) => normalizeItem(c))
+      .filter((x): x is CatalogItem => x !== null && !!x.posterPath),
+  );
+  const writing = dedupeCredits(
+    crew
+      .filter((c) => c.department === "Writing" || c.job === "Screenplay" || c.job === "Writer" || c.job === "Creator")
+      .map((c) => normalizeItem(c))
+      .filter((x): x is CatalogItem => x !== null && !!x.posterPath),
+  );
+
+  const primary =
+    raw.known_for_department === "Directing" && directing.length
+      ? directing
+      : castCredits.length
+        ? castCredits
+        : directing;
+  const knownFor = [...primary]
+    .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
+    .slice(0, 12);
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    biography: raw.biography ?? "",
+    birthday: raw.birthday ?? null,
+    deathday: raw.deathday ?? null,
+    placeOfBirth: raw.place_of_birth ?? null,
+    profilePath: raw.profile_path ?? null,
+    knownForDepartment: raw.known_for_department ?? null,
+    knownFor,
+    actingCredits: castCredits,
+    directingCredits: directing,
+    writingCredits: writing,
+  };
 }

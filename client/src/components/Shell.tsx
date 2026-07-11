@@ -52,7 +52,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto px-3 text-[0.72rem] leading-relaxed text-mist-400/70">
+        <div className="mt-auto px-3 text-2xs leading-relaxed text-mist-400">
           Your private cinematic memory.
           <br />
           Stored locally, always yours.

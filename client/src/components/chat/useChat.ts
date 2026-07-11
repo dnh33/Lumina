@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, streamChat } from "../../lib/api";
 
@@ -35,6 +35,11 @@ export function useChat(
     enabled: conversationId != null,
   });
 
+  // never leave a stream dangling when the surface unmounts
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
+
   const send = useCallback(
     async (text: string) => {
       const content = text.trim();
@@ -47,6 +52,15 @@ export function useChat(
           const created = await api.createConversation();
           convId = created.id;
           onConversationChange(convId);
+        } else {
+          // self-heal: a stored conversation may have been deleted elsewhere
+          try {
+            await api.messages(convId);
+          } catch {
+            const created = await api.createConversation();
+            convId = created.id;
+            onConversationChange(convId);
+          }
         }
       } catch (e) {
         setError((e as Error).message);
@@ -75,9 +89,7 @@ export function useChat(
                   const note =
                     e.matches.length > 0
                       ? `Recalled ${e.matches.slice(0, 3).join(", ")}${e.matches.length > 3 ? "…" : ""}`
-                      : e.librarySize === 0
-                        ? null
-                        : null;
+                      : null;
                   return { ...s, contextNote: note };
                 }
                 case "delta":

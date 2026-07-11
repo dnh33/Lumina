@@ -8,6 +8,7 @@ import { backdrop } from "../lib/img";
 import { PosterCard } from "../components/PosterCard";
 import { Carousel } from "../components/Carousel";
 import { EmptyState, HeroSkeleton, PosterSkeletonRow } from "../components/Bits";
+import { UpNextRail } from "../components/UpNextRail";
 import type { CatalogItem } from "../lib/types";
 
 function Hero({ item }: { item: CatalogItem }) {
@@ -32,15 +33,13 @@ function Hero({ item }: { item: CatalogItem }) {
         <div className="absolute inset-0 bg-gradient-to-r from-ink-950/85 via-ink-950/25 to-transparent" />
 
         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10">
-          <p className="mb-2 text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-gold-400">
-            Trending this week
-          </p>
-          <h1 className="max-w-2xl font-display text-4xl font-semibold leading-[1.05] text-white sm:text-5xl">
+          <p className="eyebrow mb-2">Trending this week</p>
+          <h1 className="max-w-2xl font-display text-4xl font-semibold leading-[1.05] text-white [text-wrap:balance] sm:text-5xl">
             {item.title}
           </h1>
           <div className="mt-3 flex items-center gap-3 text-[0.82rem] text-mist-300">
             {item.voteAverage != null && (
-              <span className="flex items-center gap-1 font-semibold text-gold-300">
+              <span className="flex items-center gap-1 font-semibold tabular-nums text-gold-300">
                 <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" />
                 {item.voteAverage.toFixed(1)}
               </span>
@@ -56,7 +55,7 @@ function Hero({ item }: { item: CatalogItem }) {
           <div className="mt-5 flex flex-wrap gap-2.5">
             <Link
               to={`/title/${item.mediaType}/${item.tmdbId}`}
-              className="flex items-center gap-2 rounded-xl bg-gold-400 px-4 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-gold-300"
+              className="btn-primary"
             >
               <Info className="h-4 w-4" /> Details
             </Link>
@@ -69,7 +68,7 @@ function Hero({ item }: { item: CatalogItem }) {
                   },
                 })
               }
-              className="flex items-center gap-2 rounded-xl bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-mist-200 ring-1 ring-white/15 backdrop-blur transition hover:bg-white/[0.14]"
+              className="btn-ghost backdrop-blur"
             >
               <Sparkles className="h-4 w-4 text-gold-400" /> Ask Lumina
             </button>
@@ -104,13 +103,9 @@ function MoodBar() {
         onChange={(e) => setMood(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && go()}
         placeholder="cozy autumn mystery… mind-bending escapism… quiet emotional drama…"
-        className="w-full flex-1 rounded-xl bg-ink-800/80 px-4 py-2.5 text-sm text-mist-200 placeholder-mist-400/50 outline-none ring-1 ring-white/10 transition focus:ring-gold-400/50"
+        className="w-full flex-1 rounded-xl bg-ink-800/80 px-4 py-2.5 text-sm text-mist-200 placeholder-mist-400/60 outline-none ring-1 ring-white/10 transition focus:ring-gold-400/50"
       />
-      <button
-        type="button"
-        onClick={go}
-        className="flex items-center justify-center gap-2 rounded-xl bg-gold-400 px-4 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-gold-300"
-      >
+      <button type="button" onClick={go} className="btn-primary">
         Match me <ArrowRight className="h-4 w-4" />
       </button>
     </div>
@@ -145,6 +140,15 @@ export default function Discover() {
     enabled: health.data?.tmdbConfigured === true,
   });
 
+  if (health.isError) {
+    return (
+      <EmptyState title="Lumina's engine isn't answering">
+        The local API isn't reachable. Make sure the server is running
+        (npm run dev), then refresh this page.
+      </EmptyState>
+    );
+  }
+
   if (health.data && !health.data.tmdbConfigured) {
     return (
       <EmptyState title="Connect TMDB to light things up">
@@ -164,7 +168,18 @@ export default function Discover() {
         <HeroSkeleton />
       ) : heroItem ? (
         <Hero item={heroItem} />
+      ) : trending.isError ? (
+        <div className="panel mb-12 flex items-center justify-between gap-4 p-5">
+          <p className="text-sm text-mist-300">
+            Couldn't reach TMDB — {(trending.error as Error).message}
+          </p>
+          <button type="button" className="btn-ghost" onClick={() => trending.refetch()}>
+            Retry
+          </button>
+        </div>
       ) : null}
+
+      <UpNextRail />
 
       <MoodBar />
 
@@ -202,20 +217,28 @@ export default function Discover() {
         )
       )}
 
-      {popularMovies.data && (
-        <Carousel title="Popular films" eyebrow="On every screen">
-          {popularMovies.data.map((i) => (
-            <PosterCard key={i.tmdbId} item={i} />
-          ))}
-        </Carousel>
+      {popularMovies.isLoading ? (
+        <PosterSkeletonRow />
+      ) : (
+        popularMovies.data && (
+          <Carousel title="Popular films" eyebrow="On every screen">
+            {popularMovies.data.map((i) => (
+              <PosterCard key={i.tmdbId} item={i} />
+            ))}
+          </Carousel>
+        )
       )}
 
-      {topTv.data && (
-        <Carousel title="Acclaimed series" eyebrow="Television at its finest">
-          {topTv.data.map((i) => (
-            <PosterCard key={i.tmdbId} item={i} />
-          ))}
-        </Carousel>
+      {topTv.isLoading ? (
+        <PosterSkeletonRow />
+      ) : (
+        topTv.data && (
+          <Carousel title="Acclaimed series" eyebrow="Television at its finest">
+            {topTv.data.map((i) => (
+              <PosterCard key={i.tmdbId} item={i} />
+            ))}
+          </Carousel>
+        )
       )}
 
       {health.data && !health.data.aiConfigured && (

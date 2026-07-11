@@ -18,8 +18,8 @@ const STATUS_TABS = [
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="panel px-4 py-3">
-      <p className="font-display text-xl font-semibold text-gold-300">{value}</p>
-      <p className="text-[0.7rem] font-medium uppercase tracking-wider text-mist-400">
+      <p className="font-display text-xl font-semibold tabular-nums text-gold-300">{value}</p>
+      <p className="text-2xs font-medium uppercase tracking-wider text-mist-400">
         {label}
       </p>
     </div>
@@ -75,11 +75,7 @@ export default function Library() {
             Everything you've watched, loved, and queued — remembered forever.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          className="flex items-center gap-2 rounded-xl bg-gold-400 px-4 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-gold-300"
-        >
+        <button type="button" onClick={() => setAddOpen(true)} className="btn-primary">
           <Plus className="h-4 w-4" /> Add title
         </button>
       </div>
@@ -102,11 +98,7 @@ export default function Library() {
               key={t.key}
               type="button"
               onClick={() => setStatus(t.key)}
-              className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition ${
-                status === t.key
-                  ? "bg-gold-400/[0.14] text-gold-300 ring-1 ring-gold-400/30"
-                  : "bg-white/[0.04] text-mist-400 ring-1 ring-white/[0.08] hover:text-mist-200"
-              }`}
+              className={`pill flex items-center gap-1.5 ${status === t.key ? "pill-active" : ""}`}
             >
               {t.key === "favorites" && <Heart className="h-3.5 w-3.5" />}
               {t.label}
@@ -121,15 +113,15 @@ export default function Library() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter…"
-              className="w-36 rounded-xl bg-ink-800/80 py-2 pl-9 pr-3 text-sm text-mist-200 placeholder-mist-400/50 outline-none ring-1 ring-white/10 transition focus:w-48 focus:ring-gold-400/50"
+              className="w-36 rounded-xl bg-ink-800/80 py-2 pl-9 pr-3 text-sm text-mist-200 placeholder-mist-400/60 outline-none ring-1 ring-white/10 transition focus:w-48 focus:ring-gold-400/50"
             />
           </div>
-          <select value={type} onChange={(e) => setType(e.target.value)} className={selectCls}>
+          <select value={type} onChange={(e) => setType(e.target.value)} className={selectCls} aria-label="Type filter">
             <option value="">All types</option>
             <option value="movie">Films</option>
             <option value="tv">Series</option>
           </select>
-          <select value={genre} onChange={(e) => setGenre(e.target.value)} className={selectCls}>
+          <select value={genre} onChange={(e) => setGenre(e.target.value)} className={selectCls} aria-label="Genre filter">
             <option value="">All genres</option>
             {genres.data?.map((g) => (
               <option key={g} value={g}>
@@ -137,7 +129,7 @@ export default function Library() {
               </option>
             ))}
           </select>
-          <select value={sort} onChange={(e) => setSort(e.target.value)} className={selectCls}>
+          <select value={sort} onChange={(e) => setSort(e.target.value)} className={selectCls} aria-label="Sort order">
             <option value="added">Recently added</option>
             <option value="updated">Recently updated</option>
             <option value="rating">Highest rated</option>
@@ -149,6 +141,15 @@ export default function Library() {
 
       {entries.isLoading ? (
         <PosterSkeletonRow count={8} />
+      ) : entries.isError ? (
+        <div className="panel mx-auto my-14 flex max-w-lg items-center justify-between gap-4 p-6">
+          <p className="text-sm text-mist-300">
+            Couldn't load your library — {(entries.error as Error).message}
+          </p>
+          <button type="button" className="btn-ghost" onClick={() => entries.refetch()}>
+            Retry
+          </button>
+        </div>
       ) : entries.data && entries.data.length > 0 ? (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(138px,1fr))] gap-x-4 gap-y-7 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))]">
           {entries.data.map((e) => (
@@ -177,11 +178,7 @@ export default function Library() {
         <EmptyState
           title="Begin your archive"
           action={
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="flex items-center gap-2 rounded-xl bg-gold-400 px-4 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-gold-300"
-            >
+            <button type="button" onClick={() => setAddOpen(true)} className="btn-primary">
               <Plus className="h-4 w-4" /> Add your first title
             </button>
           }

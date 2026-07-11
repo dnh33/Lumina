@@ -11,8 +11,10 @@ import type {
   LibraryStats,
   LibraryStatus,
   MediaType,
+  PersonDetails,
   TitleDetails,
   TitleInsight,
+  UpNextItem,
 } from "./types";
 
 async function j<T>(res: Response): Promise<T> {
@@ -29,8 +31,8 @@ async function j<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-const get = <T>(url: string) => fetch(url).then((r) => j<T>(r));
-const send = <T>(method: string, url: string, body?: unknown) =>
+const get = <T,>(url: string) => fetch(url).then((r) => j<T>(r));
+const send = <T,>(method: string, url: string, body?: unknown) =>
   fetch(url, {
     method,
     headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
@@ -52,6 +54,8 @@ export const api = {
     ),
   forYou: () => get<ForYou>("/api/discover/for-you"),
   because: () => get<Because>("/api/discover/because"),
+  upNext: () => get<UpNextItem[]>("/api/discover/up-next"),
+  person: (id: number) => get<PersonDetails>(`/api/tmdb/person/${id}`),
 
   /* library */
   library: (params: Record<string, string> = {}) =>

@@ -7,14 +7,16 @@ import {
   searchMulti,
   topRated,
   trending,
+  upNext,
 } from "../services/discoverService.js";
 import {
   fetchDetailsFromTmdb,
   getEntryByTmdb,
+  libraryTmdbIds,
 } from "../services/libraryService.js";
 import { tmdbGet } from "../tmdb/client.js";
-import { normalizeSeason } from "../tmdb/normalize.js";
-import type { MediaType, RawSeason } from "../tmdb/types.js";
+import { normalizePerson, normalizeSeason } from "../tmdb/normalize.js";
+import type { MediaType, RawPerson, RawSeason } from "../tmdb/types.js";
 
 export const catalogRouter = Router();
 
@@ -55,6 +57,30 @@ catalogRouter.get("/tmdb/title/tv/:id/season/:n", async (req, res) => {
     `/tv/${Number(req.params.id)}/season/${Number(req.params.n)}`,
   );
   res.json(normalizeSeason(raw));
+});
+
+catalogRouter.get("/tmdb/person/:id", async (req, res) => {
+  const raw = await tmdbGet<RawPerson>(`/person/${Number(req.params.id)}`, {
+    append_to_response: "combined_credits",
+  });
+  const person = normalizePerson(raw);
+  const owned = libraryTmdbIds(getDb());
+  const flag = (items: typeof person.knownFor) =>
+    items.map((i) => ({
+      ...i,
+      inLibrary: owned.has(`${i.mediaType}:${i.tmdbId}`),
+    }));
+  res.json({
+    ...person,
+    knownFor: flag(person.knownFor),
+    actingCredits: flag(person.actingCredits),
+    directingCredits: flag(person.directingCredits),
+    writingCredits: flag(person.writingCredits),
+  });
+});
+
+catalogRouter.get("/discover/up-next", (_req, res) => {
+  res.json(upNext(getDb()));
 });
 
 catalogRouter.get("/discover/for-you", async (_req, res) => {

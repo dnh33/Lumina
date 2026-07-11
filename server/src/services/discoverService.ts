@@ -2,7 +2,12 @@ import type { DB } from "../db/connection.js";
 import { genreMap, tmdbGet } from "../tmdb/client.js";
 import { normalizeList } from "../tmdb/normalize.js";
 import type { CatalogItem, MediaType, RawTmdbItem } from "../tmdb/types.js";
-import { libraryTmdbIds } from "./libraryService.js";
+import {
+  libraryTmdbIds,
+  listEpisodes,
+  listLibrary,
+  type LibraryEntry,
+} from "./libraryService.js";
 import { computeTasteProfile } from "../rag/tasteProfile.js";
 
 interface Paged {
@@ -102,6 +107,73 @@ export async function forYou(db: DB): Promise<ForYouResult> {
     basedOn: topGenres,
     items: flag(db, fresh.slice(0, 24)),
   };
+}
+
+export interface UpNextItem {
+  entry: LibraryEntry;
+  next: {
+    episodeId: number;
+    season: number;
+    episode: number;
+    name: string;
+    airDate: string | null;
+  } | null;
+  watched: number;
+  total: number;
+  /** an unwatched episode aired after the user's last watch */
+  hasNewEpisode: boolean;
+}
+
+/**
+ * "Up next" — for every series (and film) currently being watched, the exact
+ * next episode and progress. Pure local data; never triggers a TMDB sync.
+ */
+export function upNext(db: DB): UpNextItem[] {
+  const watching = listLibrary(db, { status: "watching", sort: "updated" });
+  const items: UpNextItem[] = [];
+
+  for (const entry of watching) {
+    if (entry.mediaType !== "tv") {
+      items.push({ entry, next: null, watched: 0, total: 0, hasNewEpisode: false });
+      continue;
+    }
+    const eps = listEpisodes(db, entry.titleId);
+    if (!eps.length) {
+      items.push({ entry, next: null, watched: 0, total: 0, hasNewEpisode: false });
+      continue;
+    }
+    const watched = eps.filter((e) => e.watched);
+    const next = eps.find((e) => !e.watched) ?? null;
+    const lastWatchedAt = watched
+      .map((e) => e.watchedAt ?? "")
+      .sort()
+      .at(-1);
+    const today = new Date().toISOString().slice(0, 10);
+    const hasNewEpisode = eps.some(
+      (e) =>
+        !e.watched &&
+        !!e.airDate &&
+        e.airDate <= today &&
+        !!lastWatchedAt &&
+        e.airDate > lastWatchedAt,
+    );
+    items.push({
+      entry,
+      next: next
+        ? {
+            episodeId: next.id,
+            season: next.season,
+            episode: next.episode,
+            name: next.name,
+            airDate: next.airDate,
+          }
+        : null,
+      watched: watched.length,
+      total: eps.length,
+      hasNewEpisode,
+    });
+  }
+  return items;
 }
 
 export interface BecauseResult {

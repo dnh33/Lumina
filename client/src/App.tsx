@@ -5,6 +5,7 @@ import { ChatDock } from "./components/chat/ChatDock";
 import Discover from "./pages/Discover";
 import Library from "./pages/Library";
 import TitleDetail from "./pages/TitleDetail";
+import PersonPage from "./pages/PersonPage";
 import ChatPage from "./pages/ChatPage";
 import Settings from "./pages/Settings";
 
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/" element={<Discover />} />
             <Route path="/library" element={<Library />} />
             <Route path="/title/:type/:tmdbId" element={<TitleDetail />} />
+            <Route path="/person/:id" element={<PersonPage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/chat/:id" element={<ChatPage />} />
             <Route path="/settings" element={<Settings />} />

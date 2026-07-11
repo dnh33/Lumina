@@ -30,6 +30,7 @@ export function makeDetails(overrides: Partial<TitleDetails> = {}): TitleDetails
     seasonsCount: null,
     episodesCount: null,
     director: null,
+    directorId: null,
     cast: [],
     releaseDate: "2020-01-01",
     status: "Released",

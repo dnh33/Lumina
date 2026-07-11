@@ -22,11 +22,7 @@ export function Carousel({ title, eyebrow, children }: Props) {
     <section className="group/row relative mb-10">
       <div className="mb-3 flex items-end justify-between">
         <div>
-          {eyebrow && (
-            <p className="mb-0.5 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-gold-400/80">
-              {eyebrow}
-            </p>
-          )}
+          {eyebrow && <p className="eyebrow mb-0.5">{eyebrow}</p>}
           <h2 className="font-display text-xl font-semibold text-mist-200">
             {title}
           </h2>

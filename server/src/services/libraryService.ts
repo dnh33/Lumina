@@ -213,14 +213,27 @@ export async function addToLibrary(
   const titleId = upsertTitle(db, details);
 
   const existing = db
-    .prepare("SELECT id FROM library WHERE title_id = ?")
-    .get(titleId) as { id: number } | undefined;
+    .prepare("SELECT id, status FROM library WHERE title_id = ?")
+    .get(titleId) as { id: number; status: LibraryStatus } | undefined;
 
   let libraryId: number;
   if (existing) {
     libraryId = existing.id;
+    // Upgrade-only status semantics: a re-add must never downgrade real
+    // history (e.g. a stale quick-save sending "watchlist" over "watched").
+    const rank: Record<LibraryStatus, number> = {
+      watchlist: 0,
+      watching: 1,
+      abandoned: 1,
+      watched: 2,
+    };
+    const incoming = opts.status;
+    const statusPatch =
+      incoming && rank[incoming] > rank[existing.status]
+        ? incoming
+        : undefined;
     updateEntry(db, libraryId, {
-      status: opts.status,
+      status: statusPatch,
       rating: opts.rating,
       notes: opts.notes,
       favorite: opts.favorite,
@@ -261,6 +274,10 @@ export function updateEntry(db: DB, id: number, patch: UpdatePatch): LibraryEntr
   if (patch.status !== undefined) {
     sets.push("status = @status");
     params.status = patch.status;
+    // Marking something watched should record when — unless caller says so.
+    if (patch.status === "watched" && patch.watchedAt === undefined) {
+      sets.push("watched_at = COALESCE(watched_at, date('now'))");
+    }
   }
   if (patch.rating !== undefined) {
     sets.push("rating = @rating");
@@ -424,12 +441,19 @@ export async function syncEpisodes(db: DB, titleId: number): Promise<void> {
                    runtime = excluded.runtime, overview = excluded.overview`,
   );
 
-  for (const n of seasonNumbers) {
-    const season = await tmdbGet<RawSeason>(`/tv/${t.tmdb_id}/season/${n}`, {});
-    const eps = normalizeSeason(season);
+  // Fetch seasons in parallel (bounded) — a 20-season show shouldn't mean
+  // 20 serial round-trips before the tracker renders.
+  const CHUNK = 6;
+  for (let i = 0; i < seasonNumbers.length; i += CHUNK) {
+    const chunk = seasonNumbers.slice(i, i + CHUNK);
+    const seasons = await Promise.all(
+      chunk.map((n) => tmdbGet<RawSeason>(`/tv/${t.tmdb_id}/season/${n}`, {})),
+    );
     const insertAll = db.transaction(() => {
-      for (const e of eps) {
-        upsert.run(titleId, e.season, e.episode, e.name, e.airDate, e.runtime, e.overview);
+      for (const season of seasons) {
+        for (const e of normalizeSeason(season)) {
+          upsert.run(titleId, e.season, e.episode, e.name, e.airDate, e.runtime, e.overview);
+        }
       }
     });
     insertAll();

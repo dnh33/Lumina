@@ -16,9 +16,39 @@ export interface CatalogItem {
 }
 
 export interface PersonCredit {
+  id: number | null;
   name: string;
   character?: string;
   profilePath: string | null;
+}
+
+export interface PersonDetails {
+  id: number;
+  name: string;
+  biography: string;
+  birthday: string | null;
+  deathday: string | null;
+  placeOfBirth: string | null;
+  profilePath: string | null;
+  knownForDepartment: string | null;
+  knownFor: CatalogItem[];
+  actingCredits: CatalogItem[];
+  directingCredits: CatalogItem[];
+  writingCredits: CatalogItem[];
+}
+
+export interface UpNextItem {
+  entry: LibraryEntry;
+  next: {
+    episodeId: number;
+    season: number;
+    episode: number;
+    name: string;
+    airDate: string | null;
+  } | null;
+  watched: number;
+  total: number;
+  hasNewEpisode: boolean;
 }
 
 export interface SeasonSummary {
@@ -36,6 +66,7 @@ export interface TitleDetails extends CatalogItem {
   seasonsCount: number | null;
   episodesCount: number | null;
   director: string | null;
+  directorId: number | null;
   cast: PersonCredit[];
   releaseDate: string | null;
   status: string | null;

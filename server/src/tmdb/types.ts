@@ -15,6 +15,7 @@ export interface CatalogItem {
 }
 
 export interface PersonCredit {
+  id: number | null;
   name: string;
   character?: string;
   profilePath: string | null;
@@ -27,6 +28,7 @@ export interface TitleDetails extends CatalogItem {
   seasonsCount: number | null;
   episodesCount: number | null;
   director: string | null;
+  directorId: number | null;
   cast: PersonCredit[];
   releaseDate: string | null;
   status: string | null;
@@ -49,6 +51,21 @@ export interface EpisodeInfo {
   airDate: string | null;
   runtime: number | null;
   overview: string;
+}
+
+export interface PersonDetails {
+  id: number;
+  name: string;
+  biography: string;
+  birthday: string | null;
+  deathday: string | null;
+  placeOfBirth: string | null;
+  profilePath: string | null;
+  knownForDepartment: string | null;
+  knownFor: CatalogItem[];
+  actingCredits: CatalogItem[];
+  directingCredits: CatalogItem[];
+  writingCredits: CatalogItem[];
 }
 
 /* ── Raw TMDB payloads (only fields we read) ─────────────────────── */
@@ -80,17 +97,23 @@ export interface RawTmdbDetails extends RawTmdbItem {
   number_of_episodes?: number;
   status?: string;
   credits?: {
-    cast?: { name: string; character?: string; profile_path?: string | null }[];
-    crew?: { name: string; job?: string }[];
+    cast?: {
+      id?: number;
+      name: string;
+      character?: string;
+      profile_path?: string | null;
+    }[];
+    crew?: { id?: number; name: string; job?: string }[];
   };
   aggregate_credits?: {
     cast?: {
+      id?: number;
       name: string;
       roles?: { character?: string }[];
       profile_path?: string | null;
     }[];
   };
-  created_by?: { name: string }[];
+  created_by?: { id?: number; name: string }[];
   similar?: { results?: RawTmdbItem[] };
   recommendations?: { results?: RawTmdbItem[] };
   seasons?: {
@@ -111,4 +134,19 @@ export interface RawSeason {
     runtime?: number | null;
     overview?: string;
   }[];
+}
+
+export interface RawPerson {
+  id: number;
+  name: string;
+  biography?: string;
+  birthday?: string | null;
+  deathday?: string | null;
+  place_of_birth?: string | null;
+  profile_path?: string | null;
+  known_for_department?: string;
+  combined_credits?: {
+    cast?: (RawTmdbItem & { character?: string })[];
+    crew?: (RawTmdbItem & { job?: string; department?: string })[];
+  };
 }

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -18,7 +18,14 @@ import { Carousel } from "../components/Carousel";
 import { PosterCard } from "../components/PosterCard";
 import { Chip, RatingDial } from "../components/Bits";
 import { EpisodeTracker } from "../components/EpisodeTracker";
-import type { LibraryEntry, LibraryStatus, MediaType, TitleDetails } from "../lib/types";
+import type {
+  LibraryEntry,
+  LibraryStatus,
+  MediaType,
+  TitleDetails,
+} from "../lib/types";
+
+/* ── AI insight (side rail) ─────────────────────────────────────── */
 
 function InsightCard({ details }: { details: TitleDetails }) {
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
@@ -40,62 +47,182 @@ function InsightCard({ details }: { details: TitleDetails }) {
     <motion.section
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.15 }}
-      className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gold-400/[0.09] to-transparent p-[1px]"
+      transition={{ delay: 0.12 }}
+      className="panel p-5 ring-gold-400/15"
     >
-      <div className="rounded-2xl bg-ink-850/90 p-6 ring-1 ring-gold-400/20">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-gold-300">
-            <Sparkles className="h-[18px] w-[18px]" /> Lumina's take, for you
-          </h3>
-          {insight.data && (
-            <button
-              type="button"
-              title="Regenerate"
-              onClick={() => refresh.mutate()}
-              className="rounded-lg p-1.5 text-mist-400 transition hover:bg-white/[0.06] hover:text-gold-300"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${refresh.isPending ? "animate-spin" : ""}`}
-              />
-            </button>
-          )}
-        </div>
-
-        {!requested ? (
-          <div>
-            <p className="mb-4 text-sm text-mist-400">
-              A personal reflection on whether this fits your taste — grounded
-              in your ratings, notes and history. Spoiler-free, always.
-            </p>
-            <button
-              type="button"
-              onClick={() => setRequested(true)}
-              className="rounded-xl bg-gold-400 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-gold-300"
-            >
-              Why would I love this?
-            </button>
-          </div>
-        ) : insight.isLoading || refresh.isPending ? (
-          <div className="flex items-center gap-3 py-3 text-sm text-mist-400">
-            <Loader2 className="h-4 w-4 animate-spin text-gold-400" />
-            Reading your taste profile…
-          </div>
-        ) : insight.isError ? (
-          <p className="text-sm text-red-300/80">
-            {(insight.error as Error).message}
-          </p>
-        ) : (
-          <p className="font-display text-[1.02rem] leading-relaxed text-mist-200">
-            {insight.data?.text}
-          </p>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-gold-300">
+          <Sparkles className="h-[18px] w-[18px]" /> Lumina's take
+        </h3>
+        {insight.data && (
+          <button
+            type="button"
+            aria-label="Regenerate insight"
+            title="Regenerate"
+            onClick={() => refresh.mutate()}
+            className="icon-btn"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${refresh.isPending ? "animate-spin" : ""}`}
+            />
+          </button>
         )}
       </div>
+
+      {!requested ? (
+        <div>
+          <p className="mb-4 text-sm leading-relaxed text-mist-400">
+            A personal, spoiler-free reflection on whether this fits your
+            taste — grounded in your ratings and notes.
+          </p>
+          <button
+            type="button"
+            onClick={() => setRequested(true)}
+            className="btn-primary"
+          >
+            Why would I love this?
+          </button>
+        </div>
+      ) : insight.isLoading || refresh.isPending ? (
+        <div className="flex items-center gap-3 py-3 text-sm text-mist-400">
+          <Loader2 className="h-4 w-4 animate-spin text-gold-400" />
+          Reading your taste profile…
+        </div>
+      ) : insight.isError ? (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-red-300/90">
+            {(insight.error as Error).message}
+          </p>
+          <button type="button" className="btn-ghost" onClick={() => insight.refetch()}>
+            Retry
+          </button>
+        </div>
+      ) : (
+        <p className="font-display text-[1.02rem] leading-relaxed text-mist-200">
+          {insight.data?.text}
+        </p>
+      )}
     </motion.section>
   );
 }
 
-function LibraryPanel({
+/* ── Facts (side rail) ──────────────────────────────────────────── */
+
+function FactsCard({ details }: { details: TitleDetails }) {
+  const rows: { label: string; value: ReactNode }[] = [];
+  if (details.director) {
+    rows.push({
+      label: details.mediaType === "tv" ? "Created by" : "Directed by",
+      value: details.directorId ? (
+        <Link
+          to={`/person/${details.directorId}`}
+          className="text-gold-300 transition hover:text-gold-400"
+        >
+          {details.director}
+        </Link>
+      ) : (
+        details.director
+      ),
+    });
+  }
+  if (details.releaseDate) {
+    rows.push({ label: "Released", value: details.releaseDate });
+  }
+  if (details.mediaType === "movie" && details.runtime) {
+    rows.push({ label: "Runtime", value: `${details.runtime} min` });
+  }
+  if (details.mediaType === "tv") {
+    rows.push({
+      label: "Seasons",
+      value: `${details.seasonsCount ?? "?"} · ${details.episodesCount ?? "?"} episodes`,
+    });
+    if (details.status) rows.push({ label: "Status", value: details.status });
+  }
+  if (details.voteAverage != null) {
+    rows.push({
+      label: "TMDB score",
+      value: (
+        <span className="flex items-center gap-1 tabular-nums">
+          <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" />
+          {details.voteAverage.toFixed(1)}
+        </span>
+      ),
+    });
+  }
+  if (!rows.length) return null;
+
+  return (
+    <section className="panel p-5">
+      <h3 className="mb-3 font-display text-lg font-semibold text-mist-200">
+        Details
+      </h3>
+      <dl className="space-y-2.5">
+        {rows.map((r) => (
+          <div key={r.label} className="flex items-baseline justify-between gap-4">
+            <dt className="shrink-0 text-2xs font-semibold uppercase tracking-wider text-mist-400">
+              {r.label}
+            </dt>
+            <dd className="text-right text-sm text-mist-200">{r.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+/* ── Cast (side rail, links to person pages) ────────────────────── */
+
+function CastCard({ details }: { details: TitleDetails }) {
+  if (!details.cast.length) return null;
+  return (
+    <section className="panel p-5">
+      <h3 className="mb-3 font-display text-lg font-semibold text-mist-200">
+        Cast
+      </h3>
+      <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
+        {details.cast.map((c) => {
+          const img = profile(c.profilePath);
+          const inner = (
+            <>
+              <div className="mx-auto mb-1.5 h-[72px] w-[72px] overflow-hidden rounded-full bg-ink-700 ring-1 ring-white/10 transition group-hover/person:ring-gold-400/50">
+                {img ? (
+                  <img src={img} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center font-display text-lg text-mist-400">
+                    {c.name[0]}
+                  </div>
+                )}
+              </div>
+              <p className="truncate text-2xs font-medium text-mist-300 transition group-hover/person:text-gold-300">
+                {c.name}
+              </p>
+              {c.character && (
+                <p className="truncate text-2xs text-mist-400/90">{c.character}</p>
+              )}
+            </>
+          );
+          return c.id ? (
+            <Link
+              key={`${c.id}-${c.name}`}
+              to={`/person/${c.id}`}
+              className="group/person w-[76px] shrink-0 text-center"
+            >
+              {inner}
+            </Link>
+          ) : (
+            <div key={c.name} className="w-[76px] shrink-0 text-center">
+              {inner}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/* ── Full-width action bar (the page's primary task) ────────────── */
+
+function ActionBar({
   details,
   entry,
 }: {
@@ -104,10 +231,6 @@ function LibraryPanel({
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [notes, setNotes] = useState(entry?.notes ?? "");
-  const [notesSaved, setNotesSaved] = useState(false);
-
-  useEffect(() => setNotes(entry?.notes ?? ""), [entry?.id, entry?.notes]);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["title", details.mediaType, details.tmdbId] });
@@ -115,6 +238,7 @@ function LibraryPanel({
     qc.invalidateQueries({ queryKey: ["library-stats"] });
     qc.invalidateQueries({ queryKey: ["library-genres"] });
     qc.invalidateQueries({ queryKey: ["for-you"] });
+    qc.invalidateQueries({ queryKey: ["up-next"] });
   };
 
   const add = useMutation({
@@ -141,115 +265,164 @@ function LibraryPanel({
 
   if (!entry) {
     return (
-      <div className="panel p-5">
-        <p className="mb-3 text-sm font-medium text-mist-300">
+      <div className="panel mb-8 flex flex-wrap items-center gap-3 p-4 sm:px-5">
+        <p className="mr-2 text-sm font-medium text-mist-400">
           Not in your archive yet
         </p>
-        <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={add.isPending}
+          onClick={() => add.mutate("watched")}
+          className="btn-primary"
+        >
+          <Plus className="h-4 w-4" /> I've watched this
+        </button>
+        <button
+          type="button"
+          disabled={add.isPending}
+          onClick={() => add.mutate("watchlist")}
+          className="btn-ghost"
+        >
+          Save to watchlist
+        </button>
+        {details.mediaType === "tv" && (
           <button
             type="button"
             disabled={add.isPending}
-            onClick={() => add.mutate("watched")}
-            className="flex items-center gap-2 rounded-xl bg-gold-400 px-4 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-gold-300 disabled:opacity-60"
+            onClick={() => add.mutate("watching")}
+            className="btn-ghost"
           >
-            <Plus className="h-4 w-4" /> I've watched this
+            Currently watching
           </button>
-          <button
-            type="button"
-            disabled={add.isPending}
-            onClick={() => add.mutate("watchlist")}
-            className="rounded-xl bg-white/[0.07] px-4 py-2.5 text-sm font-semibold text-mist-200 ring-1 ring-white/12 transition hover:bg-white/[0.12] disabled:opacity-60"
-          >
-            Save to watchlist
-          </button>
-          {details.mediaType === "tv" && (
-            <button
-              type="button"
-              disabled={add.isPending}
-              onClick={() => add.mutate("watching")}
-              className="rounded-xl bg-white/[0.07] px-4 py-2.5 text-sm font-semibold text-mist-200 ring-1 ring-white/12 transition hover:bg-white/[0.12] disabled:opacity-60"
-            >
-              Currently watching
-            </button>
-          )}
-        </div>
+        )}
       </div>
     );
   }
 
-  const saveNotes = () => {
-    if (notes === entry.notes) return;
-    update.mutate({ notes });
-    setNotesSaved(true);
-    setTimeout(() => setNotesSaved(false), 1600);
-  };
-
   return (
-    <div className="panel space-y-5 p-5">
-      <div className="flex flex-wrap items-center gap-2.5">
+    <div className="panel mb-8 flex flex-wrap items-center gap-x-5 gap-y-4 p-4 sm:px-5">
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Status">
         {(["watched", "watching", "watchlist", "abandoned"] as const).map((s) => (
           <button
             key={s}
             type="button"
             onClick={() => update.mutate({ status: s })}
-            className={`rounded-xl px-3.5 py-2 text-sm font-medium capitalize transition ${
-              entry.status === s
-                ? "bg-gold-400/[0.15] text-gold-300 ring-1 ring-gold-400/35"
-                : "bg-white/[0.04] text-mist-400 ring-1 ring-white/[0.08] hover:text-mist-200"
-            }`}
+            className={`pill capitalize ${entry.status === s ? "pill-active" : ""}`}
           >
             {s}
           </button>
         ))}
-        <button
-          type="button"
-          title={entry.favorite ? "Remove favorite" : "Mark favorite"}
-          onClick={() => update.mutate({ favorite: !entry.favorite })}
-          className={`ml-auto flex h-9 w-9 items-center justify-center rounded-xl transition ${
-            entry.favorite
-              ? "bg-gold-400/[0.15] text-gold-300 ring-1 ring-gold-400/35"
-              : "bg-white/[0.04] text-mist-400 ring-1 ring-white/[0.08] hover:text-gold-300"
-          }`}
-        >
-          <Heart className={`h-4 w-4 ${entry.favorite ? "fill-gold-400 text-gold-400" : ""}`} />
-        </button>
-        <button
-          type="button"
-          title="Remove from library"
-          onClick={() => remove.mutate()}
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.04] text-mist-400 ring-1 ring-white/[0.08] transition hover:bg-red-500/15 hover:text-red-300"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
       </div>
 
-      <div>
-        <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-wider text-mist-400">
+      <div className="hidden h-8 w-px bg-white/10 sm:block" aria-hidden />
+
+      <div className="flex items-center gap-2.5">
+        <span className="text-2xs font-semibold uppercase tracking-wider text-mist-400">
           Your rating
-        </p>
+        </span>
         <RatingDial
           value={entry.rating}
           onChange={(v) => update.mutate({ rating: v })}
         />
       </div>
 
-      <div>
-        <p className="mb-2 flex items-center justify-between text-[0.72rem] font-semibold uppercase tracking-wider text-mist-400">
-          Your notes — the AI reads these
-          {notesSaved && <span className="text-gold-300 normal-case">Saved ✦</span>}
-        </p>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          onBlur={saveNotes}
-          rows={3}
-          placeholder="What resonated? Pacing, tone, a performance… future-you (and Lumina) will thank you."
-          className="w-full resize-y rounded-xl bg-ink-800/80 px-3.5 py-2.5 text-sm leading-relaxed text-mist-200 placeholder-mist-400/40 outline-none ring-1 ring-white/10 transition focus:ring-gold-400/50"
-        />
+      <div className="ml-auto flex items-center gap-1.5">
+        <button
+          type="button"
+          aria-label={entry.favorite ? "Remove favorite" : "Mark favorite"}
+          title={entry.favorite ? "Remove favorite" : "Mark favorite"}
+          onClick={() => update.mutate({ favorite: !entry.favorite })}
+          className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl transition ${
+            entry.favorite
+              ? "bg-gold-400/[0.12] text-gold-300 ring-1 ring-gold-400/30"
+              : "bg-white/[0.04] text-mist-400 ring-1 ring-white/[0.08] hover:text-gold-300"
+          }`}
+        >
+          <Heart
+            className={`h-4 w-4 ${entry.favorite ? "fill-gold-400 text-gold-400" : ""}`}
+          />
+        </button>
+        <button
+          type="button"
+          aria-label="Remove from library"
+          title="Remove from library"
+          onClick={() => {
+            if (window.confirm(`Remove "${details.title}" from your library?`)) {
+              remove.mutate();
+            }
+          }}
+          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-white/[0.04] text-mist-400 ring-1 ring-white/[0.08] transition hover:bg-red-500/15 hover:text-red-300"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
 }
+
+/* ── Notes (main column, typographic) ───────────────────────────── */
+
+function NotesBlock({ entry }: { entry: LibraryEntry }) {
+  const qc = useQueryClient();
+  const [notes, setNotes] = useState(entry.notes);
+  const [saved, setSaved] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef(entry.notes);
+
+  useEffect(() => {
+    setNotes(entry.notes);
+    latest.current = entry.notes;
+  }, [entry.id]);
+
+  const persist = useCallback(
+    (value: string) => {
+      if (value === latest.current) return;
+      latest.current = value;
+      api.updateEntry(entry.id, { notes: value }).then(() => {
+        setSaved(true);
+        qc.invalidateQueries({ queryKey: ["library"] });
+        setTimeout(() => setSaved(false), 1500);
+      });
+    },
+    [entry.id, qc],
+  );
+
+  const onChange = (value: string) => {
+    setNotes(value);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => persist(value), 900);
+  };
+
+  // flush pending notes on unmount — no lost words
+  useEffect(() => {
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
+  return (
+    <div className="max-w-[68ch]">
+      <label
+        htmlFor="lumina-notes"
+        className="mb-2 flex items-center justify-between text-2xs font-semibold uppercase tracking-wider text-mist-400"
+      >
+        Your notes — the AI reads these
+        {saved && <span className="normal-case text-gold-300">Saved ✦</span>}
+      </label>
+      <textarea
+        id="lumina-notes"
+        value={notes}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={() => persist(notes)}
+        rows={3}
+        placeholder="What resonated? Pacing, tone, a performance… future-you (and Lumina) will thank you."
+        className="w-full resize-y rounded-xl bg-ink-800/80 px-3.5 py-2.5 text-sm leading-relaxed text-mist-200 placeholder-mist-400/60 outline-none ring-1 ring-white/10 transition focus:ring-gold-400/50"
+      />
+    </div>
+  );
+}
+
+/* ── Page ───────────────────────────────────────────────────────── */
 
 export default function TitleDetail() {
   const { type, tmdbId } = useParams<{ type: MediaType; tmdbId: string }>();
@@ -265,16 +438,19 @@ export default function TitleDetail() {
   if (q.isLoading) {
     return (
       <div>
-        <div className="skeleton mb-8 h-[380px] w-full rounded-3xl" />
-        <div className="skeleton mb-3 h-6 w-1/3 rounded-md" />
-        <div className="skeleton h-24 w-full rounded-xl" />
+        <div className="skeleton mb-8 h-[400px] w-full rounded-3xl" />
+        <div className="skeleton mb-8 h-16 w-full rounded-2xl" />
+        <div className="skeleton h-24 w-2/3 rounded-xl" />
       </div>
     );
   }
   if (q.isError || !q.data) {
     return (
       <div className="py-20 text-center text-mist-400">
-        <p>{(q.error as Error)?.message ?? "Title not found."}</p>
+        <p className="mb-4">{(q.error as Error)?.message ?? "Title not found."}</p>
+        <button type="button" className="btn-ghost mx-auto" onClick={() => q.refetch()}>
+          Try again
+        </button>
       </div>
     );
   }
@@ -282,22 +458,15 @@ export default function TitleDetail() {
   const { details, library } = q.data;
   const bg = backdrop(details.backdropPath, "w1280");
   const posterSrc = poster(details.posterPath, "w500");
-  const meta = [
-    details.year,
-    details.mediaType === "tv"
-      ? `${details.seasonsCount ?? "?"} season${(details.seasonsCount ?? 0) === 1 ? "" : "s"}`
-      : details.runtime
-        ? `${details.runtime} min`
-        : null,
-    details.director ? `by ${details.director}` : null,
-  ].filter(Boolean);
 
   return (
     <div>
       <button
         type="button"
-        onClick={() => navigate(-1)}
-        className="mb-4 flex items-center gap-2 text-sm text-mist-400 transition hover:text-gold-300"
+        onClick={() =>
+          window.history.length > 2 ? navigate(-1) : navigate("/library")
+        }
+        className="mb-4 flex cursor-pointer items-center gap-2 text-sm text-mist-400 transition hover:text-gold-300"
       >
         <ArrowLeft className="h-4 w-4" /> Back
       </button>
@@ -307,11 +476,15 @@ export default function TitleDetail() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.45 }}
-        className="relative mb-8 overflow-hidden rounded-3xl ring-1 ring-white/10"
+        className="relative mb-6 overflow-hidden rounded-3xl ring-1 ring-white/10"
       >
         <div className="relative min-h-[340px]">
           {bg && (
-            <img src={bg} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <img
+              src={bg}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/60 to-ink-950/10" />
           <div className="absolute inset-0 bg-gradient-to-r from-ink-950/80 via-transparent to-transparent" />
@@ -328,7 +501,7 @@ export default function TitleDetail() {
               />
             )}
             <div className="min-w-0">
-              <h1 className="font-display text-4xl font-semibold leading-tight text-white sm:text-5xl">
+              <h1 className="font-display text-4xl font-semibold leading-tight text-white [text-wrap:balance] sm:text-5xl">
                 {details.title}
               </h1>
               {details.tagline && (
@@ -336,14 +509,11 @@ export default function TitleDetail() {
                   {details.tagline}
                 </p>
               )}
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-mist-300">
-                {details.voteAverage != null && (
-                  <span className="flex items-center gap-1 font-semibold text-gold-300">
-                    <Star className="h-4 w-4 fill-gold-400 text-gold-400" />
-                    {details.voteAverage.toFixed(1)}
-                  </span>
-                )}
-                <span>{meta.join("  ·  ")}</span>
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-mist-300">
+                {details.year && <span>{details.year}</span>}
+                <span className="uppercase tracking-wider text-mist-400">
+                  {details.mediaType === "tv" ? "Series" : "Film"}
+                </span>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {details.genres.map((g) => (
@@ -355,51 +525,25 @@ export default function TitleDetail() {
         </div>
       </motion.div>
 
-      <div className="mb-10 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <div className="space-y-6">
-          <p className="max-w-3xl text-[0.95rem] leading-[1.75] text-mist-300">
+      {/* Primary task: full-width action bar */}
+      <ActionBar details={details} entry={library} />
+
+      {/* Editorial main column + sticky reference rail */}
+      <div className="mb-12 grid items-start gap-8 lg:grid-cols-[minmax(0,1.7fr)_340px]">
+        <div className="min-w-0 space-y-8">
+          <p className="max-w-[68ch] text-[1.02rem] leading-[1.75] text-mist-200 [text-wrap:pretty]">
             {details.overview}
           </p>
-          <LibraryPanel details={details} entry={library} />
+          {library && <NotesBlock entry={library} />}
           {details.mediaType === "tv" && library && (
             <EpisodeTracker libraryId={library.id} />
           )}
         </div>
-        <div className="space-y-6">
+
+        <div className="space-y-5 self-start lg:sticky lg:top-6">
           <InsightCard details={details} />
-          {details.cast.length > 0 && (
-            <div className="panel p-5">
-              <h3 className="mb-3 font-display text-lg font-semibold text-mist-200">
-                Cast
-              </h3>
-              <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
-                {details.cast.map((c) => {
-                  const img = profile(c.profilePath);
-                  return (
-                    <div key={c.name} className="w-[74px] shrink-0 text-center">
-                      <div className="mx-auto mb-1.5 h-[74px] w-[74px] overflow-hidden rounded-full bg-ink-700 ring-1 ring-white/10">
-                        {img ? (
-                          <img src={img} alt={c.name} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full items-center justify-center font-display text-lg text-mist-400">
-                            {c.name[0]}
-                          </div>
-                        )}
-                      </div>
-                      <p className="truncate text-[0.7rem] font-medium text-mist-300">
-                        {c.name}
-                      </p>
-                      {c.character && (
-                        <p className="truncate text-[0.64rem] text-mist-400">
-                          {c.character}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <FactsCard details={details} />
+          <CastCard details={details} />
         </div>
       </div>
 
@@ -410,7 +554,6 @@ export default function TitleDetail() {
           ))}
         </Carousel>
       )}
-
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Maximize2, Sparkles, X } from "lucide-react";
@@ -20,6 +20,13 @@ export function ChatDock() {
     localStorage.setItem(DOCK_KEY, String(id));
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
     <>
       <AnimatePresence>
@@ -29,7 +36,7 @@ export function ChatDock() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.97 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed bottom-24 right-4 z-50 flex h-[min(620px,72vh)] w-[min(430px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl bg-ink-850/95 ring-1 ring-white/12 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl md:bottom-8 md:right-8"
+            className="fixed bottom-24 right-4 z-50 flex h-[min(620px,72vh)] w-[min(430px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl bg-ink-850/95 ring-1 ring-white/10 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl md:bottom-8 md:right-8"
           >
             <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3">
               <div className="flex items-center gap-2">
@@ -37,7 +44,7 @@ export function ChatDock() {
                 <span className="font-display text-[0.95rem] font-semibold text-mist-200">
                   Lumina
                 </span>
-                <span className="rounded-full bg-gold-400/10 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wider text-gold-300/90">
+                <span className="rounded-full bg-gold-400/10 px-2 py-0.5 text-2xs font-semibold uppercase tracking-wider text-gold-300/90">
                   knows your taste
                 </span>
               </div>
@@ -45,19 +52,21 @@ export function ChatDock() {
                 <button
                   type="button"
                   title="Open full screen"
+                  aria-label="Open full screen chat"
                   onClick={() => {
                     setOpen(false);
                     navigate(conversationId ? `/chat/${conversationId}` : "/chat");
                   }}
-                  className="rounded-lg p-1.5 text-mist-400 transition hover:bg-white/[0.06] hover:text-mist-200"
+                  className="icon-btn"
                 >
                   <Maximize2 className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   title="Close"
+                  aria-label="Close chat"
                   onClick={() => setOpen(false)}
-                  className="rounded-lg p-1.5 text-mist-400 transition hover:bg-white/[0.06] hover:text-mist-200"
+                  className="icon-btn"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -77,8 +86,10 @@ export function ChatDock() {
         onClick={() => setOpen((o) => !o)}
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
+        aria-label={open ? "Close Lumina chat" : "Talk to Lumina"}
+        aria-expanded={open}
         title="Talk to Lumina"
-        className="fixed bottom-20 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-gold-300 to-gold-500 text-ink-950 shadow-[0_10px_36px_-6px_rgba(232,184,75,0.55)] md:bottom-8 md:right-8"
+        className="fixed bottom-20 right-4 z-50 flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-br from-gold-300 to-gold-500 text-ink-950 shadow-[0_10px_36px_-6px_rgba(232,184,75,0.55)] md:bottom-8 md:right-8"
       >
         {open ? (
           <X className="h-6 w-6" />

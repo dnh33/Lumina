@@ -64,6 +64,7 @@ export function RatingDial({
             key={n}
             type="button"
             aria-label={`Rate ${n}/10`}
+            title={value === n ? "Click again to clear" : `Rate ${n}/10`}
             onClick={() => onChange(value === n ? null : n)}
             className={`h-7 w-7 rounded-lg text-[0.72rem] font-bold transition-all duration-150 ${
               active

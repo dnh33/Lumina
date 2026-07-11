@@ -17,9 +17,7 @@ function useDebounced<T>(value: T, ms: number): T {
 
 function ResultRow({ item }: { item: CatalogItem }) {
   const qc = useQueryClient();
-  const [savedAs, setSavedAs] = useState<LibraryStatus | null>(
-    item.inLibrary ? "watched" : null,
-  );
+  const [savedAs, setSavedAs] = useState<LibraryStatus | null>(null);
   const add = useMutation({
     mutationFn: (status: LibraryStatus) =>
       api.addToLibrary({ tmdbId: item.tmdbId, mediaType: item.mediaType, status }),
@@ -102,11 +100,14 @@ export function AddModal({ open, onClose }: { open: boolean; onClose: () => void
           onClick={onClose}
         >
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search titles to add"
             initial={{ opacity: 0, y: 18, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-xl overflow-hidden rounded-2xl bg-ink-850 ring-1 ring-white/12 shadow-2xl"
+            className="w-full max-w-xl overflow-hidden rounded-2xl bg-ink-850 ring-1 ring-white/10 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 border-b border-white/[0.07] px-4 py-3.5">
@@ -116,11 +117,12 @@ export function AddModal({ open, onClose }: { open: boolean; onClose: () => void
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search films & series to add…"
-                className="flex-1 bg-transparent text-[0.95rem] text-mist-200 placeholder-mist-400/50 outline-none"
+                className="flex-1 bg-transparent text-[0.95rem] text-mist-200 placeholder-mist-400/60 outline-none"
               />
               <button
                 type="button"
                 onClick={onClose}
+                aria-label="Close search"
                 className="rounded-lg p-1 text-mist-400 transition hover:bg-white/[0.06] hover:text-mist-200"
               >
                 <X className="h-4 w-4" />
@@ -133,6 +135,11 @@ export function AddModal({ open, onClose }: { open: boolean; onClose: () => void
                   <Loader2 className="h-4 w-4 animate-spin" /> Searching…
                 </div>
               )}
+              {!results.isFetching && results.isError && (
+                <p className="py-8 text-center text-sm text-red-300/90">
+                  Search failed — {(results.error as Error).message}
+                </p>
+              )}
               {!results.isFetching && results.data?.length === 0 && (
                 <p className="py-8 text-center text-sm text-mist-400">
                   Nothing found — try another spelling.
@@ -142,8 +149,8 @@ export function AddModal({ open, onClose }: { open: boolean; onClose: () => void
                 results.data?.map((item) => (
                   <ResultRow key={`${item.mediaType}${item.tmdbId}`} item={item} />
                 ))}
-              {!results.data && !results.isFetching && (
-                <p className="py-8 text-center text-sm text-mist-400/70">
+              {!results.data && !results.isFetching && !results.isError && (
+                <p className="py-8 text-center text-sm text-mist-400">
                   Type at least two characters.
                 </p>
               )}
