@@ -1,0 +1,19 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+*.tsbuildinfo
+
+# local data — your private library and chat history live here
+data/
+
+# secrets
+.env
+.env.local
+
+# logs & junk
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
