@@ -348,6 +348,17 @@ export function ChatThread({
   // day separators
   let lastDay = "";
 
+  // While a turn streams, the server has already persisted the user message
+  // (persistMessage runs at turn start), so a messages refetch mid-stream can
+  // return it — racing the optimistic stream bubble and showing the user's
+  // input twice in freshly-started sessions (e.g. clicking a welcome card).
+  // The index of the last user message lets us suppress that one duplicate
+  // without touching history.
+  const lastUserIdx = messages.reduce(
+    (acc, m, i) => (m.role === "user" ? i : acc),
+    -1,
+  );
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* screen readers get phases, not a token flood */}
@@ -414,10 +425,22 @@ export function ChatThread({
               initial="hidden"
               animate="show"
             >
-              {messages.map((m) => {
+              {messages.map((m, i) => {
                 const day = m.created_at?.slice(0, 10) ?? "";
                 const sep = day && day !== lastDay;
                 if (sep) lastDay = day;
+                // While a turn streams, hide the persisted copy of the
+                // just-sent user message — it's already shown optimistically
+                // via stream.userText. Without this, freshly-started sessions
+                // (e.g. a welcome-card click) show the input twice.
+                if (
+                  stream &&
+                  i === lastUserIdx &&
+                  m.role === "user" &&
+                  m.content.trim() === stream.userText.trim()
+                ) {
+                  return null;
+                }
                 return (
                   <motion.div
                     key={m.id}

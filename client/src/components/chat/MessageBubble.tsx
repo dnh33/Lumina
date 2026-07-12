@@ -5,10 +5,11 @@ import { SuggestionCards } from "./SuggestionCards";
 import { MarkdownMessage } from "./MarkdownMessage";
 import type { SuggestionItem } from "../../lib/types";
 
-const SUGGESTION_RE = /```lumina-suggestions\s*([\s\S]*?)```/;
-const FOLLOWUP_RE = /```lumina-followups\s*([\s\S]*?)```/;
-// any still-streaming or never-terminated lumina fence: hide, never show raw
-const PARTIAL_FENCE_RE = /```lumina-[a-z]*[\s\S]*$/;
+// Reject the *bare* ```json / ``` ``` fences that models sometimes emit when
+// they forget the lumina- tag, but ONLY when they carry our suggestion/chip
+// schema — those are rendered as cards, never as code. All other fences
+// (real ```json config dumps, ```ts snippets the user pastes, etc.) pass through.
+const FENCE_RE = /```([^\n]*)\n([\s\S]*?)```/g;
 
 export interface ParsedMessage {
   text: string;
@@ -16,44 +17,59 @@ export interface ParsedMessage {
   chips: string[];
 }
 
+/**
+ * Extract poster-card suggestions + follow-up chips from a model reply.
+ *
+ * The system prompt asks for these as fenced JSON blocks tagged
+ * `lumina-suggestions` / `lumina-followups`, but models frequently emit a
+ * plain ```json fence instead (same `items`/`chips` schema). To be robust we
+ * treat ANY fenced block whose parsed JSON contains `items` or `chips` as a
+ * structured payload and render it as cards — never as a raw code block.
+ */
 export function parseMessage(content: string): ParsedMessage {
   let text = content;
-  let items: SuggestionItem[] = [];
-  let chips: string[] = [];
+  const items: SuggestionItem[] = [];
+  const chips: string[] = [];
 
-  const sug = text.match(SUGGESTION_RE);
-  if (sug) {
+  // First pass: pull structured payloads out of any matching fence.
+  text = text.replace(FENCE_RE, (_full, lang: string, body: string) => {
+    let data: unknown;
     try {
-      const parsed = JSON.parse(sug[1]) as { items?: SuggestionItem[] };
-      items = (parsed.items ?? [])
-        .filter(
-          (i) =>
-            typeof i.tmdbId === "number" &&
-            (i.mediaType === "movie" || i.mediaType === "tv"),
-        );
+      data = JSON.parse(body.trim());
     } catch {
-      /* malformed block, hide it anyway */
+      // Not JSON — leave the fence (markdown renders it as a code block).
+      return _full;
     }
-    text = text.replace(SUGGESTION_RE, "");
-  }
+    if (typeof data !== "object" || data === null) return _full;
+    const obj = data as Record<string, unknown>;
 
-  const fu = text.match(FOLLOWUP_RE);
-  if (fu) {
-    try {
-      const parsed = JSON.parse(fu[1]) as { chips?: string[] };
-      chips = (parsed.chips ?? [])
-        .map((c) => String(c).trim())
-        .filter((c) => c.length > 0 && c.length <= 40)
-        .slice(0, 3);
-    } catch {
-      /* hide */
+    let took = false;
+    if (Array.isArray(obj.items)) {
+      for (const raw of obj.items) {
+        if (
+          raw &&
+          typeof raw === "object" &&
+          typeof (raw as { tmdbId?: unknown }).tmdbId === "number" &&
+          ((raw as { mediaType?: unknown }).mediaType === "movie" ||
+            (raw as { mediaType?: unknown }).mediaType === "tv")
+        ) {
+          items.push(raw as SuggestionItem);
+        }
+      }
+      took = true;
     }
-    text = text.replace(FOLLOWUP_RE, "");
-  }
+    if (Array.isArray(obj.chips)) {
+      for (const c of obj.chips) {
+        const s = String(c).trim();
+        if (s.length > 0 && s.length <= 40 && chips.length < 3) chips.push(s);
+      }
+      took = true;
+    }
+    // Absorbed into cards/chips — drop from the visible text entirely.
+    return took ? "" : _full;
+  });
 
-  // unterminated trailing fence (stopped turns, streaming) — never show raw
-  text = text.replace(PARTIAL_FENCE_RE, "").trim();
-  return { text, items, chips };
+  return { text: text.trim(), items, chips };
 }
 
 /** ||spoiler|| → inline tap-to-reveal veil (via a link-syntax trampoline). */
