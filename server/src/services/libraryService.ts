@@ -32,6 +32,7 @@ export interface LibraryEntry {
   status: LibraryStatus;
   rating: number | null;
   notes: string;
+  tags: string[];
   favorite: boolean;
   watchedAt: string | null;
   addedAt: string;
@@ -64,6 +65,7 @@ interface LibraryRow {
   status: LibraryStatus;
   rating: number | null;
   notes: string;
+  tags: string;
   favorite: number;
   watched_at: string | null;
   added_at: string;
@@ -90,6 +92,7 @@ function rowToEntry(t: TitleRow, l: LibraryRow): LibraryEntry {
     status: l.status,
     rating: l.rating,
     notes: l.notes,
+    tags: JSON.parse(l.tags || "[]"),
     favorite: !!l.favorite,
     watchedAt: l.watched_at,
     addedAt: l.added_at,
@@ -150,13 +153,14 @@ export function upsertTitle(db: DB, d: TitleDetails): number {
 export function reindexEntry(db: DB, libraryId: number): void {
   const row = db
     .prepare(
-      `SELECT l.id, l.notes, t.title, t.overview, t.genres, t.director, t.top_cast
+      `SELECT l.id, l.notes, l.tags, t.title, t.overview, t.genres, t.director, t.top_cast
        FROM library l JOIN titles t ON t.id = l.title_id WHERE l.id = ?`,
     )
     .get(libraryId) as
     | {
         id: number;
         notes: string;
+        tags: string;
         title: string;
         overview: string;
         genres: string;
@@ -167,8 +171,8 @@ export function reindexEntry(db: DB, libraryId: number): void {
   db.prepare("DELETE FROM library_fts WHERE rowid = ?").run(libraryId);
   if (!row) return;
   db.prepare(
-    `INSERT INTO library_fts (rowid, title, overview, genres, director, top_cast, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO library_fts (rowid, title, overview, genres, director, top_cast, notes, tags)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     row.id,
     row.title,
@@ -177,6 +181,7 @@ export function reindexEntry(db: DB, libraryId: number): void {
     row.director ?? "",
     (JSON.parse(row.top_cast) as string[]).join(" "),
     row.notes,
+    (JSON.parse(row.tags || "[]") as string[]).join(" "),
   );
 }
 
@@ -200,6 +205,7 @@ export interface AddOptions {
   status?: LibraryStatus;
   rating?: number | null;
   notes?: string;
+  tags?: string[];
   favorite?: boolean;
   watchedAt?: string | null;
 }
@@ -236,20 +242,22 @@ export async function addToLibrary(
       status: statusPatch,
       rating: opts.rating,
       notes: opts.notes,
+      tags: opts.tags,
       favorite: opts.favorite,
       watchedAt: opts.watchedAt,
     });
   } else {
     const info = db
       .prepare(
-        `INSERT INTO library (title_id, status, rating, notes, favorite, watched_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO library (title_id, status, rating, notes, tags, favorite, watched_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         titleId,
         opts.status ?? "watched",
         opts.rating ?? null,
         opts.notes ?? "",
+        JSON.stringify(normalizeTags(opts.tags ?? [])),
         opts.favorite ? 1 : 0,
         opts.watchedAt ??
           (opts.status === "watchlist" ? null : new Date().toISOString().slice(0, 10)),
@@ -264,8 +272,20 @@ export interface UpdatePatch {
   status?: LibraryStatus;
   rating?: number | null;
   notes?: string;
+  tags?: string[];
   favorite?: boolean;
   watchedAt?: string | null;
+}
+
+/** lowercase, trim, dedupe, cap length + count */
+export function normalizeTags(tags: string[]): string[] {
+  const seen = new Set<string>();
+  for (const raw of tags) {
+    const t = raw.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 32);
+    if (t) seen.add(t);
+    if (seen.size >= 20) break;
+  }
+  return [...seen];
 }
 
 export function updateEntry(db: DB, id: number, patch: UpdatePatch): LibraryEntry | null {
@@ -286,6 +306,10 @@ export function updateEntry(db: DB, id: number, patch: UpdatePatch): LibraryEntr
   if (patch.notes !== undefined) {
     sets.push("notes = @notes");
     params.notes = patch.notes;
+  }
+  if (patch.tags !== undefined) {
+    sets.push("tags = @tags");
+    params.tags = JSON.stringify(normalizeTags(patch.tags));
   }
   if (patch.favorite !== undefined) {
     sets.push("favorite = @favorite");
@@ -495,6 +519,35 @@ export function setEpisodeWatched(db: DB, episodeId: number, watched: boolean): 
   db.prepare(
     "UPDATE episodes SET watched = ?, watched_at = ? WHERE id = ?",
   ).run(watched ? 1 : 0, watched ? new Date().toISOString().slice(0, 10) : null, episodeId);
+}
+
+/**
+ * Mark everything up to (and including) a point as watched:
+ * season+episode → all episodes through that one; season only → that whole
+ * season and everything before it; neither → the entire show.
+ * Returns how many episodes changed state.
+ */
+export function setWatchedUpTo(
+  db: DB,
+  titleId: number,
+  season?: number,
+  episode?: number,
+): number {
+  const today = new Date().toISOString().slice(0, 10);
+  let where = "title_id = @titleId AND watched = 0";
+  const params: Record<string, unknown> = { titleId, today };
+  if (season != null && episode != null) {
+    where += " AND (season < @season OR (season = @season AND episode <= @episode))";
+    params.season = season;
+    params.episode = episode;
+  } else if (season != null) {
+    where += " AND season <= @season";
+    params.season = season;
+  }
+  const info = db
+    .prepare(`UPDATE episodes SET watched = 1, watched_at = @today WHERE ${where}`)
+    .run(params);
+  return info.changes;
 }
 
 export function setSeasonWatched(

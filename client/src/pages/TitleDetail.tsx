@@ -11,6 +11,7 @@ import {
   Sparkles,
   Star,
   Trash2,
+  X,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { backdrop, poster, profile } from "../lib/img";
@@ -170,53 +171,53 @@ function FactsCard({ details }: { details: TitleDetails }) {
   );
 }
 
-/* ── Cast (side rail, links to person pages) ────────────────────── */
+/* ── Cast (full-width row, links to person pages) ───────────────── */
 
-function CastCard({ details }: { details: TitleDetails }) {
+function CastRow({ details }: { details: TitleDetails }) {
   if (!details.cast.length) return null;
   return (
-    <section className="panel p-5">
-      <h3 className="mb-3 font-display text-lg font-semibold text-mist-200">
-        Cast
-      </h3>
-      <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
-        {details.cast.map((c) => {
-          const img = profile(c.profilePath);
-          const inner = (
-            <>
-              <div className="mx-auto mb-1.5 h-[72px] w-[72px] overflow-hidden rounded-full bg-ink-700 ring-1 ring-white/10 transition group-hover/person:ring-gold-400/50">
-                {img ? (
-                  <img src={img} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full items-center justify-center font-display text-lg text-mist-400">
-                    {c.name[0]}
-                  </div>
-                )}
-              </div>
-              <p className="truncate text-2xs font-medium text-mist-300 transition group-hover/person:text-gold-300">
-                {c.name}
-              </p>
-              {c.character && (
-                <p className="truncate text-2xs text-mist-400/90">{c.character}</p>
+    <Carousel title="Cast" eyebrow="The faces behind it">
+      {details.cast.map((c) => {
+        const img = profile(c.profilePath);
+        const inner = (
+          <>
+            <div className="mx-auto mb-2.5 aspect-square w-full overflow-hidden rounded-2xl bg-ink-700 ring-1 ring-white/10 transition duration-300 group-hover/person:ring-gold-400/50 group-hover/person:shadow-[0_10px_32px_-8px_rgba(232,184,75,0.25)]">
+              {img ? (
+                <img
+                  src={img}
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover/person:scale-[1.05]"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center font-display text-3xl text-mist-400">
+                  {c.name[0]}
+                </div>
               )}
-            </>
-          );
-          return c.id ? (
-            <Link
-              key={`${c.id}-${c.name}`}
-              to={`/person/${c.id}`}
-              className="group/person w-[76px] shrink-0 text-center"
-            >
-              {inner}
-            </Link>
-          ) : (
-            <div key={c.name} className="w-[76px] shrink-0 text-center">
-              {inner}
             </div>
-          );
-        })}
-      </div>
-    </section>
+            <p className="truncate text-[0.82rem] font-medium text-mist-200 transition group-hover/person:text-gold-300">
+              {c.name}
+            </p>
+            {c.character && (
+              <p className="truncate text-2xs text-mist-400">{c.character}</p>
+            )}
+          </>
+        );
+        return c.id ? (
+          <Link
+            key={`${c.id}-${c.name}`}
+            to={`/person/${c.id}`}
+            className="group/person w-[124px] shrink-0 text-center sm:w-[136px]"
+          >
+            {inner}
+          </Link>
+        ) : (
+          <div key={c.name} className="w-[124px] shrink-0 text-center sm:w-[136px]">
+            {inner}
+          </div>
+        );
+      })}
+    </Carousel>
   );
 }
 
@@ -355,6 +356,68 @@ function ActionBar({
         >
           <Trash2 className="h-4 w-4" />
         </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Personal tags (main column) ────────────────────────────────── */
+
+function TagsEditor({ entry }: { entry: LibraryEntry }) {
+  const qc = useQueryClient();
+  const [draft, setDraft] = useState("");
+  const update = useMutation({
+    mutationFn: (tags: string[]) => api.updateEntry(entry.id, { tags }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["title", entry.mediaType, entry.tmdbId] });
+      qc.invalidateQueries({ queryKey: ["library"] });
+      qc.invalidateQueries({ queryKey: ["taste-profile"] });
+    },
+  });
+
+  const addTag = () => {
+    const t = draft.trim().toLowerCase();
+    if (!t) return;
+    setDraft("");
+    if (entry.tags.includes(t)) return;
+    update.mutate([...entry.tags, t]);
+  };
+
+  return (
+    <div className="max-w-[68ch]">
+      <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-mist-400">
+        Your tags — teach the AI your taste vocabulary
+      </p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {entry.tags.map((t) => (
+          <span
+            key={t}
+            className="group/tag flex items-center gap-1 rounded-full bg-gold-400/[0.1] py-1 pl-2.5 pr-1.5 text-2xs font-medium text-gold-300 ring-1 ring-gold-400/25"
+          >
+            {t}
+            <button
+              type="button"
+              aria-label={`Remove tag ${t}`}
+              onClick={() => update.mutate(entry.tags.filter((x) => x !== t))}
+              className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-full text-gold-300/70 transition hover:bg-gold-400 hover:text-ink-950"
+            >
+              <X className="h-2.5 w-2.5" strokeWidth={3} />
+            </button>
+          </span>
+        ))}
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              addTag();
+            }
+          }}
+          onBlur={addTag}
+          placeholder={entry.tags.length ? "add tag…" : "slow-burn · fast-hook · rewatchable…"}
+          className="min-w-[140px] flex-1 rounded-lg bg-ink-800/60 px-2.5 py-1.5 text-2xs text-mist-200 placeholder-mist-400/60 outline-none ring-1 ring-white/[0.08] transition focus:ring-gold-400/40"
+        />
       </div>
     </div>
   );
@@ -535,6 +598,7 @@ export default function TitleDetail() {
             {details.overview}
           </p>
           {library && <NotesBlock entry={library} />}
+          {library && <TagsEditor entry={library} />}
           {details.mediaType === "tv" && library && (
             <EpisodeTracker libraryId={library.id} />
           )}
@@ -543,9 +607,10 @@ export default function TitleDetail() {
         <div className="space-y-5 self-start lg:sticky lg:top-6">
           <InsightCard details={details} />
           <FactsCard details={details} />
-          <CastCard details={details} />
         </div>
       </div>
+
+      <CastRow details={details} />
 
       {details.similar.length > 0 && (
         <Carousel title="In the same orbit" eyebrow="If this resonates">

@@ -46,6 +46,16 @@ describe("RAG layer 2 — library retrieval", () => {
     const byGenre = retrieveLibrary(db, "cozy family comedy");
     expect(byGenre[0]?.title).toBe("Paddington");
   });
+
+  it("retrieves by the user's personal tags", () => {
+    const db = memoryDb();
+    seedEntry(db, { title: "Severance", mediaType: "tv", genres: ["Drama"] }, { rating: 10, tags: ["puzzle-box", "fast-hook"] });
+    seedEntry(db, { title: "Heat", genres: ["Crime"] }, { rating: 8 });
+    seedEntry(db, { title: "Chinatown", genres: ["Crime"] }, { rating: 7 });
+
+    const hits = retrieveLibrary(db, "another puzzle box that hooks fast");
+    expect(hits[0]?.title).toBe("Severance");
+  });
 });
 
 describe("RAG layer 1 — taste profile", () => {

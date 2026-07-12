@@ -25,6 +25,7 @@ export interface TasteProfile {
   shows: number;
   ratedCount: number;
   avgRating: number | null;
+  topTags: { name: string; count: number }[];
   topGenres: GenreAffinity[];
   avoidedGenres: GenreAffinity[];
   lovedTitles: { title: string; year: number | null; rating: number | null; mediaType: string; notes: string }[];
@@ -44,6 +45,7 @@ interface EntryRow {
   status: string;
   rating: number | null;
   notes: string;
+  tags: string;
   favorite: number;
   watched_at: string | null;
   updated_at: string;
@@ -55,10 +57,22 @@ export function computeTasteProfile(db: DB): TasteProfile {
   const rows = db
     .prepare(
       `SELECT t.title, t.year, t.media_type, t.genres, t.director, t.episodes_count,
-              l.status, l.rating, l.notes, l.favorite, l.watched_at, l.updated_at, l.title_id
+              l.status, l.rating, l.notes, l.tags, l.favorite, l.watched_at, l.updated_at, l.title_id
        FROM library l JOIN titles t ON t.id = l.title_id`,
     )
     .all() as EntryRow[];
+
+  // Personal tags — the user's own vocabulary for their taste
+  const tagAgg = new Map<string, number>();
+  for (const r of rows) {
+    for (const tag of JSON.parse(r.tags || "[]") as string[]) {
+      tagAgg.set(tag, (tagAgg.get(tag) ?? 0) + 1);
+    }
+  }
+  const topTags = [...tagAgg.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 12);
 
   // Genre affinities (weighted by presence + rating)
   const genreAgg = new Map<string, { count: number; sum: number; rated: number }>();
@@ -173,6 +187,7 @@ export function computeTasteProfile(db: DB): TasteProfile {
     avgRating: rated.length
       ? Math.round((rated.reduce((s, r) => s + (r.rating ?? 0), 0) / rated.length) * 10) / 10
       : null,
+    topTags,
     topGenres,
     avoidedGenres,
     lovedTitles,
@@ -206,6 +221,12 @@ export function renderTasteProfile(p: TasteProfile): string {
     lines.push(
       "Rates poorly: " +
         p.avoidedGenres.map((g) => `${g.name} (avg ${g.avgRating})`).join(", ") + ".",
+    );
+  }
+  if (p.topTags.length) {
+    lines.push(
+      "Their own tags (their taste vocabulary — weight these heavily): " +
+        p.topTags.map((t) => `${t.name} (${t.count}×)`).join(", ") + ".",
     );
   }
   if (p.lovedTitles.length) {

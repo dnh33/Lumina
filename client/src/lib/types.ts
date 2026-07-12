@@ -93,6 +93,7 @@ export interface LibraryEntry {
   status: LibraryStatus;
   rating: number | null;
   notes: string;
+  tags: string[];
   favorite: boolean;
   watchedAt: string | null;
   addedAt: string;

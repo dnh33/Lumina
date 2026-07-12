@@ -44,6 +44,7 @@ export interface SeedOptions {
   status?: LibraryStatus;
   rating?: number | null;
   notes?: string;
+  tags?: string[];
   favorite?: boolean;
   watchedAt?: string | null;
 }
@@ -58,14 +59,15 @@ export function seedEntry(
   const titleId = upsertTitle(db, d);
   const info = db
     .prepare(
-      `INSERT INTO library (title_id, status, rating, notes, favorite, watched_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO library (title_id, status, rating, notes, tags, favorite, watched_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       titleId,
       opts.status ?? "watched",
       opts.rating ?? null,
       opts.notes ?? "",
+      JSON.stringify(opts.tags ?? []),
       opts.favorite ? 1 : 0,
       opts.watchedAt ?? "2026-01-01",
     );

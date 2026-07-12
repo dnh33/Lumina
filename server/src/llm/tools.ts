@@ -11,7 +11,11 @@ import {
   getEntryByTmdb,
   libraryTmdbIds,
   listEpisodes,
+  setWatchedUpTo,
   syncEpisodes,
+  updateEntry,
+  type LibraryEntry,
+  type LibraryStatus,
 } from "../services/libraryService.js";
 import { searchMulti } from "../services/discoverService.js";
 import { genreMap, tmdbGet } from "../tmdb/client.js";
@@ -118,7 +122,7 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "add_to_library",
       description:
-        "Save a title to the user's library. Use ONLY when the user asks to save/queue/log something. Default status: watchlist.",
+        "Save a title to the user's library, optionally with their rating, a note and tags in the same call. Use when the user asks to save/queue/log something. Default status: watchlist.",
       parameters: {
         type: "object",
         properties: {
@@ -128,8 +132,70 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
             type: "string",
             enum: ["watchlist", "watched", "watching"],
           },
+          rating: {
+            type: "number",
+            description: "The user's own rating 1-10, only if they stated or clearly implied one",
+          },
+          note: {
+            type: "string",
+            description: "The user's reaction in their own words, distilled (max ~200 chars)",
+          },
+          tags: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Short taste tags capturing WHY it landed or didn't, e.g. ['fast-hook','puzzle-box','slow-burn-dnf']",
+          },
         },
         required: ["tmdb_id", "media_type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_library_entry",
+      description:
+        "Update an existing library entry: set the user's rating, append to their notes, add/remove tags, change status or favorite. THIS is how you persist what the user tells you about titles they've seen — their reactions must outlive this conversation.",
+      parameters: {
+        type: "object",
+        properties: {
+          tmdb_id: { type: "number", description: "Preferred lookup" },
+          media_type: { type: "string", enum: ["movie", "tv"] },
+          title_query: {
+            type: "string",
+            description: "Fallback lookup by name if tmdb_id unknown",
+          },
+          rating: { type: "number", description: "1-10" },
+          note_append: {
+            type: "string",
+            description: "Text appended to their notes (their sentiment, distilled)",
+          },
+          tags_add: { type: "array", items: { type: "string" } },
+          tags_remove: { type: "array", items: { type: "string" } },
+          status: {
+            type: "string",
+            enum: ["watched", "watching", "watchlist", "abandoned"],
+          },
+          favorite: { type: "boolean" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_episode_progress",
+      description:
+        "Mark episode progress for a series in the library. Provide season+episode to check off everything up to that point ('I'm through S2E4'), season alone for whole seasons ('mark season 1 watched'), or neither to mark the entire show watched.",
+      parameters: {
+        type: "object",
+        properties: {
+          title_query: { type: "string", description: "Series name" },
+          season: { type: "number" },
+          episode: { type: "number" },
+        },
+        required: ["title_query"],
       },
     },
   },
@@ -154,6 +220,33 @@ type Args = Record<string, unknown>;
 
 function str(v: unknown): string {
   return typeof v === "string" ? v : "";
+}
+
+function strArray(v: unknown): string[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  return v.map((x) => String(x)).filter(Boolean);
+}
+
+function clampRating(v: unknown): number | undefined {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return undefined;
+  return Math.min(10, Math.max(1, Math.round(n)));
+}
+
+/** Find a library entry by tmdb id (preferred) or fuzzy title query. */
+function resolveEntry(db: import("../db/connection.js").DB, args: Args): LibraryEntry | null {
+  const tmdbId = Number(args.tmdb_id);
+  const mediaType = str(args.media_type) as MediaType;
+  if (Number.isFinite(tmdbId) && tmdbId > 0 && (mediaType === "movie" || mediaType === "tv")) {
+    const byId = getEntryByTmdb(db, tmdbId, mediaType);
+    if (byId) return byId;
+  }
+  const q = str(args.title_query);
+  if (q) {
+    const hits = retrieveLibrary(db, q, 1);
+    if (hits.length) return hits[0];
+  }
+  return null;
 }
 
 export async function executeTool(
@@ -295,12 +388,95 @@ export async function executeTool(
           | "watchlist"
           | "watched"
           | "watching";
-        const entry = await addToLibrary(db, { tmdbId, mediaType, status });
+        const rating = clampRating(args.rating);
+        const entry = await addToLibrary(db, {
+          tmdbId,
+          mediaType,
+          status,
+          rating,
+          notes: str(args.note) || undefined,
+          tags: strArray(args.tags),
+        });
         return JSON.stringify({
           saved: true,
           title: entry.title,
           year: entry.year,
           status: entry.status,
+          rating: entry.rating,
+          tags: entry.tags,
+        });
+      }
+
+      case "update_library_entry": {
+        const entry = resolveEntry(db, args);
+        if (!entry) {
+          return JSON.stringify({
+            error:
+              "No matching library entry — check the title with search_library, or add it first with add_to_library",
+          });
+        }
+        const patch: Parameters<typeof updateEntry>[2] = {};
+        const rating = clampRating(args.rating);
+        if (rating !== undefined) patch.rating = rating;
+        if (args.status) patch.status = str(args.status) as LibraryStatus;
+        if (typeof args.favorite === "boolean") patch.favorite = args.favorite;
+
+        const noteAppend = str(args.note_append).trim();
+        if (noteAppend) {
+          patch.notes = entry.notes
+            ? `${entry.notes}\n${noteAppend}`
+            : noteAppend;
+        }
+
+        const add = strArray(args.tags_add) ?? [];
+        const remove = new Set(
+          (strArray(args.tags_remove) ?? []).map((t) => t.toLowerCase()),
+        );
+        if (add.length || remove.size) {
+          patch.tags = [...entry.tags, ...add].filter(
+            (t) => !remove.has(t.toLowerCase()),
+          );
+        }
+
+        const updated = updateEntry(db, entry.id, patch)!;
+        return JSON.stringify({
+          updated: true,
+          title: updated.title,
+          status: updated.status,
+          rating: updated.rating,
+          tags: updated.tags,
+          notes: updated.notes.slice(0, 300),
+          favorite: updated.favorite,
+        });
+      }
+
+      case "set_episode_progress": {
+        const hits = retrieveLibrary(db, str(args.title_query), 3).filter(
+          (h) => h.mediaType === "tv",
+        );
+        if (!hits.length)
+          return JSON.stringify({ error: "No matching series in the library" });
+        const h = hits[0];
+        let eps = listEpisodes(db, h.titleId);
+        if (!eps.length) {
+          await syncEpisodes(db, h.titleId);
+          eps = listEpisodes(db, h.titleId);
+        }
+        const season = args.season != null ? Number(args.season) : undefined;
+        const episode = args.episode != null ? Number(args.episode) : undefined;
+        const changed = setWatchedUpTo(db, h.titleId, season, episode);
+        const after = listEpisodes(db, h.titleId);
+        const watched = after.filter((e) => e.watched).length;
+        return JSON.stringify({
+          title: h.title,
+          markedWatched: changed,
+          progress: `${watched}/${after.length}`,
+          scope:
+            season != null && episode != null
+              ? `through S${season}E${episode}`
+              : season != null
+                ? `through season ${season}`
+                : "entire show",
         });
       }
 

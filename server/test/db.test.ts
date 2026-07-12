@@ -61,6 +61,21 @@ describe("library service", () => {
     expect(stats.avgRating).toBe(10);
   });
 
+  it("stores personal tags, normalizes them, and round-trips", () => {
+    const db = memoryDb();
+    const id = seedEntry(
+      db,
+      { title: "Severance", mediaType: "tv" },
+      { rating: 10, favorite: true, tags: ["puzzle-box", "fast-hook"] },
+    );
+    expect(getEntry(db, id)!.tags).toEqual(["puzzle-box", "fast-hook"]);
+
+    const updated = updateEntry(db, id, {
+      tags: ["  Puzzle-Box ", "identity", "identity", ""],
+    })!;
+    expect(updated.tags).toEqual(["puzzle-box", "identity"]);
+  });
+
   it("removes entries cleanly including FTS rows", () => {
     const db = memoryDb();
     const id = seedEntry(db, { title: "Tenet" }, { rating: 7 });

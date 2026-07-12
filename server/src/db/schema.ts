@@ -93,6 +93,19 @@ const migrations: string[] = [
 
   CREATE VIRTUAL TABLE messages_fts USING fts5(content);
   `,
+
+  // ── v2: personal tags + tags-aware FTS ───────────────────────────
+  `
+  ALTER TABLE library ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';
+
+  DROP TABLE library_fts;
+  CREATE VIRTUAL TABLE library_fts USING fts5(
+    title, overview, genres, director, top_cast, notes, tags
+  );
+  INSERT INTO library_fts (rowid, title, overview, genres, director, top_cast, notes, tags)
+  SELECT l.id, t.title, t.overview, t.genres, COALESCE(t.director, ''), t.top_cast, l.notes, ''
+  FROM library l JOIN titles t ON t.id = l.title_id;
+  `,
 ];
 
 export function migrate(db: DB): void {

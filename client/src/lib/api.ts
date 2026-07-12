@@ -74,6 +74,7 @@ export const api = {
       status: LibraryStatus;
       rating: number | null;
       notes: string;
+      tags: string[];
       favorite: boolean;
       watchedAt: string | null;
     }>,

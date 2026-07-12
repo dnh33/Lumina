@@ -5,8 +5,8 @@ import { getEntry } from "../services/libraryService.js";
 /**
  * RAG · Layer 2 — Library retrieval.
  * Full-text search over the user's library (titles, overviews, genres,
- * people, personal notes) with a relevance score that blends BM25 with
- * the user's own signal (ratings, favorites).
+ * people, personal notes and tags) with a relevance score that blends
+ * BM25 with the user's own signal (ratings, favorites).
  */
 
 /** Turn free text into a safe FTS5 MATCH expression (OR of prefix tokens). */
@@ -33,7 +33,7 @@ export function retrieveLibrary(db: DB, query: string, k = 10): ScoredEntry[] {
   try {
     rows = db
       .prepare(
-        `SELECT rowid, bm25(library_fts, 8.0, 2.0, 3.0, 4.0, 3.0, 5.0) AS score
+        `SELECT rowid, bm25(library_fts, 8.0, 2.0, 3.0, 4.0, 3.0, 5.0, 6.0) AS score
          FROM library_fts WHERE library_fts MATCH ?
          ORDER BY score LIMIT ?`,
       )
@@ -70,6 +70,7 @@ export function renderLibraryMatches(entries: ScoredEntry[]): string {
       ];
       if (e.rating != null) bits.push(`rated ${e.rating}/10`);
       if (e.favorite) bits.push("favorite");
+      if (e.tags.length) bits.push(`tagged: ${e.tags.join(", ")}`);
       if (e.genres.length) bits.push(e.genres.slice(0, 3).join("/"));
       if (e.director) bits.push(`by ${e.director}`);
       if (e.notes) bits.push(`notes: "${e.notes.slice(0, 160)}"`);
