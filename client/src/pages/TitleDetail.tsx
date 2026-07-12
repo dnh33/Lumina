@@ -30,6 +30,7 @@ import { Carousel } from "../components/Carousel";
 import { PosterCard } from "../components/PosterCard";
 import { Chip, RatingDial } from "../components/Bits";
 import { EpisodeTracker } from "../components/EpisodeTracker";
+import { InsightBody } from "../components/InsightBody";
 import type {
   LibraryEntry,
   LibraryStatus,
@@ -102,12 +103,12 @@ function TrailerLightbox({
 /* ── AI insight (side rail) ─────────────────────────────────────── */
 
 function InsightCard({ details }: { details: TitleDetails }) {
+  const navigate = useNavigate();
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
-  const [requested, setRequested] = useState(false);
   const insight = useQuery({
     queryKey: ["insight", details.mediaType, details.tmdbId],
     queryFn: () => api.insight(details.mediaType, details.tmdbId),
-    enabled: requested,
+    enabled: health.isSuccess && health.data.aiConfigured,
     staleTime: Infinity,
   });
   const refresh = useMutation({
@@ -115,61 +116,67 @@ function InsightCard({ details }: { details: TitleDetails }) {
     onSuccess: () => insight.refetch(),
   });
 
-  // no flash-then-vanish: wait until health resolves
+  // No flash-then-vanish: only render once we know AI is configured.
   if (!health.isSuccess || !health.data.aiConfigured) return null;
+
+  const onFollowup = useCallback(
+    (prefill: string) => navigate("/chat", { state: { prefill } }),
+    [navigate],
+  );
+
+  // Empty profile — show a gentle nudge instead of a broken empty panel.
+  if (insight.data?.profileState === "empty") {
+    return (
+      <section className="panel p-5 ring-gold-400/15">
+        <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold text-gold-300">
+          <Sparkles className="h-[18px] w-[18px]" /> Lumina's take
+        </h3>
+        <p className="text-sm leading-relaxed text-mist-400">
+          Log a few favorites first — your taste profile is still empty, and
+          Lumina needs signal to read this one well.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className="panel p-5 ring-gold-400/15">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-gold-300">
-          <Sparkles className="h-[18px] w-[18px]" /> Lumina's take
-        </h3>
-        {insight.data && (
-          <button
-            type="button"
-            aria-label="Regenerate insight"
-            title="Regenerate"
-            onClick={() => refresh.mutate()}
-            className="icon-btn"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${refresh.isPending ? "animate-spin" : ""}`}
-            />
-          </button>
-        )}
-      </div>
+      <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold text-gold-300">
+        <Sparkles className="h-[18px] w-[18px]" /> Lumina's take
+      </h3>
 
-      {!requested ? (
-        <div>
-          <p className="mb-4 text-sm leading-relaxed text-mist-400">
-            A personal, spoiler-free reflection on whether this fits your
-            taste — grounded in your ratings and notes.
-          </p>
-          <button
-            type="button"
-            onClick={() => setRequested(true)}
-            className="btn-primary"
-          >
-            Why would I love this?
-          </button>
-        </div>
-      ) : insight.isLoading || refresh.isPending ? (
-        <div className="flex items-center gap-3 py-3 text-sm text-mist-400">
-          <Loader2 className="h-4 w-4 animate-spin text-gold-400" />
-          Reading your taste profile…
+      {insight.isLoading || refresh.isPending ? (
+        // Reserved-height skeleton: prevents the reflow jump that broke layout.
+        <div className="min-h-[280px] space-y-3" aria-busy="true">
+          <div className="h-5 w-24 animate-pulse rounded-full bg-white/10" />
+          <div className="h-3 w-full animate-pulse rounded bg-white/10" />
+          <div className="h-3 w-11/12 animate-pulse rounded bg-white/10" />
+          <div className="h-3 w-10/12 animate-pulse rounded bg-white/10" />
+          <div className="h-3 w-3/4 animate-pulse rounded bg-white/10" />
         </div>
       ) : insight.isError ? (
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-red-300/90">
             {(insight.error as Error).message}
           </p>
-          <button type="button" className="btn-ghost" onClick={() => insight.refetch()}>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => insight.refetch()}
+          >
             Retry
           </button>
         </div>
+      ) : insight.data ? (
+        <InsightBody
+          insight={insight.data}
+          onRegenerate={() => refresh.mutate()}
+          onFollowup={onFollowup}
+        />
       ) : (
-        <p className="font-display text-lg leading-relaxed text-mist-200">
-          {insight.data?.text}
+        <p className="text-sm leading-relaxed text-mist-400">
+          A personal, spoiler-free reflection on whether this fits your taste —
+          grounded in your ratings and notes.
         </p>
       )}
     </section>
@@ -936,7 +943,7 @@ export default function TitleDetail() {
             )}
           </div>
 
-          <div className="space-y-5 self-start lg:sticky lg:top-6">
+          <div className="space-y-5 self-start lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1">
             <InsightCard details={details} />
             <WhereToWatch details={details} />
             <FactsCard details={details} entry={library} />

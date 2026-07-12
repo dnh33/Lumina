@@ -222,8 +222,32 @@ export interface Because {
   items: CatalogItem[];
 }
 
+export interface InsightComparison {
+  tmdbId: number;
+  mediaType: MediaType;
+  title: string;
+  year: number | null;
+  relation: "echoes" | "warns" | "diverges";
+  note: string;
+}
+
+export interface InsightFollowup {
+  label: string;
+  prefill: string;
+}
+
+export type InsightRelation = "echoes" | "warns" | "diverges";
+export type InsightVerdict = "love" | "maybe" | "skip" | "rewatch";
+export type ProfileState = "empty" | "thin" | "rich";
+
 export interface TitleInsight {
   text: string;
+  verdict: InsightVerdict;
+  matchScore: number | null;
+  comparisons: InsightComparison[];
+  hook: string | null;
+  followups: InsightFollowup[];
+  profileState: ProfileState;
   cached: boolean;
   model: string;
 }
