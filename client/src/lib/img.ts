@@ -17,3 +17,12 @@ export function backdrop(
 export function profile(path: string | null | undefined): string | null {
   return path ? `${IMG_BASE}/w185${path}` : null;
 }
+
+export function still(path: string | null | undefined): string | null {
+  return path ? `${IMG_BASE}/w300${path}` : null;
+}
+
+export function logo(path: string | null | undefined): string | null {
+  return path ? `${IMG_BASE}/w500${path}` : null;
+}
+

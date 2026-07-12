@@ -4,6 +4,7 @@ import type {
   ChatEvent,
   ChatMessageRow,
   ConversationSummary,
+  EpisodeRecap,
   EpisodeRow,
   ForYou,
   Health,
@@ -12,6 +13,7 @@ import type {
   LibraryStatus,
   MediaType,
   PersonDetails,
+  TagCount,
   TitleDetails,
   TitleInsight,
   UpNextItem,
@@ -62,6 +64,7 @@ export const api = {
     get<LibraryEntry[]>(`/api/library?${new URLSearchParams(params)}`),
   libraryStats: () => get<LibraryStats>("/api/library/stats"),
   libraryGenres: () => get<string[]>("/api/library/genres"),
+  libraryTags: () => get<TagCount[]>("/api/library/tags"),
   addToLibrary: (body: {
     tmdbId: number;
     mediaType: MediaType;
@@ -97,6 +100,12 @@ export const api = {
   /* insight & profile */
   insight: (type: MediaType, tmdbId: number, refresh = false) =>
     get<TitleInsight>(`/api/insight/${type}/${tmdbId}${refresh ? "?refresh=1" : ""}`),
+  recap: (libraryId: number, refresh = false) =>
+    get<EpisodeRecap>(`/api/recap/${libraryId}${refresh ? "?refresh=1" : ""}`),
+  deleteAllConversations: () =>
+    fetch("/api/conversations", { method: "DELETE" }).then((r) => {
+      if (!r.ok) throw new Error("Delete failed");
+    }),
   tasteProfile: () =>
     get<{ profile: unknown; rendered: string }>("/api/taste-profile"),
   setModel: (model: string) =>

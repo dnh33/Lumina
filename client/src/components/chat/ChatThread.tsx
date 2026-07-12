@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Send, Sparkles, Square } from "lucide-react";
+import { ArrowDown, Loader2, Send, Sparkles, Square } from "lucide-react";
 import { api } from "../../lib/api";
 import { MessageBubble } from "./MessageBubble";
 import { TOOL_LABELS, useChat } from "./useChat";
@@ -26,10 +26,22 @@ export function ChatThread({
   compact,
 }: Props) {
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
-  const { messages, messagesLoading, stream, error, send, stop, isStreaming } =
-    useChat(conversationId, onConversationChange);
+  const {
+    messages,
+    messagesLoading,
+    messagesError,
+    stream,
+    error,
+    failedText,
+    send,
+    stop,
+    isStreaming,
+  } = useChat(conversationId, onConversationChange);
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const nearBottomRef = useRef(true);
+  const [detached, setDetached] = useState(false);
   const prefillUsed = useRef(false);
 
   useEffect(() => {
@@ -39,11 +51,36 @@ export function ChatThread({
     }
   }, [prefill]);
 
-  // pin to bottom while streaming / on new messages
+  // track whether the reader has scrolled away from the live edge
+  const onScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 90;
+    nearBottomRef.current = near;
+    setDetached(!near);
+  }, []);
+
+  // pin to bottom only when the reader is already at the live edge
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el && nearBottomRef.current) el.scrollTop = el.scrollHeight;
   }, [messages.length, stream?.assistantText, stream?.activeTool]);
+
+  // autosize composer for soft-wrapped lines, not just explicit newlines
+  const autosize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 144)}px`;
+  }, []);
+  useEffect(autosize, [draft, autosize]);
+
+  const jumpToLatest = () => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    nearBottomRef.current = true;
+    setDetached(false);
+  };
 
   const submit = () => {
     const text = draft.trim();
@@ -70,14 +107,36 @@ export function ChatThread({
     );
   }
 
+  // a deleted/invalid conversation must not masquerade as a fresh one
+  if (messagesError && !stream) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
+        <p className="text-sm text-mist-300">
+          This conversation isn't available anymore.
+        </p>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={async () => {
+            const created = await api.createConversation();
+            onConversationChange(created.id);
+          }}
+        >
+          Start a new one
+        </button>
+      </div>
+    );
+  }
+
   const showWelcome =
     !messagesLoading && messages.length === 0 && !stream && !error;
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="relative flex h-full min-h-0 flex-col">
       {/* Thread */}
       <div
         ref={scrollRef}
+        onScroll={onScroll}
         className={`min-h-0 flex-1 space-y-5 overflow-y-auto ${compact ? "p-4" : "p-5 sm:p-8"}`}
       >
         {messagesLoading && (
@@ -147,25 +206,52 @@ export function ChatThread({
         )}
 
         {error && (
-          <div className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-red-500/25">
-            {error}
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-red-500/10 px-4 py-3 ring-1 ring-red-500/25">
+            <p className="text-sm text-red-300">{error}</p>
+            {failedText && !isStreaming && (
+              <button
+                type="button"
+                className="btn-ghost shrink-0"
+                onClick={() => void send(failedText)}
+              >
+                Retry
+              </button>
+            )}
           </div>
         )}
       </div>
 
+      {/* jump back to the live edge */}
+      {detached && (isStreaming || messages.length > 0) && (
+        <button
+          type="button"
+          onClick={jumpToLatest}
+          className="absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 cursor-pointer items-center gap-1.5 rounded-full bg-ink-800/95 px-3.5 py-2 text-2xs font-semibold text-gold-300 ring-1 ring-gold-400/30 shadow-lg backdrop-blur transition hover:bg-ink-700"
+        >
+          <ArrowDown className="h-3.5 w-3.5" /> Latest
+        </button>
+      )}
+
       {/* Composer */}
-      <div className={`border-t border-white/[0.06] ${compact ? "p-3" : "p-4 sm:px-8"}`}>
+      <div
+        className={`border-t border-white/[0.06] ${compact ? "p-3" : "p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-8"}`}
+      >
         <div className="flex items-end gap-2.5 rounded-2xl bg-ink-800/90 p-2 pl-4 ring-1 ring-white/10 transition focus-within:ring-gold-400/40">
           <textarea
+            ref={textareaRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey &&
+                !e.nativeEvent.isComposing
+              ) {
                 e.preventDefault();
                 submit();
               }
             }}
-            rows={Math.min(4, Math.max(1, draft.split("\n").length))}
+            rows={1}
             placeholder="Ask about anything you've watched — or should watch…"
             className="max-h-36 min-h-[38px] w-full resize-none bg-transparent py-2 text-[0.95rem] leading-relaxed text-mist-200 placeholder-mist-400/60 outline-none"
           />

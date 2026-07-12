@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Info, Plus, Sparkles, Star } from "lucide-react";
 import { api } from "../lib/api";
 import { backdrop } from "../lib/img";
@@ -11,23 +11,31 @@ import { EmptyState, HeroSkeleton, PosterSkeletonRow } from "../components/Bits"
 import { UpNextRail } from "../components/UpNextRail";
 import type { CatalogItem } from "../lib/types";
 
+/** Larger poster width for the personalized tier. */
+const FEATURED_WIDTH = "w-[164px] sm:w-[184px] lg:w-[204px]";
+
 function Hero({ item }: { item: CatalogItem }) {
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
+  const [imgFailed, setImgFailed] = useState(false);
   const src = backdrop(item.backdropPath, "w1280");
   return (
     <motion.section
-      initial={{ opacity: 0 }}
+      initial={reduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
       className="relative mb-12 overflow-hidden rounded-3xl ring-1 ring-white/10"
     >
       <div className="relative h-[400px] sm:h-[440px]">
-        {src && (
+        {src && !imgFailed ? (
           <img
             src={src}
             alt=""
+            onError={() => setImgFailed(true)}
             className="absolute inset-0 h-full w-full object-cover object-top"
           />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-ink-700 via-ink-850 to-ink-950" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/55 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-ink-950/85 via-ink-950/25 to-transparent" />
@@ -105,8 +113,19 @@ function MoodBar() {
         placeholder="cozy autumn mystery… mind-bending escapism… quiet emotional drama…"
         className="w-full flex-1 rounded-xl bg-ink-800/80 px-4 py-2.5 text-sm text-mist-200 placeholder-mist-400/60 outline-none ring-1 ring-white/10 transition focus:ring-gold-400/50"
       />
-      <button type="button" onClick={go} className="btn-primary">
+      <button type="button" onClick={go} disabled={!mood.trim()} className="btn-primary">
         Match me <ArrowRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function RowError({ label, onRetry }: { label: string; onRetry: () => void }) {
+  return (
+    <div className="panel mb-10 flex items-center justify-between gap-4 p-4">
+      <p className="text-sm text-mist-300">{label} couldn't load.</p>
+      <button type="button" className="btn-ghost" onClick={onRetry}>
+        Retry
       </button>
     </div>
   );
@@ -114,30 +133,19 @@ function MoodBar() {
 
 export default function Discover() {
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
-  const trending = useQuery({
-    queryKey: ["trending"],
-    queryFn: api.trending,
-    enabled: health.data?.tmdbConfigured === true,
-  });
-  const forYou = useQuery({
-    queryKey: ["for-you"],
-    queryFn: api.forYou,
-    enabled: health.data?.tmdbConfigured === true,
-  });
-  const because = useQuery({
-    queryKey: ["because"],
-    queryFn: api.because,
-    enabled: health.data?.tmdbConfigured === true,
-  });
+  const enabled = health.data?.tmdbConfigured === true;
+  const trending = useQuery({ queryKey: ["trending"], queryFn: api.trending, enabled });
+  const forYou = useQuery({ queryKey: ["for-you"], queryFn: api.forYou, enabled });
+  const because = useQuery({ queryKey: ["because"], queryFn: api.because, enabled });
   const popularMovies = useQuery({
     queryKey: ["popular", "movie"],
     queryFn: () => api.popular("movie"),
-    enabled: health.data?.tmdbConfigured === true,
+    enabled,
   });
   const topTv = useQuery({
     queryKey: ["top-rated", "tv"],
     queryFn: () => api.topRated("tv"),
-    enabled: health.data?.tmdbConfigured === true,
+    enabled,
   });
 
   if (health.isError) {
@@ -169,49 +177,62 @@ export default function Discover() {
       ) : heroItem ? (
         <Hero item={heroItem} />
       ) : trending.isError ? (
-        <div className="panel mb-12 flex items-center justify-between gap-4 p-5">
-          <p className="text-sm text-mist-300">
-            Couldn't reach TMDB — {(trending.error as Error).message}
-          </p>
-          <button type="button" className="btn-ghost" onClick={() => trending.refetch()}>
-            Retry
-          </button>
-        </div>
+        <RowError label="Trending" onRetry={() => trending.refetch()} />
       ) : null}
 
       <UpNextRail />
 
       <MoodBar />
 
-      {forYou.data && forYou.data.items.length > 0 && (
-        <Carousel
-          title="For you"
-          eyebrow={`Because you rate ${forYou.data.basedOn.join(", ")} highly`}
-        >
-          {forYou.data.items.map((i) => (
-            <PosterCard key={`${i.mediaType}${i.tmdbId}`} item={i} />
-          ))}
-        </Carousel>
+      {/* ── Personal tier: bigger art, gold eyebrows ─────────────── */}
+      {forYou.isLoading ? (
+        <PosterSkeletonRow />
+      ) : forYou.isError ? (
+        <RowError label="Your recommendations" onRetry={() => forYou.refetch()} />
+      ) : (
+        forYou.data &&
+        forYou.data.items.length > 0 && (
+          <Carousel
+            title="For you"
+            eyebrow={`Because you rate ${forYou.data.basedOn.join(", ")} highly`}
+          >
+            {forYou.data.items.map((i) => (
+              <PosterCard key={`${i.mediaType}${i.tmdbId}`} item={i} width={FEATURED_WIDTH} />
+            ))}
+          </Carousel>
+        )
       )}
 
-      {because.data?.source && because.data.items.length > 0 && (
-        <Carousel
-          title={`Because you loved ${because.data.source.title}`}
-          eyebrow="Kindred spirits"
-        >
-          {because.data.items.map((i) => (
-            <PosterCard key={`${i.mediaType}${i.tmdbId}`} item={i} />
-          ))}
-        </Carousel>
+      {because.isLoading ? (
+        <PosterSkeletonRow />
+      ) : (
+        because.data?.source &&
+        because.data.items.length > 0 && (
+          <Carousel
+            title={`Because you loved ${because.data.source.title}`}
+            eyebrow="Kindred spirits"
+          >
+            {because.data.items.map((i) => (
+              <PosterCard key={`${i.mediaType}${i.tmdbId}`} item={i} width={FEATURED_WIDTH} />
+            ))}
+          </Carousel>
+        )
       )}
+
+      {/* ── The world's tier: quieter, denser ────────────────────── */}
+      <div className="mb-10 border-t border-white/[0.06]" aria-hidden />
 
       {trending.isLoading ? (
         <PosterSkeletonRow />
       ) : (
         rest.length > 0 && (
-          <Carousel title="Trending now" eyebrow="The world is watching">
-            {rest.map((i) => (
-              <PosterCard key={`${i.mediaType}${i.tmdbId}`} item={i} />
+          <Carousel title="Trending now">
+            {rest.slice(0, 10).map((i, idx) => (
+              <PosterCard
+                key={`${i.mediaType}${i.tmdbId}`}
+                item={i}
+                rank={idx + 2}
+              />
             ))}
           </Carousel>
         )
@@ -219,9 +240,11 @@ export default function Discover() {
 
       {popularMovies.isLoading ? (
         <PosterSkeletonRow />
+      ) : popularMovies.isError ? (
+        <RowError label="Popular films" onRetry={() => popularMovies.refetch()} />
       ) : (
         popularMovies.data && (
-          <Carousel title="Popular films" eyebrow="On every screen">
+          <Carousel title="Popular films">
             {popularMovies.data.map((i) => (
               <PosterCard key={i.tmdbId} item={i} />
             ))}
@@ -231,9 +254,11 @@ export default function Discover() {
 
       {topTv.isLoading ? (
         <PosterSkeletonRow />
+      ) : topTv.isError ? (
+        <RowError label="Acclaimed series" onRetry={() => topTv.refetch()} />
       ) : (
         topTv.data && (
-          <Carousel title="Acclaimed series" eyebrow="Television at its finest">
+          <Carousel title="Acclaimed series">
             {topTv.data.map((i) => (
               <PosterCard key={i.tmdbId} item={i} />
             ))}

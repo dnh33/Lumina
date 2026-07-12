@@ -106,6 +106,12 @@ const migrations: string[] = [
   SELECT l.id, t.title, t.overview, t.genres, COALESCE(t.director, ''), t.top_cast, l.notes, ''
   FROM library l JOIN titles t ON t.id = l.title_id;
   `,
+
+  // ── v3: episode artwork + community score ────────────────────────
+  `
+  ALTER TABLE episodes ADD COLUMN still_path TEXT;
+  ALTER TABLE episodes ADD COLUMN vote_average REAL;
+  `,
 ];
 
 export function migrate(db: DB): void {

@@ -14,6 +14,15 @@ function Card({ item }: { item: SuggestionItem }) {
   const details = q.data?.details;
   const src = poster(details?.posterPath, "w185");
 
+  if (q.isPending) {
+    return (
+      <div className="w-[104px] shrink-0">
+        <div className="skeleton aspect-[2/3] rounded-lg" />
+        <div className="skeleton mt-1.5 h-3 w-3/4 rounded" />
+      </div>
+    );
+  }
+
   return (
     <Link
       to={`/title/${item.mediaType}/${item.tmdbId}`}

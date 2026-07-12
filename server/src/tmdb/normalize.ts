@@ -50,9 +50,36 @@ export function normalizeList(
     .filter((x): x is CatalogItem => x !== null && !!x.posterPath);
 }
 
+function normalizeWatchProviders(
+  raw: RawTmdbDetails,
+  region: string,
+): TitleDetails["watchProviders"] {
+  const r = raw["watch/providers"]?.results?.[region];
+  if (!r) return null;
+  const map = (
+    list?: { provider_name: string; logo_path?: string | null }[],
+  ) =>
+    (list ?? []).slice(0, 8).map((p) => ({
+      name: p.provider_name,
+      logoPath: p.logo_path ?? null,
+    }));
+  const providers = {
+    region,
+    link: r.link ?? null,
+    flatrate: map(r.flatrate),
+    rent: map(r.rent),
+    buy: map(r.buy),
+  };
+  if (!providers.flatrate.length && !providers.rent.length && !providers.buy.length) {
+    return null;
+  }
+  return providers;
+}
+
 export function normalizeDetails(
   raw: RawTmdbDetails,
   mediaType: MediaType,
+  region = "US",
 ): TitleDetails {
   const base = normalizeItem({ ...raw, media_type: mediaType }, mediaType);
   if (!base) throw new Error("Unrecognized TMDB payload");
@@ -83,6 +110,25 @@ export function normalizeDetails(
           profilePath: c.profile_path ?? null,
         }));
 
+  // Official title-treatment logo: prefer English, then highest-voted.
+  const logos = raw.images?.logos ?? [];
+  const logoPath =
+    [...logos]
+      .sort((a, b) => {
+        const aEn = a.iso_639_1 === "en" ? 1 : 0;
+        const bEn = b.iso_639_1 === "en" ? 1 : 0;
+        if (aEn !== bEn) return bEn - aEn;
+        return (b.vote_average ?? 0) - (a.vote_average ?? 0);
+      })[0]?.file_path ?? null;
+
+  // Best YouTube trailer: official Trailer > any Trailer > Teaser.
+  const vids = (raw.videos?.results ?? []).filter((v) => v.site === "YouTube");
+  const trailerKey =
+    vids.find((v) => v.type === "Trailer" && v.official)?.key ??
+    vids.find((v) => v.type === "Trailer")?.key ??
+    vids.find((v) => v.type === "Teaser")?.key ??
+    null;
+
   const similarRaw = [
     ...(raw.recommendations?.results ?? []),
     ...(raw.similar?.results ?? []),
@@ -109,6 +155,17 @@ export function normalizeDetails(
     cast,
     releaseDate: raw.release_date ?? raw.first_air_date ?? null,
     status: raw.status ?? null,
+    logoPath,
+    trailerKey,
+    watchProviders: normalizeWatchProviders(raw, region),
+    nextEpisodeToAir: raw.next_episode_to_air
+      ? {
+          season: raw.next_episode_to_air.season_number,
+          episode: raw.next_episode_to_air.episode_number,
+          name: raw.next_episode_to_air.name ?? "",
+          airDate: raw.next_episode_to_air.air_date ?? null,
+        }
+      : null,
     similar: similar.slice(0, 18),
     seasons: (raw.seasons ?? [])
       .filter((s) => s.season_number > 0)
@@ -130,6 +187,11 @@ export function normalizeSeason(raw: RawSeason): EpisodeInfo[] {
     airDate: e.air_date ?? null,
     runtime: e.runtime ?? null,
     overview: e.overview ?? "",
+    stillPath: e.still_path ?? null,
+    voteAverage:
+      typeof e.vote_average === "number" && e.vote_average > 0
+        ? Math.round(e.vote_average * 10) / 10
+        : null,
   }));
 }
 

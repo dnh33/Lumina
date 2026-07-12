@@ -5,6 +5,7 @@ import {
   Check,
   Database,
   Download,
+  Flame,
   KeyRound,
   Loader2,
   Upload,
@@ -46,12 +47,26 @@ export default function Settings() {
 
   const [model, setModel] = useState("");
   const [modelSaved, setModelSaved] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
   const saveModel = useMutation({
     mutationFn: (m: string) => api.setModel(m),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["health"] });
+      setModelError(null);
       setModelSaved(true);
       setTimeout(() => setModelSaved(false), 1800);
+    },
+    onError: (e) => setModelError((e as Error).message),
+  });
+
+  const [wiped, setWiped] = useState(false);
+  const wipeChats = useMutation({
+    mutationFn: () => api.deleteAllConversations(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      localStorage.removeItem("lumina-dock-conversation");
+      setWiped(true);
+      setTimeout(() => setWiped(false), 2000);
     },
   });
 
@@ -132,6 +147,11 @@ export default function Settings() {
                 {modelSaved ? "Saved ✦" : "Save"}
               </button>
             </div>
+            {modelError && (
+              <p className="mt-2 text-sm text-red-300/90">
+                Couldn't save — {modelError}
+              </p>
+            )}
             <p className="mt-2 text-2xs text-mist-400">
               Try anthropic/claude-sonnet-5 for the finest conversation, or a
               cheaper slug for casual browsing. Heads-up: the chat needs a
@@ -150,7 +170,8 @@ export default function Settings() {
             text grounds every conversation.
           </p>
           <pre className="inset-block max-h-72 overflow-y-auto whitespace-pre-wrap p-4 font-sans text-[0.82rem] leading-relaxed text-mist-300">
-            {profile.data?.rendered ?? "…"}
+            {profile.data?.rendered?.trim() ||
+              "Your taste profile appears once you log and rate a few titles."}
           </pre>
         </section>
 
@@ -203,6 +224,12 @@ export default function Settings() {
 
           {importReport && (
             <div className="inset-block max-h-56 overflow-y-auto p-3">
+              <p className="mb-2 border-b border-white/[0.06] pb-2 text-xs font-semibold text-mist-200">
+                {importReport.filter((r) => r.status === "added").length} added ·{" "}
+                {importReport.filter((r) => r.status === "skipped").length} skipped ·{" "}
+                {importReport.filter((r) => r.status !== "added" && r.status !== "skipped").length}{" "}
+                failed
+              </p>
               {importReport.map((r, i) => (
                 <p key={i} className="py-0.5 text-xs">
                   <span
@@ -225,6 +252,43 @@ export default function Settings() {
               ))}
             </div>
           )}
+        </section>
+
+        {/* Danger zone */}
+        <section className="panel space-y-4 p-6 ring-red-500/15">
+          <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-mist-200">
+            <Flame className="h-[18px] w-[18px] text-red-300" /> Danger zone
+          </h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={wipeChats.isPending}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Delete ALL conversations? The AI loses its conversational memory (your library, ratings, notes and tags are untouched).",
+                  )
+                ) {
+                  wipeChats.mutate();
+                }
+              }}
+              className="btn-ghost hover:bg-red-500/15 hover:text-red-300"
+            >
+              {wipeChats.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
+              {wiped ? "Cleared" : "Delete all conversations"}
+            </button>
+            {wipeChats.isError && (
+              <p className="text-sm text-red-300/90">
+                {(wipeChats.error as Error).message}
+              </p>
+            )}
+          </div>
+          <p className="text-2xs leading-relaxed text-mist-400">
+            Removes every chat and its memory index. Your library database
+            stays exactly as it is.
+          </p>
         </section>
       </div>
     </div>

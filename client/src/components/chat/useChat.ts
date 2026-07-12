@@ -27,6 +27,7 @@ export function useChat(
   const qc = useQueryClient();
   const [stream, setStream] = useState<StreamState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [failedText, setFailedText] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const messages = useQuery({
@@ -40,11 +41,18 @@ export function useChat(
     return () => abortRef.current?.abort();
   }, []);
 
+  // a stale error from one conversation must not haunt another
+  useEffect(() => {
+    setError(null);
+    setFailedText(null);
+  }, [conversationId]);
+
   const send = useCallback(
     async (text: string) => {
       const content = text.trim();
       if (!content || stream) return;
       setError(null);
+      setFailedText(null);
 
       let convId = conversationId;
       try {
@@ -64,6 +72,7 @@ export function useChat(
         }
       } catch (e) {
         setError((e as Error).message);
+        setFailedText(content);
         return;
       }
 
@@ -113,7 +122,10 @@ export function useChat(
           controller.signal,
         );
       } catch (e) {
-        if ((e as Error).name !== "AbortError") setError((e as Error).message);
+        if ((e as Error).name !== "AbortError") {
+          setError((e as Error).message);
+          setFailedText(content);
+        }
       } finally {
         abortRef.current = null;
         await qc.invalidateQueries({ queryKey: ["conversations"] });
@@ -130,8 +142,12 @@ export function useChat(
   return {
     messages: messages.data ?? [],
     messagesLoading: messages.isLoading && conversationId != null,
+    messagesError: messages.isError
+      ? ((messages.error as Error)?.message ?? "Couldn't load this conversation")
+      : null,
     stream,
     error,
+    failedText,
     send,
     stop,
     isStreaming: stream !== null,

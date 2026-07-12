@@ -71,20 +71,30 @@ chatRouter.post("/conversations/:id/messages", async (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders();
 
+  // Client disconnect (Stop button, closed tab) cancels the LLM work —
+  // no tokens burned for an abandoned turn.
+  const ac = new AbortController();
+  res.on("close", () => ac.abort());
+
   const send = (e: ChatEvent) => {
-    res.write(`data: ${JSON.stringify(e)}\n\n`);
+    if (!res.writableEnded && !res.destroyed) {
+      res.write(`data: ${JSON.stringify(e)}\n\n`);
+    }
   };
 
   try {
-    await runChatTurn(getDb(), conversationId, content, send);
+    await runChatTurn(getDb(), conversationId, content, send, ac.signal);
   } catch (err) {
-    send({
-      type: "error",
-      message: (err as Error).message || "The AI companion is unavailable.",
-    });
+    if (!ac.signal.aborted) {
+      send({
+        type: "error",
+        message: (err as Error).message || "The AI companion is unavailable.",
+      });
+    }
   } finally {
-    res.end();
+    if (!res.writableEnded) res.end();
   }
 });

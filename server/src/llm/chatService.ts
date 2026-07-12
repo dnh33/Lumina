@@ -83,6 +83,7 @@ export async function runChatTurn(
   conversationId: number,
   userText: string,
   send: (e: ChatEvent) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   persistMessage(db, conversationId, "user", userText);
   const conversationTitle = autoTitle(db, conversationId, userText);
@@ -107,38 +108,48 @@ export async function runChatTurn(
   let assistantText = "";
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-    const stream = await llm.chat.completions.create({
-      model,
-      messages,
-      tools: toolDefinitions,
-      stream: true,
-      temperature: 0.8,
-    });
+    if (signal?.aborted) break;
 
     let roundText = "";
     const toolCalls = new Map<number, PendingToolCall>();
     let finishReason: string | null = null;
 
-    for await (const chunk of stream) {
-      const choice = chunk.choices?.[0];
-      if (!choice) continue;
-      const delta = choice.delta;
+    try {
+      const stream = await llm.chat.completions.create(
+        {
+          model,
+          messages,
+          tools: toolDefinitions,
+          stream: true,
+          temperature: 0.8,
+        },
+        { signal },
+      );
 
-      if (delta?.content) {
-        roundText += delta.content;
-        assistantText += delta.content;
-        send({ type: "delta", text: delta.content });
+      for await (const chunk of stream) {
+        const choice = chunk.choices?.[0];
+        if (!choice) continue;
+        const delta = choice.delta;
+
+        if (delta?.content) {
+          roundText += delta.content;
+          assistantText += delta.content;
+          send({ type: "delta", text: delta.content });
+        }
+        for (const tc of delta?.tool_calls ?? []) {
+          const idx = tc.index ?? 0;
+          const existing =
+            toolCalls.get(idx) ?? { id: "", name: "", arguments: "" };
+          if (tc.id) existing.id = tc.id;
+          if (tc.function?.name) existing.name = tc.function.name;
+          if (tc.function?.arguments) existing.arguments += tc.function.arguments;
+          toolCalls.set(idx, existing);
+        }
+        if (choice.finish_reason) finishReason = choice.finish_reason;
       }
-      for (const tc of delta?.tool_calls ?? []) {
-        const idx = tc.index ?? 0;
-        const existing =
-          toolCalls.get(idx) ?? { id: "", name: "", arguments: "" };
-        if (tc.id) existing.id = tc.id;
-        if (tc.function?.name) existing.name = tc.function.name;
-        if (tc.function?.arguments) existing.arguments += tc.function.arguments;
-        toolCalls.set(idx, existing);
-      }
-      if (choice.finish_reason) finishReason = choice.finish_reason;
+    } catch (err) {
+      if (signal?.aborted) break; // user stopped — exit gracefully
+      throw err;
     }
 
     if (finishReason === "tool_calls" && toolCalls.size > 0) {
@@ -154,6 +165,7 @@ export async function runChatTurn(
       });
 
       for (const call of calls) {
+        if (signal?.aborted) break;
         send({ type: "tool", name: call.name });
         toolsUsed.push(call.name);
         const result = await executeTool(db, call.name, call.arguments);
@@ -171,6 +183,18 @@ export async function runChatTurn(
       continue;
     }
     break;
+  }
+
+  if (signal?.aborted) {
+    // User stopped the turn: persist whatever streamed (marked), never invent more.
+    if (assistantText.trim()) {
+      persistMessage(db, conversationId, "assistant", assistantText, {
+        toolsUsed,
+        stopped: true,
+        model,
+      });
+    }
+    return;
   }
 
   if (!assistantText.trim()) {

@@ -24,18 +24,22 @@ function Biography({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
   if (!text) return null;
   const paragraphs = text.split(/\n+/).filter(Boolean);
-  const shown = expanded ? paragraphs : paragraphs.slice(0, 2);
+  // length-based, not paragraph-count-based — a single long TMDB paragraph
+  // still gets clamped and gets the toggle
+  const clampable = text.length > 420 || paragraphs.length > 2;
   return (
     <div className="max-w-[68ch]">
-      {shown.map((p, i) => (
-        <p
-          key={i}
-          className={`text-[0.95rem] leading-[1.75] text-mist-300 [text-wrap:pretty] ${i > 0 ? "mt-3" : ""} ${!expanded && i === shown.length - 1 && paragraphs.length > 2 ? "line-clamp-4" : ""}`}
-        >
-          {p}
-        </p>
-      ))}
-      {paragraphs.length > 2 && (
+      <div className={!expanded && clampable ? "line-clamp-6" : undefined}>
+        {paragraphs.map((p, i) => (
+          <p
+            key={i}
+            className={`text-[0.95rem] leading-[1.75] text-mist-300 [text-wrap:pretty] ${i > 0 ? "mt-3" : ""}`}
+          >
+            {p}
+          </p>
+        ))}
+      </div>
+      {clampable && (
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
@@ -142,6 +146,7 @@ export default function PersonPage() {
   const inYourLibrary = [
     ...person.actingCredits,
     ...person.directingCredits,
+    ...person.writingCredits,
   ].filter((c) => c.inLibrary);
   const librarySeen = [
     ...new Map(inYourLibrary.map((i) => [`${i.mediaType}${i.tmdbId}`, i])).values(),
@@ -236,7 +241,7 @@ export default function PersonPage() {
 
       {person.biography && (
         <section className="mb-10">
-          <Biography text={person.biography} />
+          <Biography key={person.id} text={person.biography} />
         </section>
       )}
 
@@ -256,7 +261,7 @@ export default function PersonPage() {
         </Carousel>
       )}
 
-      <Filmography person={person} />
+      <Filmography key={person.id} person={person} />
     </div>
   );
 }

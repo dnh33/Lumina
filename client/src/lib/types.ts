@@ -59,6 +59,19 @@ export interface SeasonSummary {
   posterPath: string | null;
 }
 
+export interface WatchProvider {
+  name: string;
+  logoPath: string | null;
+}
+
+export interface WatchProviders {
+  region: string;
+  link: string | null;
+  flatrate: WatchProvider[];
+  rent: WatchProvider[];
+  buy: WatchProvider[];
+}
+
 export interface TitleDetails extends CatalogItem {
   tagline: string;
   genres: string[];
@@ -70,8 +83,30 @@ export interface TitleDetails extends CatalogItem {
   cast: PersonCredit[];
   releaseDate: string | null;
   status: string | null;
+  logoPath: string | null;
+  trailerKey: string | null;
+  watchProviders: WatchProviders | null;
+  nextEpisodeToAir: {
+    season: number;
+    episode: number;
+    name: string;
+    airDate: string | null;
+  } | null;
   similar: CatalogItem[];
   seasons: SeasonSummary[];
+}
+
+export interface EpisodeRecap {
+  text: string;
+  resumeAt: { season: number; episode: number; name: string } | null;
+  watched: number;
+  total: number;
+  cached: boolean;
+}
+
+export interface TagCount {
+  name: string;
+  count: number;
 }
 
 export interface LibraryEntry {
@@ -110,6 +145,8 @@ export interface EpisodeRow {
   airDate: string | null;
   runtime: number | null;
   overview: string;
+  stillPath: string | null;
+  voteAverage: number | null;
   watched: boolean;
   watchedAt: string | null;
 }

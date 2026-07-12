@@ -214,6 +214,51 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "compare_titles",
+      description:
+        "Decision helper when the user is torn between 2-4 titles. Returns comparable facts per candidate (commitment cost, genre overlap with their strengths, favorite-director match, what loved titles it echoes) so you can deliver a ranked verdict: the safe pick vs the stretch. Use for 'X or Y?', 'help me pick', 'which tonight?'.",
+      parameters: {
+        type: "object",
+        properties: {
+          candidates: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                tmdb_id: { type: "number" },
+                media_type: { type: "string", enum: ["movie", "tv"] },
+              },
+              required: ["tmdb_id", "media_type"],
+            },
+            description: "2-4 titles (ids from prior tool results)",
+          },
+          mood: {
+            type: "string",
+            description: "Optional: stated mood / energy / time budget tonight",
+          },
+        },
+        required: ["candidates"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_episode_recap",
+      description:
+        "Spoiler-safe 'previously on…' for a series the user is resuming: a recap built ONLY from episodes they've already watched, plus where to resume. Use when they say 'where was I', 'remind me what happened', or resume a show after a break.",
+      parameters: {
+        type: "object",
+        properties: {
+          title_query: { type: "string", description: "Series name" },
+        },
+        required: ["title_query"],
+      },
+    },
+  },
 ];
 
 type Args = Record<string, unknown>;
@@ -502,6 +547,60 @@ export async function executeTool(
           nextEpisode: next
             ? { season: next.season, episode: next.episode, name: next.name }
             : null,
+        });
+      }
+
+      case "compare_titles": {
+        const { computeTasteProfile } = await import("../rag/tasteProfile.js");
+        const profile = computeTasteProfile(db);
+        const topGenres = new Set(profile.topGenres.map((g) => g.name));
+        const lovedDirs = new Set(profile.favoriteDirectors.map((d) => d.name));
+        const cands = (Array.isArray(args.candidates) ? args.candidates : [])
+          .slice(0, 4) as Args[];
+        if (cands.length < 2) {
+          return JSON.stringify({ error: "Need 2-4 candidates to compare" });
+        }
+        const out = await Promise.all(
+          cands.map(async (c) => {
+            const id = Number(c.tmdb_id);
+            const mt = str(c.media_type) as MediaType;
+            const d = await fetchDetailsFromTmdb(id, mt);
+            const owned = getEntryByTmdb(db, id, mt);
+            return {
+              tmdbId: id,
+              mediaType: mt,
+              title: d.title,
+              year: d.year,
+              commitment:
+                mt === "tv"
+                  ? `${d.seasonsCount ?? "?"} seasons / ${d.episodesCount ?? "?"} eps`
+                  : `${d.runtime ?? "?"} min`,
+              genreOverlapWithTheirStrengths: d.genres.filter((g) => topGenres.has(g)),
+              directorIsAFavorite: !!d.director && lovedDirs.has(d.director),
+              director: d.director,
+              tmdbRating: d.voteAverage,
+              inLibrary: owned
+                ? { status: owned.status, rating: owned.rating, tags: owned.tags }
+                : false,
+            };
+          }),
+        );
+        return JSON.stringify({ mood: str(args.mood) || null, candidates: out });
+      }
+
+      case "get_episode_recap": {
+        const hits = retrieveLibrary(db, str(args.title_query), 3).filter(
+          (h) => h.mediaType === "tv",
+        );
+        if (!hits.length)
+          return JSON.stringify({ error: "No matching series in the library" });
+        const { episodeRecap } = await import("./recapService.js");
+        const recap = await episodeRecap(db, hits[0].titleId);
+        return JSON.stringify({
+          title: hits[0].title,
+          recap: recap.text || "No watched episodes yet to recap.",
+          resumeAt: recap.resumeAt,
+          progress: `${recap.watched}/${recap.total}`,
         });
       }
 

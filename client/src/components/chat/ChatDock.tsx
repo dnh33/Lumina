@@ -22,6 +22,11 @@ export function ChatDock() {
 
   useEffect(() => {
     if (!open) return;
+    // stay in sync with the full page's last-active conversation
+    const raw = localStorage.getItem(DOCK_KEY);
+    const n = raw ? Number(raw) : NaN;
+    setConversationId(Number.isFinite(n) ? n : null);
+
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -32,11 +37,14 @@ export function ChatDock() {
       <AnimatePresence>
         {open && (
           <motion.div
+            role="dialog"
+            aria-modal="false"
+            aria-label="Lumina chat"
             initial={{ opacity: 0, y: 24, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.97 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed bottom-24 right-4 z-50 flex h-[min(620px,72vh)] w-[min(430px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl bg-ink-850/95 ring-1 ring-white/10 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl md:bottom-8 md:right-8"
+            className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-[min(620px,72dvh)] w-[min(430px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl bg-ink-850/95 ring-1 ring-white/10 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl md:bottom-8 md:right-8"
           >
             <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3">
               <div className="flex items-center gap-2">
@@ -89,7 +97,7 @@ export function ChatDock() {
         aria-label={open ? "Close Lumina chat" : "Talk to Lumina"}
         aria-expanded={open}
         title="Talk to Lumina"
-        className="fixed bottom-20 right-4 z-50 flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-br from-gold-300 to-gold-500 text-ink-950 shadow-[0_10px_36px_-6px_rgba(232,184,75,0.55)] md:bottom-8 md:right-8"
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-br from-gold-300 to-gold-500 text-ink-950 shadow-[0_10px_36px_-6px_rgba(232,184,75,0.55)] md:bottom-8 md:right-8"
       >
         {open ? (
           <X className="h-6 w-6" />

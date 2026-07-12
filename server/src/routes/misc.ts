@@ -41,6 +41,31 @@ miscRouter.get("/insight/:type/:tmdbId", async (req, res) => {
   res.json(insight);
 });
 
+miscRouter.get("/recap/:libraryId", async (req, res) => {
+  const db = getDb();
+  const libraryId = Number(req.params.libraryId);
+  if (!Number.isInteger(libraryId) || libraryId <= 0) {
+    return void res.status(400).json({ error: "bad id" });
+  }
+  const row = db
+    .prepare("SELECT title_id FROM library WHERE id = ?")
+    .get(libraryId) as { title_id: number } | undefined;
+  if (!row) return void res.status(404).json({ error: "Not found" });
+  const { episodeRecap } = await import("../llm/recapService.js");
+  res.json(await episodeRecap(db, row.title_id, req.query.refresh === "1"));
+});
+
+miscRouter.delete("/conversations", (_req, res) => {
+  const db = getDb();
+  const wipe = db.transaction(() => {
+    db.prepare("DELETE FROM messages_fts").run();
+    db.prepare("DELETE FROM messages").run();
+    db.prepare("DELETE FROM conversations").run();
+  });
+  wipe();
+  res.status(204).end();
+});
+
 miscRouter.get("/taste-profile", (_req, res) => {
   const profile = computeTasteProfile(getDb());
   res.json({ profile, rendered: renderTasteProfile(profile) });

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Heart, Plus, Search } from "lucide-react";
+import { Heart, Plus, Search, Tag } from "lucide-react";
 import { api } from "../lib/api";
 import { PosterCard } from "../components/PosterCard";
 import { AddModal } from "../components/AddModal";
@@ -13,16 +13,52 @@ const STATUS_TABS = [
   { key: "watching", label: "Watching" },
   { key: "watchlist", label: "Watchlist" },
   { key: "favorites", label: "Favorites" },
+  { key: "abandoned", label: "Abandoned" },
 ] as const;
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="panel px-4 py-3">
-      <p className="font-display text-xl font-semibold tabular-nums text-gold-300">{value}</p>
+type StatusKey = (typeof STATUS_TABS)[number]["key"];
+
+function useDebounced<T>(value: T, ms: number): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
+function StatCard({
+  label,
+  value,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: string | number;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  const inner = (
+    <>
+      <p className="font-display text-xl font-semibold tabular-nums text-gold-300">
+        {value}
+      </p>
       <p className="text-2xs font-medium uppercase tracking-wider text-mist-400">
         {label}
       </p>
-    </div>
+    </>
+  );
+  if (!onClick) return <div className="panel px-4 py-3">{inner}</div>;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`panel cursor-pointer px-4 py-3 text-left transition hover:ring-gold-400/30 ${
+        active ? "ring-gold-400/40 bg-gold-400/[0.06]" : ""
+      }`}
+    >
+      {inner}
+    </button>
   );
 }
 
@@ -38,21 +74,33 @@ function statusRibbon(e: LibraryEntry): string | undefined {
   return undefined;
 }
 
+const EMPTY_COPY: Record<StatusKey, string> = {
+  all: "",
+  watched: "Nothing marked watched yet — log what you've seen and the AI sharpens fast.",
+  watching: "You're not mid-series on anything. Start a show and track it episode by episode.",
+  watchlist: "Your watchlist is empty. Save anything that catches your eye — one tap on any poster.",
+  favorites: "No favorites yet — tap the heart on titles that define your taste.",
+  abandoned: "Nothing abandoned. When a show loses you, marking it teaches the AI what doesn't work.",
+};
+
 export default function Library() {
-  const [status, setStatus] = useState<(typeof STATUS_TABS)[number]["key"]>("all");
+  const [status, setStatus] = useState<StatusKey>("all");
   const [type, setType] = useState("");
   const [genre, setGenre] = useState("");
+  const [tag, setTag] = useState("");
   const [sort, setSort] = useState("added");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounced(search, 250);
   const [addOpen, setAddOpen] = useState(false);
 
   const params = useMemo(() => {
     const p: Record<string, string> = { status, sort };
     if (type) p.type = type;
     if (genre) p.genre = genre;
-    if (search.trim()) p.search = search.trim();
+    if (tag) p.tag = tag;
+    if (debouncedSearch.trim()) p.search = debouncedSearch.trim();
     return p;
-  }, [status, type, genre, sort, search]);
+  }, [status, type, genre, tag, sort, debouncedSearch]);
 
   const entries = useQuery({
     queryKey: ["library", params],
@@ -60,9 +108,21 @@ export default function Library() {
   });
   const stats = useQuery({ queryKey: ["library-stats"], queryFn: api.libraryStats });
   const genres = useQuery({ queryKey: ["library-genres"], queryFn: api.libraryGenres });
+  const tags = useQuery({ queryKey: ["library-tags"], queryFn: api.libraryTags });
+
+  const hasActiveFilters =
+    status !== "all" || !!type || !!genre || !!tag || !!debouncedSearch.trim();
+
+  const clearFilters = () => {
+    setStatus("all");
+    setType("");
+    setGenre("");
+    setTag("");
+    setSearch("");
+  };
 
   const selectCls =
-    "rounded-xl bg-ink-800/80 px-3 py-2 text-sm text-mist-300 outline-none ring-1 ring-white/10 transition focus:ring-gold-400/50";
+    "rounded-xl bg-ink-800/80 px-3 py-2.5 text-sm text-mist-300 outline-none ring-1 ring-white/10 transition focus:ring-gold-400/50";
 
   return (
     <div>
@@ -82,10 +142,30 @@ export default function Library() {
 
       {stats.data && stats.data.total > 0 && (
         <div className="mb-6 grid grid-cols-3 gap-3 sm:grid-cols-6">
-          <StatCard label="Titles" value={stats.data.total} />
-          <StatCard label="Films" value={stats.data.movies} />
-          <StatCard label="Series" value={stats.data.shows} />
-          <StatCard label="Favorites" value={stats.data.favorites} />
+          <StatCard
+            label="Titles"
+            value={stats.data.total}
+            active={!hasActiveFilters}
+            onClick={clearFilters}
+          />
+          <StatCard
+            label="Films"
+            value={stats.data.movies}
+            active={type === "movie"}
+            onClick={() => setType(type === "movie" ? "" : "movie")}
+          />
+          <StatCard
+            label="Series"
+            value={stats.data.shows}
+            active={type === "tv"}
+            onClick={() => setType(type === "tv" ? "" : "tv")}
+          />
+          <StatCard
+            label="Favorites"
+            value={stats.data.favorites}
+            active={status === "favorites"}
+            onClick={() => setStatus(status === "favorites" ? "all" : "favorites")}
+          />
           <StatCard label="Avg rating" value={stats.data.avgRating ?? "—"} />
           <StatCard label="Hours" value={`≈${stats.data.estimatedHours}`} />
         </div>
@@ -113,7 +193,7 @@ export default function Library() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter…"
-              className="w-36 rounded-xl bg-ink-800/80 py-2 pl-9 pr-3 text-sm text-mist-200 placeholder-mist-400/60 outline-none ring-1 ring-white/10 transition focus:w-48 focus:ring-gold-400/50"
+              className="w-36 rounded-xl bg-ink-800/80 py-2.5 pl-9 pr-3 text-sm text-mist-200 placeholder-mist-400/60 outline-none ring-1 ring-white/10 transition focus:w-48 focus:ring-gold-400/50"
             />
           </div>
           <select value={type} onChange={(e) => setType(e.target.value)} className={selectCls} aria-label="Type filter">
@@ -129,6 +209,16 @@ export default function Library() {
               </option>
             ))}
           </select>
+          {(tags.data?.length ?? 0) > 0 && (
+            <select value={tag} onChange={(e) => setTag(e.target.value)} className={selectCls} aria-label="Tag filter">
+              <option value="">All tags</option>
+              {tags.data?.map((t) => (
+                <option key={t.name} value={t.name}>
+                  {t.name} ({t.count})
+                </option>
+              ))}
+            </select>
+          )}
           <select value={sort} onChange={(e) => setSort(e.target.value)} className={selectCls} aria-label="Sort order">
             <option value="added">Recently added</option>
             <option value="updated">Recently updated</option>
@@ -173,6 +263,21 @@ export default function Library() {
               subtitle={statusRibbon(e) ?? [e.year, e.mediaType === "tv" ? "Series" : "Film"].filter(Boolean).join(" · ")}
             />
           ))}
+        </div>
+      ) : (stats.data?.total ?? 0) > 0 ? (
+        /* library has titles — this particular view is empty */
+        <div className="panel mx-auto my-14 max-w-lg px-8 py-10 text-center">
+          <Tag className="mx-auto mb-3 h-6 w-6 text-gold-400" />
+          <p className="text-sm leading-relaxed text-mist-300">
+            {debouncedSearch.trim() || genre || tag || type
+              ? "No titles match these filters."
+              : EMPTY_COPY[status] || "Nothing here yet."}
+          </p>
+          {hasActiveFilters && (
+            <button type="button" className="btn-ghost mx-auto mt-5" onClick={clearFilters}>
+              Clear filters
+            </button>
+          )}
         </div>
       ) : (
         <EmptyState

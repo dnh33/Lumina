@@ -96,6 +96,15 @@ export async function tmdbGet<T>(
     `INSERT INTO tmdb_cache (cache_key, payload, fetched_at) VALUES (?, ?, ?)
      ON CONFLICT(cache_key) DO UPDATE SET payload = excluded.payload, fetched_at = excluded.fetched_at`,
   ).run(cacheKey, JSON.stringify(json), Date.now());
+
+  // Opportunistic pruning (~2% of writes): keep the 5000 freshest entries
+  // so the cache can't grow without bound.
+  if (Math.random() < 0.02) {
+    db.prepare(
+      `DELETE FROM tmdb_cache WHERE cache_key IN (
+         SELECT cache_key FROM tmdb_cache ORDER BY fetched_at DESC LIMIT -1 OFFSET 5000)`,
+    ).run();
+  }
   return json;
 }
 

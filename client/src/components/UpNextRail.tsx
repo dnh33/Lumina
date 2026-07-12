@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Play } from "lucide-react";
 import { api } from "../lib/api";
+import { invalidateLibraryData } from "../lib/invalidate";
 import { backdrop } from "../lib/img";
 import type { UpNextItem } from "../lib/types";
 
@@ -14,6 +16,7 @@ function shieldOn(): boolean {
 
 function UpNextCard({ item }: { item: UpNextItem }) {
   const qc = useQueryClient();
+  const [imgFailed, setImgFailed] = useState(false);
   const bg = backdrop(item.entry.backdropPath, "w780");
   const blurName =
     !!item.next && item.next.episode !== 1 && shieldOn();
@@ -21,10 +24,8 @@ function UpNextCard({ item }: { item: UpNextItem }) {
   const markWatched = useMutation({
     mutationFn: () => api.setEpisode(item.next!.episodeId, true),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["up-next"] });
       qc.invalidateQueries({ queryKey: ["episodes"] });
-      qc.invalidateQueries({ queryKey: ["library"] });
-      qc.invalidateQueries({ queryKey: ["library-stats"] });
+      invalidateLibraryData(qc);
     },
   });
 
@@ -36,15 +37,16 @@ function UpNextCard({ item }: { item: UpNextItem }) {
         className="absolute inset-0 z-[5]"
       />
       <div className="relative h-[126px]">
-        {bg ? (
+        {bg && !imgFailed ? (
           <img
             src={bg}
             alt=""
             loading="lazy"
+            onError={() => setImgFailed(true)}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
         ) : (
-          <div className="h-full w-full bg-ink-700" />
+          <div className="h-full w-full bg-gradient-to-br from-ink-700 to-ink-850" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-ink-900 via-ink-900/30 to-transparent" />
         {item.hasNewEpisode && (

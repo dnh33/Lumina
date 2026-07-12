@@ -27,7 +27,7 @@ export function Carousel({ title, eyebrow, children }: Props) {
             {title}
           </h2>
         </div>
-        <div className="hidden gap-1.5 opacity-0 transition-opacity duration-200 group-hover/row:opacity-100 md:flex">
+        <div className="hidden gap-1.5 opacity-0 transition-opacity duration-200 group-focus-within/row:opacity-100 group-hover/row:opacity-100 md:flex">
           <button
             type="button"
             aria-label="Scroll left"

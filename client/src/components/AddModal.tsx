@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Search, X } from "lucide-react";
+import { AlertCircle, Check, Loader2, Search, X } from "lucide-react";
 import { api } from "../lib/api";
+import { invalidateLibraryData } from "../lib/invalidate";
 import { poster } from "../lib/img";
 import type { CatalogItem, LibraryStatus } from "../lib/types";
 
@@ -18,14 +19,18 @@ function useDebounced<T>(value: T, ms: number): T {
 function ResultRow({ item }: { item: CatalogItem }) {
   const qc = useQueryClient();
   const [savedAs, setSavedAs] = useState<LibraryStatus | null>(null);
+  const [failed, setFailed] = useState(false);
   const add = useMutation({
     mutationFn: (status: LibraryStatus) =>
       api.addToLibrary({ tmdbId: item.tmdbId, mediaType: item.mediaType, status }),
     onSuccess: (_e, status) => {
       setSavedAs(status);
-      qc.invalidateQueries({ queryKey: ["library"] });
-      qc.invalidateQueries({ queryKey: ["library-stats"] });
-      qc.invalidateQueries({ queryKey: ["library-genres"] });
+      setFailed(false);
+      invalidateLibraryData(qc);
+    },
+    onError: () => {
+      setFailed(true);
+      setTimeout(() => setFailed(false), 2500);
     },
   });
   const src = poster(item.posterPath, "w185");
@@ -43,7 +48,11 @@ function ResultRow({ item }: { item: CatalogItem }) {
             .join(" · ")}
         </p>
       </div>
-      {savedAs || item.inLibrary ? (
+      {failed ? (
+        <span className="flex items-center gap-1.5 rounded-lg bg-red-500/15 px-2.5 py-1.5 text-xs font-semibold text-red-300">
+          <AlertCircle className="h-3.5 w-3.5" /> Failed — retry
+        </span>
+      ) : savedAs || item.inLibrary ? (
         <span className="flex items-center gap-1.5 rounded-lg bg-gold-400/15 px-2.5 py-1.5 text-xs font-semibold text-gold-300">
           <Check className="h-3.5 w-3.5" /> {savedAs ?? "In library"}
         </span>
@@ -123,7 +132,7 @@ export function AddModal({ open, onClose }: { open: boolean; onClose: () => void
                 type="button"
                 onClick={onClose}
                 aria-label="Close search"
-                className="rounded-lg p-1 text-mist-400 transition hover:bg-white/[0.06] hover:text-mist-200"
+                className="icon-btn"
               >
                 <X className="h-4 w-4" />
               </button>

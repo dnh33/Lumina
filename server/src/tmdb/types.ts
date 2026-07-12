@@ -21,6 +21,19 @@ export interface PersonCredit {
   profilePath: string | null;
 }
 
+export interface WatchProvider {
+  name: string;
+  logoPath: string | null;
+}
+
+export interface WatchProviders {
+  region: string;
+  link: string | null;
+  flatrate: WatchProvider[];
+  rent: WatchProvider[];
+  buy: WatchProvider[];
+}
+
 export interface TitleDetails extends CatalogItem {
   tagline: string;
   genres: string[];
@@ -32,6 +45,17 @@ export interface TitleDetails extends CatalogItem {
   cast: PersonCredit[];
   releaseDate: string | null;
   status: string | null;
+  /** official title-treatment artwork (transparent PNG) */
+  logoPath: string | null;
+  /** YouTube key of the best official trailer/teaser */
+  trailerKey: string | null;
+  watchProviders: WatchProviders | null;
+  nextEpisodeToAir: {
+    season: number;
+    episode: number;
+    name: string;
+    airDate: string | null;
+  } | null;
   similar: CatalogItem[];
   seasons: SeasonSummary[];
 }
@@ -51,6 +75,8 @@ export interface EpisodeInfo {
   airDate: string | null;
   runtime: number | null;
   overview: string;
+  stillPath: string | null;
+  voteAverage: number | null;
 }
 
 export interface PersonDetails {
@@ -114,6 +140,35 @@ export interface RawTmdbDetails extends RawTmdbItem {
     }[];
   };
   created_by?: { id?: number; name: string }[];
+  videos?: {
+    results?: {
+      key: string;
+      site?: string;
+      type?: string;
+      official?: boolean;
+      name?: string;
+    }[];
+  };
+  images?: {
+    logos?: { file_path: string; iso_639_1?: string | null; vote_average?: number }[];
+  };
+  "watch/providers"?: {
+    results?: Record<
+      string,
+      {
+        link?: string;
+        flatrate?: { provider_name: string; logo_path?: string | null }[];
+        rent?: { provider_name: string; logo_path?: string | null }[];
+        buy?: { provider_name: string; logo_path?: string | null }[];
+      }
+    >;
+  };
+  next_episode_to_air?: {
+    season_number: number;
+    episode_number: number;
+    name?: string;
+    air_date?: string | null;
+  } | null;
   similar?: { results?: RawTmdbItem[] };
   recommendations?: { results?: RawTmdbItem[] };
   seasons?: {
@@ -133,6 +188,8 @@ export interface RawSeason {
     air_date?: string | null;
     runtime?: number | null;
     overview?: string;
+    still_path?: string | null;
+    vote_average?: number;
   }[];
 }
 

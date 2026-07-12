@@ -139,7 +139,7 @@ body {
 }
 
 .pill {
-  @apply rounded-xl px-3.5 py-2 text-sm font-medium transition cursor-pointer bg-white/[0.04] text-mist-400 ring-1 ring-white/[0.08] hover:text-mist-200;
+  @apply rounded-xl px-3.5 py-2.5 text-sm font-medium transition cursor-pointer bg-white/[0.04] text-mist-400 ring-1 ring-white/[0.08] hover:text-mist-200;
 }
 .pill-active {
   @apply bg-gold-400/[0.12] text-gold-300 ring-1 ring-gold-400/30 hover:text-gold-300;

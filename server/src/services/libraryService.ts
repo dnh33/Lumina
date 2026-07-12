@@ -1,4 +1,5 @@
 import type { DB } from "../db/connection.js";
+import { env } from "../env.js";
 import { tmdbGet } from "../tmdb/client.js";
 import {
   normalizeDetails,
@@ -191,12 +192,13 @@ export async function fetchDetailsFromTmdb(
 ): Promise<TitleDetails> {
   const append =
     mediaType === "movie"
-      ? "credits,similar,recommendations"
-      : "credits,aggregate_credits,similar,recommendations";
+      ? "credits,similar,recommendations,videos,images,watch/providers"
+      : "credits,aggregate_credits,similar,recommendations,videos,images,watch/providers";
   const raw = await tmdbGet<RawTmdbDetails>(`/${mediaType}/${tmdbId}`, {
     append_to_response: append,
+    include_image_language: "en,null",
   });
-  return normalizeDetails(raw, mediaType);
+  return normalizeDetails(raw, mediaType, env.watchRegion);
 }
 
 export interface AddOptions {
@@ -332,10 +334,13 @@ export function removeEntry(db: DB, id: number): void {
     | { title_id: number }
     | undefined;
   if (!row) return;
-  db.prepare("DELETE FROM library_fts WHERE rowid = ?").run(id);
-  db.prepare("DELETE FROM library WHERE id = ?").run(id);
-  // titles row (and episodes via cascade) removed too — snapshot is per-library
-  db.prepare("DELETE FROM titles WHERE id = ?").run(row.title_id);
+  const remove = db.transaction(() => {
+    db.prepare("DELETE FROM library_fts WHERE rowid = ?").run(id);
+    db.prepare("DELETE FROM library WHERE id = ?").run(id);
+    // titles row (and episodes via cascade) removed too — snapshot is per-library
+    db.prepare("DELETE FROM titles WHERE id = ?").run(row.title_id);
+  });
+  remove();
 }
 
 export function getEntry(db: DB, id: number): LibraryEntry | null {
@@ -365,6 +370,7 @@ export interface ListFilters {
   status?: LibraryStatus | "all" | "favorites";
   mediaType?: MediaType;
   genre?: string;
+  tag?: string;
   search?: string;
   sort?: "added" | "rating" | "title" | "year" | "updated";
 }
@@ -385,6 +391,10 @@ export function listLibrary(db: DB, f: ListFilters = {}): LibraryEntry[] {
     where.push("t.genres LIKE @genre");
     params.genre = `%"${f.genre}"%`;
   }
+  if (f.tag) {
+    where.push("l.tags LIKE @tag");
+    params.tag = `%"${f.tag.toLowerCase()}"%`;
+  }
   if (f.search) {
     where.push("(t.title LIKE @q OR t.director LIKE @q)");
     params.q = `%${f.search}%`;
@@ -400,23 +410,56 @@ export function listLibrary(db: DB, f: ListFilters = {}): LibraryEntry[] {
             ? "l.updated_at DESC"
             : "l.added_at DESC";
 
+  // Single JOIN (no per-row getEntry) — stays fast on large libraries.
   const rows = db
     .prepare(
-      `SELECT l.id as lib_id FROM library l JOIN titles t ON t.id = l.title_id
+      `SELECT t.*,
+              l.id AS l_id, l.status AS l_status, l.rating AS l_rating,
+              l.notes AS l_notes, l.tags AS l_tags, l.favorite AS l_favorite,
+              l.watched_at AS l_watched_at, l.added_at AS l_added_at,
+              l.updated_at AS l_updated_at
+       FROM library l JOIN titles t ON t.id = l.title_id
        ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
        ORDER BY ${order}`,
     )
-    .all(params) as { lib_id: number }[];
+    .all(params) as (TitleRow & {
+    l_id: number;
+    l_status: LibraryStatus;
+    l_rating: number | null;
+    l_notes: string;
+    l_tags: string;
+    l_favorite: number;
+    l_watched_at: string | null;
+    l_added_at: string;
+    l_updated_at: string;
+  })[];
 
-  const watchedCounts = db
-    .prepare(
-      `SELECT title_id, SUM(watched) as w FROM episodes GROUP BY title_id`,
-    )
-    .all() as { title_id: number; w: number }[];
-  const watchedMap = new Map(watchedCounts.map((r) => [r.title_id, r.w]));
+  const tvTitleIds = rows.filter((r) => r.media_type === "tv").map((r) => r.id);
+  const watchedMap = new Map<number, number>();
+  if (tvTitleIds.length) {
+    const placeholders = tvTitleIds.map(() => "?").join(",");
+    const counts = db
+      .prepare(
+        `SELECT title_id, SUM(watched) AS w FROM episodes
+         WHERE title_id IN (${placeholders}) GROUP BY title_id`,
+      )
+      .all(...tvTitleIds) as { title_id: number; w: number }[];
+    for (const c of counts) watchedMap.set(c.title_id, c.w);
+  }
 
   return rows.map((r) => {
-    const e = getEntry(db, r.lib_id)!;
+    const e = rowToEntry(r, {
+      id: r.l_id,
+      title_id: r.id,
+      status: r.l_status,
+      rating: r.l_rating,
+      notes: r.l_notes,
+      tags: r.l_tags,
+      favorite: r.l_favorite,
+      watched_at: r.l_watched_at,
+      added_at: r.l_added_at,
+      updated_at: r.l_updated_at,
+    });
     if (e.mediaType === "tv") e.watchedEpisodes = watchedMap.get(e.titleId) ?? 0;
     return e;
   });
@@ -441,6 +484,8 @@ export interface EpisodeRow {
   airDate: string | null;
   runtime: number | null;
   overview: string;
+  stillPath: string | null;
+  voteAverage: number | null;
   watched: boolean;
   watchedAt: string | null;
 }
@@ -458,11 +503,12 @@ export async function syncEpisodes(db: DB, titleId: number): Promise<void> {
     .map((s) => s.season_number);
 
   const upsert = db.prepare(
-    `INSERT INTO episodes (title_id, season, episode, name, air_date, runtime, overview)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO episodes (title_id, season, episode, name, air_date, runtime, overview, still_path, vote_average)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(title_id, season, episode)
      DO UPDATE SET name = excluded.name, air_date = excluded.air_date,
-                   runtime = excluded.runtime, overview = excluded.overview`,
+                   runtime = excluded.runtime, overview = excluded.overview,
+                   still_path = excluded.still_path, vote_average = excluded.vote_average`,
   );
 
   // Fetch seasons in parallel (bounded) — a 20-season show shouldn't mean
@@ -476,7 +522,17 @@ export async function syncEpisodes(db: DB, titleId: number): Promise<void> {
     const insertAll = db.transaction(() => {
       for (const season of seasons) {
         for (const e of normalizeSeason(season)) {
-          upsert.run(titleId, e.season, e.episode, e.name, e.airDate, e.runtime, e.overview);
+          upsert.run(
+            titleId,
+            e.season,
+            e.episode,
+            e.name,
+            e.airDate,
+            e.runtime,
+            e.overview,
+            e.stillPath,
+            e.voteAverage,
+          );
         }
       }
     });
@@ -498,6 +554,8 @@ export function listEpisodes(db: DB, titleId: number): EpisodeRow[] {
     air_date: string | null;
     runtime: number | null;
     overview: string;
+    still_path: string | null;
+    vote_average: number | null;
     watched: number;
     watched_at: string | null;
   }[];
@@ -510,6 +568,8 @@ export function listEpisodes(db: DB, titleId: number): EpisodeRow[] {
     airDate: r.air_date,
     runtime: r.runtime,
     overview: r.overview,
+    stillPath: r.still_path ?? null,
+    voteAverage: r.vote_average ?? null,
     watched: !!r.watched,
     watchedAt: r.watched_at,
   }));

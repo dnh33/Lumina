@@ -86,7 +86,7 @@ export const MessageBubble = memo(function MessageBubble({
   if (role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-gold-400/[0.13] px-4 py-2.5 text-[0.95rem] leading-relaxed text-mist-200 ring-1 ring-gold-400/25">
+        <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-gold-400/[0.13] px-4 py-2.5 text-[0.95rem] leading-relaxed text-mist-200 ring-1 ring-gold-400/25">
           {content}
         </div>
       </div>
@@ -97,7 +97,7 @@ export const MessageBubble = memo(function MessageBubble({
 
   return (
     <div className="flex justify-start">
-      <div className="max-w-[94%]">
+      <div className="min-w-0 max-w-[94%] break-words">
         <div className="prose-lumina">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
