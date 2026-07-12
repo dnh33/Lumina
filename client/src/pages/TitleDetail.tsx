@@ -18,7 +18,6 @@ import {
   Plus,
   RefreshCw,
   Sparkles,
-  Star,
   Trash2,
   X,
 } from "lucide-react";
@@ -28,6 +27,7 @@ import { backdrop, logo, poster, profile } from "../lib/img";
 import { playCue } from "../lib/sound";
 import { Carousel } from "../components/Carousel";
 import { PosterCard } from "../components/PosterCard";
+import { CriticsBadge } from "../components/CriticsBadge";
 import { Chip, RatingDial } from "../components/Bits";
 import { EpisodeTracker } from "../components/EpisodeTracker";
 import type {
@@ -328,20 +328,11 @@ function FactsCard({
   if (details.imdbRating != null || details.rtRating != null || details.voteAverage != null) {
     const parts: ReactNode[] = [];
     if (details.imdbRating != null)
-      parts.push(<span key="imdb">IMDb {details.imdbRating.toFixed(1)}</span>);
+      parts.push(<CriticsBadge key="imdb" source="imdb" score={details.imdbRating} />);
     if (details.rtRating != null)
-      parts.push(
-        <span key="rt" className="text-green-300">
-          RT {details.rtRating}%
-        </span>,
-      );
+      parts.push(<CriticsBadge key="rt" source="rt" score={details.rtRating} />);
     if (details.voteAverage != null)
-      parts.push(
-        <span key="tmdb" className="flex items-center gap-1">
-          <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" />
-          TMDB {details.voteAverage.toFixed(1)}
-        </span>,
-      );
+      parts.push(<CriticsBadge key="tmdb" source="tmdb" score={details.voteAverage} />);
     rows.push({
       label: "Critics",
       value: <span className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">{parts}</span>,
@@ -886,20 +877,13 @@ export default function TitleDetail() {
                     </span>
                   )}
                   {details.imdbRating != null && (
-                    <span className="flex items-center gap-1 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-2xs font-medium tabular-nums text-mist-100 ring-1 ring-white/10">
-                      IMDb {details.imdbRating.toFixed(1)}
-                    </span>
+                    <CriticsBadge source="imdb" score={details.imdbRating} />
                   )}
                   {details.rtRating != null && (
-                    <span className="flex items-center gap-1 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-2xs font-medium tabular-nums text-green-300 ring-1 ring-white/10">
-                      RT {details.rtRating}%
-                    </span>
+                    <CriticsBadge source="rt" score={details.rtRating} />
                   )}
                   {details.voteAverage != null && (
-                    <span className="flex items-center gap-1 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-2xs font-medium tabular-nums text-mist-200 ring-1 ring-white/10">
-                      <Star className="h-3 w-3 fill-gold-400 text-gold-400" />
-                      {details.voteAverage.toFixed(1)} TMDb
-                    </span>
+                    <CriticsBadge source="tmdb" score={details.voteAverage} />
                   )}
                 </div>
               ) : null}

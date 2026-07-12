@@ -7,6 +7,7 @@ import { api } from "../lib/api";
 import { invalidateLibraryData } from "../lib/invalidate";
 import { poster } from "../lib/img";
 import { playCue } from "../lib/sound";
+import { CriticsBadge } from "./CriticsBadge";
 import type { CatalogItem } from "../lib/types";
 
 interface Props {
@@ -104,17 +105,13 @@ export const PosterCard = memo(function PosterCard({
           </div>
         )}
         {item.imdbRating != null && (
-          <div className="absolute left-2 top-9 flex items-center gap-1 rounded-md bg-ink-950/80 px-1.5 py-0.5 text-2xs font-semibold tabular-nums text-mist-200 backdrop-blur">
-            IMDb {item.imdbRating.toFixed(1)}
-          </div>
+          <CriticsBadge source="imdb" score={item.imdbRating} variant="compact" className="absolute left-2 top-9" />
         )}
         {item.rtRating != null && (
-          <div className="absolute right-2 top-2 rounded-md bg-ink-950/80 px-1.5 py-0.5 text-2xs font-semibold tabular-nums text-green-300 backdrop-blur">
-            {item.rtRating}%
-          </div>
+          <CriticsBadge source="rt" score={item.rtRating} variant="compact" className="absolute bottom-2 left-2" />
         )}
         {myRating != null && (
-          <div className="absolute right-2 top-2 rounded-md bg-gold-400 px-1.5 py-0.5 text-2xs font-bold tabular-nums text-ink-950">
+          <div className="absolute right-2 top-2 z-[6] rounded-md bg-gold-400 px-1.5 py-0.5 text-2xs font-bold tabular-nums text-ink-950">
             {myRating}
           </div>
         )}

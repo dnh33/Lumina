@@ -15,6 +15,14 @@
   --color-gold-500: #d9a532;
   --color-gold-600: #b9871f;
 
+  /* External critics brands — tuned to sit on the dark surface.
+     Gold stays reserved for the user's own rating / active state;
+     these are the *only* other hue families and are never glow-lit. */
+  --color-rt-500: #fa320a;   /* Rotten Tomatoes tomato red */
+  --color-rt-600: #d42a07;
+  --color-tmdb-500: #01b4e4; /* TMDb cyan */
+  --color-tmdb-600: #018bb0;
+
   --font-display: "Fraunces", "Georgia", serif;
   --font-sans: "Inter", system-ui, sans-serif;
 
