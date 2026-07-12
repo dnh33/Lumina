@@ -29,7 +29,7 @@ Current: `client/src/pages/TitleDetail.tsx` `InsightCard` → `GET /api/insight/
 - **Follow-up chips are generated server-side** (deterministic, not from the LLM) → reliable deep-links into `/chat`.
 - **Tolerant parse:** if the model returns non-JSON or an unsupported shape, degrade gracefully to `{ text: rawText, verdict: "maybe", comparisons: [], followups: default }` so any user-selected OpenRouter model can't break the UI.
 - **Backward-compat:** old cached insights (prose only) still parse — UI defaults missing fields.
-- **Profile gating:** `profileState` = `empty | thin | rich` (rich = ≥1 loved + ≥1 disliked OR ≥8 rated). When `empty`/`thin`: omit comparisons + `matchScore`, soften prose via prompt instruction, offer a "log a few favorites" hook.
+- **Profile gating:** `profileState` = `empty | thin | rich`. `rich` requires `(lovedTitles.length > 0 || dislikedTitles.length > 0) && ratedCount >= 8` (see ADR-0003 — stricter than "≥8 rated alone" to avoid flagging eight mediocre ratings as a rich profile). When `empty`/`thin`: omit comparisons + `matchScore`, soften prose via prompt instruction, offer a "log a few favorites" hook.
 
 **Client (InsightCard rebuild + layout fix):**
 - Card container **always rendered** with a reserved min-height → no rail reflow. Intro CTA / loading / error / content render *inside* it.
