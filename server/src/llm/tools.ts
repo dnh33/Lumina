@@ -247,6 +247,15 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "check_continuing_series",
+      description:
+        "Everything the user is mid-way through: exact next episode per show, progress, and whether NEW episodes aired since they last watched. Use for 'anything new for me?', 'what should I continue?', or proactive nudges.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_episode_recap",
       description:
         "Spoiler-safe 'previously on…' for a series the user is resuming: a recap built ONLY from episodes they've already watched, plus where to resume. Use when they say 'where was I', 'remind me what happened', or resume a show after a break.",
@@ -368,6 +377,15 @@ export async function executeTool(
           director: d.director,
           cast: d.cast.slice(0, 8).map((c) => c.name),
           tmdbRating: d.voteAverage,
+          whereToWatch: d.watchProviders
+            ? {
+                region: d.watchProviders.region,
+                streaming: d.watchProviders.flatrate.map((p) => p.name),
+                rent: d.watchProviders.rent.map((p) => p.name),
+              }
+            : null,
+          hasTrailer: !!d.trailerKey,
+          nextEpisodeToAir: d.nextEpisodeToAir,
           similarTitles: d.similar.slice(0, 8).map((s) => ({
             tmdbId: s.tmdbId,
             title: s.title,
@@ -586,6 +604,26 @@ export async function executeTool(
           }),
         );
         return JSON.stringify({ mood: str(args.mood) || null, candidates: out });
+      }
+
+      case "check_continuing_series": {
+        const { upNext } = await import("../services/discoverService.js");
+        const items = upNext(db);
+        if (!items.length) {
+          return JSON.stringify({ watching: [], note: "Nothing in progress." });
+        }
+        return JSON.stringify({
+          watching: items.map((i) => ({
+            title: i.entry.title,
+            mediaType: i.entry.mediaType,
+            tmdbId: i.entry.tmdbId,
+            progress: i.total ? `${i.watched}/${i.total}` : null,
+            nextEpisode: i.next
+              ? { season: i.next.season, episode: i.next.episode }
+              : null,
+            newEpisodesSinceLastWatch: i.hasNewEpisode,
+          })),
+        });
       }
 
       case "get_episode_recap": {

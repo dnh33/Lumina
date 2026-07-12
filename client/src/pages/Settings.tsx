@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { api } from "../lib/api";
+import { DOCK_CONVERSATION_KEY } from "../lib/keys";
 
 function Row({
   ok,
@@ -64,7 +65,8 @@ export default function Settings() {
     mutationFn: () => api.deleteAllConversations(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
-      localStorage.removeItem("lumina-dock-conversation");
+      qc.invalidateQueries({ queryKey: ["messages"] });
+      localStorage.removeItem(DOCK_CONVERSATION_KEY);
       setWiped(true);
       setTimeout(() => setWiped(false), 2000);
     },
@@ -124,6 +126,11 @@ export default function Settings() {
                     : "Add OPENROUTER_API_KEY to .env (openrouter.ai/keys) and restart."
                 }
               />
+              <Row
+                ok
+                label={`Watch providers · ${health.data.watchRegion}`}
+                detail={`Streaming availability shown for region ${health.data.watchRegion}. Change WATCH_REGION in .env (e.g. US, GB, SE).`}
+              />
             </>
           )}
 
@@ -169,10 +176,21 @@ export default function Settings() {
             The live taste profile assembled from your library — this exact
             text grounds every conversation.
           </p>
-          <pre className="inset-block max-h-72 overflow-y-auto whitespace-pre-wrap p-4 font-sans text-[0.82rem] leading-relaxed text-mist-300">
-            {profile.data?.rendered?.trim() ||
-              "Your taste profile appears once you log and rate a few titles."}
-          </pre>
+          {profile.isLoading ? (
+            <div className="skeleton h-40 rounded-xl" />
+          ) : profile.isError ? (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-mist-400">Couldn't load the profile.</p>
+              <button type="button" className="btn-ghost" onClick={() => profile.refetch()}>
+                Retry
+              </button>
+            </div>
+          ) : (
+            <pre className="inset-block max-h-72 overflow-y-auto whitespace-pre-wrap p-4 font-sans text-[0.82rem] leading-relaxed text-mist-300">
+              {profile.data?.rendered?.trim() ||
+                "Your taste profile appears once you log and rate a few titles."}
+            </pre>
+          )}
         </section>
 
         {/* Data */}
@@ -212,8 +230,12 @@ export default function Settings() {
               ref={fileRef}
               type="file"
               accept=".csv,text/csv"
+              aria-label="Choose CSV file to import"
               className="hidden"
-              onChange={(e) => void onFile(e.target.files?.[0])}
+              onChange={(e) => {
+                void onFile(e.target.files?.[0]);
+                e.target.value = ""; // re-selecting the same file must work
+              }}
             />
           </div>
           <p className="text-2xs leading-relaxed text-mist-400">

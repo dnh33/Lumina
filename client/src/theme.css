@@ -89,7 +89,7 @@ body {
 .grain {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 40; /* under modals/dialogs (50+), over content */
   pointer-events: none;
   opacity: 0.05;
   mix-blend-mode: overlay;
@@ -218,6 +218,4 @@ body {
 .prose-lumina pre {
   @apply bg-ink-800 p-3 rounded-xl overflow-x-auto my-2 ring-1 ring-white/5;
 }
-.prose-lumina pre code {
-  @apply bg-transparent p-0;
-}
+.prose-lu

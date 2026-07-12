@@ -2,6 +2,7 @@ import { Router } from "express";
 import { getDb } from "../db/connection.js";
 import {
   becauseYouLoved,
+  encore,
   forYou,
   popular,
   searchMulti,
@@ -46,9 +47,19 @@ catalogRouter.get("/tmdb/top-rated/:type", async (req, res) => {
 catalogRouter.get("/tmdb/title/:type/:id", async (req, res) => {
   const mediaType = asMediaType(req.params.type);
   const tmdbId = Number(req.params.id);
+  if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
+    return void res.status(400).json({ error: "bad id" });
+  }
   const db = getDb();
   const details = await fetchDetailsFromTmdb(tmdbId, mediaType);
   const entry = getEntryByTmdb(db, tmdbId, mediaType);
+  // the title page needs episode progress too (RecapCard, Library ribbons)
+  if (entry && entry.mediaType === "tv") {
+    const row = db
+      .prepare("SELECT SUM(watched) AS w FROM episodes WHERE title_id = ?")
+      .get(entry.titleId) as { w: number | null };
+    entry.watchedEpisodes = row.w ?? 0;
+  }
   res.json({ details, library: entry });
 });
 
@@ -81,6 +92,10 @@ catalogRouter.get("/tmdb/person/:id", async (req, res) => {
 
 catalogRouter.get("/discover/up-next", (_req, res) => {
   res.json(upNext(getDb()));
+});
+
+catalogRouter.get("/discover/encore", (_req, res) => {
+  res.json(encore(getDb()));
 });
 
 catalogRouter.get("/discover/for-you", async (_req, res) => {

@@ -84,13 +84,12 @@ function Filmography({ person }: { person: PersonDetails }) {
           </h2>
         </div>
         {tabs.length > 1 && (
-          <div className="flex gap-1.5" role="tablist" aria-label="Credit type">
+          <div className="flex gap-1.5" role="group" aria-label="Credit type">
             {tabs.map((t) => (
               <button
                 key={t.key}
                 type="button"
-                role="tab"
-                aria-selected={tab === t.key}
+                aria-pressed={tab === t.key}
                 onClick={() => setTab(t.key)}
                 className={`pill ${tab === t.key ? "pill-active" : ""}`}
               >

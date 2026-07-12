@@ -4,7 +4,7 @@ import { Heart, Plus, Search, Tag } from "lucide-react";
 import { api } from "../lib/api";
 import { PosterCard } from "../components/PosterCard";
 import { AddModal } from "../components/AddModal";
-import { EmptyState, PosterSkeletonRow } from "../components/Bits";
+import { EmptyState, PosterSkeletonGrid } from "../components/Bits";
 import type { LibraryEntry } from "../lib/types";
 
 const STATUS_TABS = [
@@ -53,9 +53,8 @@ function StatCard({
     <button
       type="button"
       onClick={onClick}
-      className={`panel cursor-pointer px-4 py-3 text-left transition hover:ring-gold-400/30 ${
-        active ? "ring-gold-400/40 bg-gold-400/[0.06]" : ""
-      }`}
+      aria-pressed={active}
+      className="panel cursor-pointer px-4 py-3 text-left transition hover:ring-gold-400/30"
     >
       {inner}
     </button>
@@ -178,6 +177,7 @@ export default function Library() {
               key={t.key}
               type="button"
               onClick={() => setStatus(t.key)}
+              aria-pressed={status === t.key}
               className={`pill flex items-center gap-1.5 ${status === t.key ? "pill-active" : ""}`}
             >
               {t.key === "favorites" && <Heart className="h-3.5 w-3.5" />}
@@ -193,7 +193,7 @@ export default function Library() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter…"
-              className="w-36 rounded-xl bg-ink-800/80 py-2.5 pl-9 pr-3 text-sm text-mist-200 placeholder-mist-400/60 outline-none ring-1 ring-white/10 transition focus:w-48 focus:ring-gold-400/50"
+              className="w-36 rounded-xl bg-ink-800/80 py-2.5 pl-9 pr-3 text-sm text-mist-200 placeholder-mist-400/80 outline-none ring-1 ring-white/10 transition focus:w-48 focus:ring-gold-400/50"
             />
           </div>
           <select value={type} onChange={(e) => setType(e.target.value)} className={selectCls} aria-label="Type filter">
@@ -230,7 +230,7 @@ export default function Library() {
       </div>
 
       {entries.isLoading ? (
-        <PosterSkeletonRow count={8} />
+        <PosterSkeletonGrid />
       ) : entries.isError ? (
         <div className="panel mx-auto my-14 flex max-w-lg items-center justify-between gap-4 p-6">
           <p className="text-sm text-mist-300">
@@ -264,7 +264,7 @@ export default function Library() {
             />
           ))}
         </div>
-      ) : (stats.data?.total ?? 0) > 0 ? (
+      ) : !stats.isSuccess || stats.data.total > 0 ? (
         /* library has titles — this particular view is empty */
         <div className="panel mx-auto my-14 max-w-lg px-8 py-10 text-center">
           <Tag className="mx-auto mb-3 h-6 w-6 text-gold-400" />
@@ -296,5 +296,5 @@ export default function Library() {
 
       <AddModal open={addOpen} onClose={() => setAddOpen(false)} />
     </div>
-  );
+    );
 }

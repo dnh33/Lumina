@@ -7,7 +7,7 @@ interface Props {
   children: ReactNode;
 }
 
-/** Horizontal, swipeable row with elegant edge fades and hover arrows. */
+/** Horizontal, swipeable row with hover/focus arrows. */
 export function Carousel({ title, eyebrow, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -48,7 +48,7 @@ export function Carousel({ title, eyebrow, children }: Props) {
       </div>
       <div
         ref={ref}
-        className="no-scrollbar -mx-1 flex gap-4 overflow-x-auto scroll-smooth px-1 pb-2 [scroll-snap-type:x_proximity]"
+        className="no-scrollbar -mx-1 flex gap-4 overflow-x-auto scroll-smooth px-1 pb-2"
       >
         {children}
       </div>

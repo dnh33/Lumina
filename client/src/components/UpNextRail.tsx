@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Play } from "lucide-react";
+import { AlertCircle, Check, Play } from "lucide-react";
 import { api } from "../lib/api";
 import { invalidateLibraryData } from "../lib/invalidate";
 import { backdrop } from "../lib/img";
+import { SPOILER_SHIELD_KEY as SHIELD_KEY } from "../lib/keys";
 import type { UpNextItem } from "../lib/types";
-
-const SHIELD_KEY = "lumina-spoiler-shield";
 
 function shieldOn(): boolean {
   const raw = localStorage.getItem(SHIELD_KEY);
@@ -17,6 +16,7 @@ function shieldOn(): boolean {
 function UpNextCard({ item }: { item: UpNextItem }) {
   const qc = useQueryClient();
   const [imgFailed, setImgFailed] = useState(false);
+  const [failed, setFailed] = useState(false);
   const bg = backdrop(item.entry.backdropPath, "w780");
   const blurName =
     !!item.next && item.next.episode !== 1 && shieldOn();
@@ -24,8 +24,13 @@ function UpNextCard({ item }: { item: UpNextItem }) {
   const markWatched = useMutation({
     mutationFn: () => api.setEpisode(item.next!.episodeId, true),
     onSuccess: () => {
+      setFailed(false);
       qc.invalidateQueries({ queryKey: ["episodes"] });
       invalidateLibraryData(qc);
+    },
+    onError: () => {
+      setFailed(true);
+      setTimeout(() => setFailed(false), 2500);
     },
   });
 
@@ -93,14 +98,24 @@ function UpNextCard({ item }: { item: UpNextItem }) {
             {item.next && (
               <button
                 type="button"
-                aria-label={`Mark S${item.next.season}E${item.next.episode} watched`}
-                title="Mark next episode watched"
+                aria-label={
+                  failed
+                    ? "Failed — tap to retry"
+                    : `Mark S${item.next.season}E${item.next.episode} watched`
+                }
+                title={failed ? "Failed — tap to retry" : "Mark next episode watched"}
                 disabled={markWatched.isPending}
                 onClick={() => markWatched.mutate()}
-                className="z-10 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/[0.07] text-mist-300 ring-1 ring-white/15 transition hover:bg-gold-400 hover:text-ink-950"
+                className={`z-10 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition ${
+                  failed
+                    ? "bg-red-500/20 text-red-300 ring-1 ring-red-400/50"
+                    : "bg-white/[0.07] text-mist-300 ring-1 ring-white/15 hover:bg-gold-400 hover:text-ink-950"
+                }`}
               >
                 {markWatched.isPending ? (
                   <Check className="h-3.5 w-3.5 animate-pulse" />
+                ) : failed ? (
+                  <AlertCircle className="h-3.5 w-3.5" />
                 ) : (
                   <Play className="h-3.5 w-3.5" />
                 )}

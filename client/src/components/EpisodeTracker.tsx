@@ -4,9 +4,11 @@ import { Check, ChevronDown, Loader2, Shield, ShieldOff, Star } from "lucide-rea
 import { api } from "../lib/api";
 import { invalidateLibraryData } from "../lib/invalidate";
 import { still } from "../lib/img";
+import {
+  SPOILER_SHIELD_KEY as SHIELD_KEY,
+  STILL_BACKFILL_KEY,
+} from "../lib/keys";
 import type { EpisodeRow } from "../lib/types";
-
-const SHIELD_KEY = "lumina-spoiler-shield";
 
 function loadShield(): boolean {
   const raw = localStorage.getItem(SHIELD_KEY);
@@ -39,15 +41,27 @@ export function EpisodeTracker({ libraryId }: { libraryId: number }) {
     setAutoOpened(true);
   }, [episodes.data, autoOpened]);
 
-  // One-time backfill: shows synced before stills existed re-sync once.
+  // One-time backfill: shows synced before stills existed re-sync once —
+  // persisted marker so still-less shows don't re-sync on every visit.
   const backfilled = useRef(false);
   useEffect(() => {
     if (backfilled.current || !episodes.data?.length) return;
+    const done = new Set<string>(
+      JSON.parse(localStorage.getItem(STILL_BACKFILL_KEY) ?? "[]") as string[],
+    );
+    if (done.has(String(libraryId))) return;
     if (episodes.data.every((e) => !e.stillPath)) {
       backfilled.current = true;
-      api.episodes(libraryId, true).then(() => {
-        qc.invalidateQueries({ queryKey: ["episodes", libraryId] });
-      });
+      done.add(String(libraryId));
+      localStorage.setItem(STILL_BACKFILL_KEY, JSON.stringify([...done]));
+      api
+        .episodes(libraryId, true)
+        .then(() => {
+          qc.invalidateQueries({ queryKey: ["episodes", libraryId] });
+        })
+        .catch(() => {
+          /* transient — next manual sync will catch it */
+        });
     }
   }, [episodes.data, libraryId, qc]);
 
@@ -229,7 +243,9 @@ export function EpisodeTracker({ libraryId }: { libraryId: number }) {
                 {eps.map((e) => {
                   const hidden = isSpoiler(e, shield);
                   const stillSrc = still(e.stillPath);
+                  // never let quality metadata leak through the shield
                   const isBest =
+                    !hidden &&
                     e.voteAverage != null &&
                     bestRated > 0 &&
                     e.voteAverage === bestRated &&

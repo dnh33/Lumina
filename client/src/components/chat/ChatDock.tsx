@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Maximize2, Sparkles, X } from "lucide-react";
 import { ChatThread } from "./ChatThread";
-
-const DOCK_KEY = "lumina-dock-conversation";
+import { DOCK_CONVERSATION_KEY as DOCK_KEY } from "../../lib/keys";
 
 export function ChatDock() {
   const [open, setOpen] = useState(false);

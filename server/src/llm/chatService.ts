@@ -13,9 +13,43 @@ export type ChatEvent =
   | { type: "context"; librarySize: number; matches: string[]; memoryHits: number }
   | { type: "delta"; text: string }
   | { type: "tool"; name: string }
-  | { type: "tool_done"; name: string }
+  | { type: "tool_done"; name: string; summary?: string }
   | { type: "done"; messageId: number; conversationTitle: string }
   | { type: "error"; message: string };
+
+/** Tools that mutate the library — their results become visible receipts. */
+const WRITE_TOOLS = new Set([
+  "add_to_library",
+  "update_library_entry",
+  "set_episode_progress",
+]);
+
+/** Turn a write-tool result into a short human receipt, or undefined. */
+function writeReceipt(name: string, resultJson: string): string | undefined {
+  try {
+    const r = JSON.parse(resultJson) as Record<string, unknown>;
+    if (r.error) return undefined;
+    if (name === "add_to_library" && r.saved) {
+      const bits = [`Saved ${r.title}`];
+      if (r.rating) bits.push(`${r.rating}/10`);
+      bits.push(String(r.status));
+      return bits.join(" · ");
+    }
+    if (name === "update_library_entry" && r.updated) {
+      const bits = [`Updated ${r.title}`];
+      if (r.rating) bits.push(`${r.rating}/10`);
+      const tags = r.tags as string[] | undefined;
+      if (tags?.length) bits.push(tags.map((t) => `#${t}`).slice(0, 3).join(" "));
+      return bits.join(" · ");
+    }
+    if (name === "set_episode_progress" && r.markedWatched != null) {
+      return `Marked ${r.title} ${r.scope} · now ${r.progress}`;
+    }
+  } catch {
+    /* no receipt */
+  }
+  return undefined;
+}
 
 type Msg = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
@@ -105,6 +139,7 @@ export async function runChatTurn(
   ];
 
   const toolsUsed: string[] = [];
+  const writeReceipts: string[] = [];
   let assistantText = "";
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
@@ -169,7 +204,11 @@ export async function runChatTurn(
         send({ type: "tool", name: call.name });
         toolsUsed.push(call.name);
         const result = await executeTool(db, call.name, call.arguments);
-        send({ type: "tool_done", name: call.name });
+        const summary = WRITE_TOOLS.has(call.name)
+          ? writeReceipt(call.name, result)
+          : undefined;
+        if (summary) writeReceipts.push(summary);
+        send({ type: "tool_done", name: call.name, summary });
         messages.push({
           role: "tool",
           tool_call_id: call.id || `call_${Math.random().toString(36).slice(2, 10)}`,
@@ -190,6 +229,7 @@ export async function runChatTurn(
     if (assistantText.trim()) {
       persistMessage(db, conversationId, "assistant", assistantText, {
         toolsUsed,
+        writeReceipts,
         stopped: true,
         model,
       });
@@ -205,6 +245,7 @@ export async function runChatTurn(
 
   const messageId = persistMessage(db, conversationId, "assistant", assistantText, {
     toolsUsed,
+    writeReceipts,
     retrieved: ctx.meta,
     model,
   });

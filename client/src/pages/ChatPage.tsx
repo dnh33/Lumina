@@ -4,10 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { History, MessageSquarePlus, Pencil, Trash2, X } from "lucide-react";
 import { api } from "../lib/api";
+import { DOCK_CONVERSATION_KEY as DOCK_KEY } from "../lib/keys";
 import { ChatThread } from "../components/chat/ChatThread";
 import type { ConversationSummary } from "../lib/types";
-
-const DOCK_KEY = "lumina-dock-conversation";
 
 function ConversationItem({
   c,
@@ -138,6 +137,24 @@ export default function ChatPage() {
         <MessageSquarePlus className="h-4 w-4" /> New conversation
       </button>
       <div className="panel min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+        {conversations.isLoading &&
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton h-14 rounded-xl" />
+          ))}
+        {conversations.isError && (
+          <div className="flex flex-col items-center gap-3 px-3 py-6 text-center">
+            <p className="text-[0.8rem] text-mist-400">
+              Couldn't load conversations.
+            </p>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => conversations.refetch()}
+            >
+              Retry
+            </button>
+          </div>
+        )}
         {conversations.data?.length === 0 && (
           <p className="px-3 py-6 text-center text-[0.8rem] text-mist-400">
             Every conversation is remembered — and searchable by the AI.

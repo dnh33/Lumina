@@ -57,6 +57,7 @@ export const api = {
   forYou: () => get<ForYou>("/api/discover/for-you"),
   because: () => get<Because>("/api/discover/because"),
   upNext: () => get<UpNextItem[]>("/api/discover/up-next"),
+  encore: () => get<LibraryEntry[]>("/api/discover/encore"),
   person: (id: number) => get<PersonDetails>(`/api/tmdb/person/${id}`),
 
   /* library */

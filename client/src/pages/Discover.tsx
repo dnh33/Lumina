@@ -9,7 +9,23 @@ import { PosterCard } from "../components/PosterCard";
 import { Carousel } from "../components/Carousel";
 import { EmptyState, HeroSkeleton, PosterSkeletonRow } from "../components/Bits";
 import { UpNextRail } from "../components/UpNextRail";
-import type { CatalogItem } from "../lib/types";
+import type { CatalogItem, LibraryEntry } from "../lib/types";
+
+function toCatalogItem(e: LibraryEntry): CatalogItem {
+  return {
+    tmdbId: e.tmdbId,
+    mediaType: e.mediaType,
+    title: e.title,
+    year: e.year,
+    overview: e.overview,
+    posterPath: e.posterPath,
+    backdropPath: e.backdropPath,
+    voteAverage: e.voteAverage,
+    genreIds: [],
+    popularity: null,
+    inLibrary: true,
+  };
+}
 
 /** Larger poster width for the personalized tier. */
 const FEATURED_WIDTH = "w-[164px] sm:w-[184px] lg:w-[204px]";
@@ -111,7 +127,7 @@ function MoodBar() {
         onChange={(e) => setMood(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && go()}
         placeholder="cozy autumn mystery… mind-bending escapism… quiet emotional drama…"
-        className="w-full flex-1 rounded-xl bg-ink-800/80 px-4 py-2.5 text-sm text-mist-200 placeholder-mist-400/60 outline-none ring-1 ring-white/10 transition focus:ring-gold-400/50"
+        className="w-full flex-1 rounded-xl bg-ink-800/80 px-4 py-2.5 text-sm text-mist-200 placeholder-mist-400/80 outline-none ring-1 ring-white/10 transition focus:ring-gold-400/50"
       />
       <button type="button" onClick={go} disabled={!mood.trim()} className="btn-primary">
         Match me <ArrowRight className="h-4 w-4" />
@@ -147,6 +163,7 @@ export default function Discover() {
     queryFn: () => api.topRated("tv"),
     enabled,
   });
+  const encoreRail = useQuery({ queryKey: ["encore"], queryFn: api.encore });
 
   if (health.isError) {
     return (
@@ -192,10 +209,7 @@ export default function Discover() {
       ) : (
         forYou.data &&
         forYou.data.items.length > 0 && (
-          <Carousel
-            title="For you"
-            eyebrow={`Because you rate ${forYou.data.basedOn.join(", ")} highly`}
-          >
+          <Carousel title="For you" eyebrow="Tuned to your taste">
             {forYou.data.items.map((i) => (
               <PosterCard key={`${i.mediaType}${i.tmdbId}`} item={i} width={FEATURED_WIDTH} />
             ))}
@@ -205,6 +219,8 @@ export default function Discover() {
 
       {because.isLoading ? (
         <PosterSkeletonRow />
+      ) : because.isError ? (
+        <RowError label="Kindred picks" onRetry={() => because.refetch()} />
       ) : (
         because.data?.source &&
         because.data.items.length > 0 && (
@@ -219,15 +235,31 @@ export default function Discover() {
         )
       )}
 
+      {(encoreRail.data?.length ?? 0) >= 3 && (
+        <Carousel title="The encore" eyebrow="It's been a while — you loved these">
+          {encoreRail.data!.map((e) => (
+            <PosterCard
+              key={e.id}
+              item={toCatalogItem(e)}
+              myRating={e.rating}
+              subtitle={e.watchedAt ? `Last seen ${e.watchedAt.slice(0, 4)}` : undefined}
+              width={FEATURED_WIDTH}
+            />
+          ))}
+        </Carousel>
+      )}
+
       {/* ── The world's tier: quieter, denser ────────────────────── */}
-      <div className="mb-10 border-t border-white/[0.06]" aria-hidden />
+      {(forYou.data?.items.length || because.data?.items.length || (encoreRail.data?.length ?? 0) >= 3) ? (
+        <div className="mb-10 border-t border-white/[0.06]" aria-hidden />
+      ) : null}
 
       {trending.isLoading ? (
         <PosterSkeletonRow />
       ) : (
         rest.length > 0 && (
-          <Carousel title="Trending now">
-            {rest.slice(0, 10).map((i, idx) => (
+          <Carousel title="Trending now" eyebrow="Nº 1 is above — the rest of the top ten">
+            {rest.slice(0, 9).map((i, idx) => (
               <PosterCard
                 key={`${i.mediaType}${i.tmdbId}`}
                 item={i}

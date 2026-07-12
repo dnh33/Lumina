@@ -22,6 +22,7 @@ miscRouter.get("/health", (_req, res) => {
     tmdbConfigured: !!env.tmdbAccessToken,
     aiConfigured: !!env.openRouterApiKey,
     model: currentModel(db),
+    watchRegion: env.watchRegion,
     libraryCount,
     dataDir: env.dbPath,
   });

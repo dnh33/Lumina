@@ -57,12 +57,16 @@ export const PosterCard = memo(function PosterCard({
     <motion.div
       whileHover={reduceMotion ? undefined : { y: -6 }}
       transition={{ type: "spring", stiffness: 320, damping: 22 }}
-      className={`group relative shrink-0 ${width} ${rank ? "pl-7 sm:pl-8" : ""}`}
+      className={`group relative shrink-0 ${width} ${
+        rank !== undefined ? (rank >= 10 ? "pl-10 sm:pl-11" : "pl-7 sm:pl-8") : ""
+      }`}
     >
       {rank !== undefined && (
         <span
           aria-hidden
-          className="pointer-events-none absolute -left-1 bottom-14 z-0 select-none font-display text-[5.5rem] font-bold leading-none text-white/[0.07] [text-shadow:0_0_1px_rgba(232,184,75,0.15)]"
+          className={`pointer-events-none absolute -left-1 bottom-14 z-0 select-none font-display font-bold leading-none text-white/[0.07] [text-shadow:0_0_1px_rgba(232,184,75,0.15)] ${
+            rank >= 10 ? "text-[3.8rem] tracking-[-0.08em]" : "text-[5.5rem]"
+          }`}
         >
           {rank}
         </span>

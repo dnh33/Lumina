@@ -1,9 +1,37 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, Loader2, Send, Sparkles, Square } from "lucide-react";
+import { ArrowDown, BookmarkCheck, Loader2, Send, Sparkles, Square } from "lucide-react";
 import { api } from "../../lib/api";
+import type { MessageMeta } from "../../lib/types";
 import { MessageBubble } from "./MessageBubble";
 import { TOOL_LABELS, useChat } from "./useChat";
+
+function parseMeta(raw: string | null): MessageMeta {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as MessageMeta;
+  } catch {
+    return {};
+  }
+}
+
+/** Durable proof that the AI wrote to the library. */
+function Receipts({ items }: { items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {items.map((r, i) => (
+        <span
+          key={i}
+          className="flex items-center gap-1.5 rounded-lg bg-gold-400/[0.1] px-2.5 py-1 text-2xs font-medium text-gold-300 ring-1 ring-gold-400/25"
+        >
+          <BookmarkCheck className="h-3 w-3" />
+          {r}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 const SUGGESTION_CHIPS = [
   "What should I watch tonight?",
@@ -30,6 +58,7 @@ export function ChatThread({
     messages,
     messagesLoading,
     messagesError,
+    refetchMessages,
     stream,
     error,
     failedText,
@@ -42,11 +71,12 @@ export function ChatThread({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nearBottomRef = useRef(true);
   const [detached, setDetached] = useState(false);
-  const prefillUsed = useRef(false);
+  const lastPrefill = useRef<string | undefined>(undefined);
 
+  // a NEW prefill (different value) re-arms — e.g. two "Ask Lumina" hops
   useEffect(() => {
-    if (prefill && !prefillUsed.current) {
-      prefillUsed.current = true;
+    if (prefill && prefill !== lastPrefill.current) {
+      lastPrefill.current = prefill;
       setDraft(prefill);
     }
   }, [prefill]);
@@ -107,23 +137,28 @@ export function ChatThread({
     );
   }
 
-  // a deleted/invalid conversation must not masquerade as a fresh one
+  // a fetch failure isn't necessarily a dead conversation — retry first
   if (messagesError && !stream) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
         <p className="text-sm text-mist-300">
-          This conversation isn't available anymore.
+          Couldn't load this conversation.
         </p>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={async () => {
-            const created = await api.createConversation();
-            onConversationChange(created.id);
-          }}
-        >
-          Start a new one
-        </button>
+        <div className="flex gap-2.5">
+          <button type="button" className="btn-primary" onClick={() => refetchMessages()}>
+            Try again
+          </button>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={async () => {
+              const created = await api.createConversation();
+              onConversationChange(created.id);
+            }}
+          >
+            Start fresh
+          </button>
+        </div>
       </div>
     );
   }
@@ -132,12 +167,16 @@ export function ChatThread({
     !messagesLoading && messages.length === 0 && !stream && !error;
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {/* Thread */}
+      <div className="relative min-h-0 flex-1">
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className={`min-h-0 flex-1 space-y-5 overflow-y-auto ${compact ? "p-4" : "p-5 sm:p-8"}`}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions text"
+        className={`h-full space-y-5 overflow-y-auto ${compact ? "p-4" : "p-5 sm:p-8"}`}
       >
         {messagesLoading && (
           <div className="flex justify-center py-10">
@@ -175,9 +214,18 @@ export function ChatThread({
           </div>
         )}
 
-        {messages.map((m) => (
-          <MessageBubble key={m.id} role={m.role} content={m.content} />
-        ))}
+        {messages.map((m) => {
+          const meta = m.role === "assistant" ? parseMeta(m.meta) : {};
+          return (
+            <div key={m.id} className="space-y-2">
+              <MessageBubble role={m.role} content={m.content} />
+              {meta.writeReceipts && <Receipts items={meta.writeReceipts} />}
+              {meta.stopped && (
+                <p className="text-2xs italic text-mist-400">stopped by you</p>
+              )}
+            </div>
+          );
+        })}
 
         {stream && (
           <>
@@ -188,12 +236,20 @@ export function ChatThread({
                 {stream.contextNote}
               </p>
             )}
-            {stream.activeTool && (
-              <div className="flex items-center gap-2 text-[0.8rem] text-gold-300/90">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                {TOOL_LABELS[stream.activeTool] ?? "Working"}…
+            {stream.toolsUsed.length > 0 && (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.8rem] text-gold-300/90">
+                {stream.toolsUsed.map((t, i) => (
+                  <span key={i} className="flex items-center gap-1.5">
+                    {i > 0 && <span className="text-mist-400/60">·</span>}
+                    {stream.activeTool === t && i === stream.toolsUsed.length - 1 ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : null}
+                    {TOOL_LABELS[t] ?? t}
+                  </span>
+                ))}
               </div>
             )}
+            {stream.receipts.length > 0 && <Receipts items={stream.receipts} />}
             {stream.assistantText ? (
               <MessageBubble role="assistant" content={stream.assistantText} streaming />
             ) : !stream.activeTool ? (
@@ -221,16 +277,17 @@ export function ChatThread({
         )}
       </div>
 
-      {/* jump back to the live edge */}
+      {/* jump back to the live edge — anchored to the scroll area, not the composer */}
       {detached && (isStreaming || messages.length > 0) && (
         <button
           type="button"
           onClick={jumpToLatest}
-          className="absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 cursor-pointer items-center gap-1.5 rounded-full bg-ink-800/95 px-3.5 py-2 text-2xs font-semibold text-gold-300 ring-1 ring-gold-400/30 shadow-lg backdrop-blur transition hover:bg-ink-700"
+          className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 cursor-pointer items-center gap-1.5 rounded-full bg-ink-800/95 px-3.5 py-2 text-2xs font-semibold text-gold-300 ring-1 ring-gold-400/30 shadow-lg backdrop-blur transition hover:bg-ink-700"
         >
           <ArrowDown className="h-3.5 w-3.5" /> Latest
         </button>
       )}
+      </div>
 
       {/* Composer */}
       <div

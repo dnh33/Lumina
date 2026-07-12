@@ -54,7 +54,8 @@ function ResultRow({ item }: { item: CatalogItem }) {
         </span>
       ) : savedAs || item.inLibrary ? (
         <span className="flex items-center gap-1.5 rounded-lg bg-gold-400/15 px-2.5 py-1.5 text-xs font-semibold text-gold-300">
-          <Check className="h-3.5 w-3.5" /> {savedAs ?? "In library"}
+          <Check className="h-3.5 w-3.5" />
+          {savedAs === "watched" ? "Watched" : savedAs ? "Watchlist" : "In library"}
         </span>
       ) : add.isPending ? (
         <Loader2 className="h-4 w-4 animate-spin text-gold-400" />
@@ -80,6 +81,8 @@ export function AddModal({ open, onClose }: { open: boolean; onClose: () => void
   const [q, setQ] = useState("");
   const debounced = useDebounced(q, 300);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
 
   const results = useQuery({
     queryKey: ["tmdb-search", debounced],
@@ -88,8 +91,13 @@ export function AddModal({ open, onClose }: { open: boolean; onClose: () => void
   });
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 60);
-    else setQ("");
+    if (open) {
+      openerRef.current = document.activeElement as HTMLElement | null;
+      setTimeout(() => inputRef.current?.focus(), 60);
+    } else {
+      setQ("");
+      openerRef.current?.focus();
+    }
   }, [open]);
 
   useEffect(() => {
@@ -97,6 +105,24 @@ export function AddModal({ open, onClose }: { open: boolean; onClose: () => void
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // keep Tab inside the dialog while it's open
+  const trapTab = (e: React.KeyboardEvent) => {
+    if (e.key !== "Tab" || !panelRef.current) return;
+    const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+      'button, input, [href], [tabindex]:not([tabindex="-1"])',
+    );
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -109,6 +135,7 @@ export function AddModal({ open, onClose }: { open: boolean; onClose: () => void
           onClick={onClose}
         >
           <motion.div
+            ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-label="Search titles to add"
@@ -118,6 +145,7 @@ export function AddModal({ open, onClose }: { open: boolean; onClose: () => void
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             className="w-full max-w-xl overflow-hidden rounded-2xl bg-ink-850 ring-1 ring-white/10 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={trapTab}
           >
             <div className="flex items-center gap-3 border-b border-white/[0.07] px-4 py-3.5">
               <Search className="h-[18px] w-[18px] text-gold-400" />
@@ -126,7 +154,7 @@ export function AddModal({ open, onClose }: { open: boolean; onClose: () => void
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search films & series to add…"
-                className="flex-1 bg-transparent text-[0.95rem] text-mist-200 placeholder-mist-400/60 outline-none"
+                className="flex-1 bg-transparent text-[0.95rem] text-mist-200 placeholder-mist-400/80 outline-none"
               />
               <button
                 type="button"

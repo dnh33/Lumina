@@ -187,8 +187,17 @@ export interface Health {
   tmdbConfigured: boolean;
   aiConfigured: boolean;
   model: string;
+  watchRegion: string;
   libraryCount: number;
   dataDir: string;
+}
+
+/** Parsed shape of ChatMessageRow.meta (best-effort). */
+export interface MessageMeta {
+  toolsUsed?: string[];
+  writeReceipts?: string[];
+  stopped?: boolean;
+  model?: string;
 }
 
 export interface ForYou {
@@ -211,7 +220,7 @@ export type ChatEvent =
   | { type: "context"; librarySize: number; matches: string[]; memoryHits: number }
   | { type: "delta"; text: string }
   | { type: "tool"; name: string }
-  | { type: "tool_done"; name: string }
+  | { type: "tool_done"; name: string; summary?: string }
   | { type: "done"; messageId: number; conversationTitle: string }
   | { type: "error"; message: string };
 
@@ -220,4 +229,8 @@ export interface SuggestionItem {
   mediaType: MediaType;
   title: string;
   year?: number;
+  /** one-clause taste rationale from the model */
+  reason?: string;
+  /** safe = squarely their taste, stretch = adventurous */
+  pick?: "safe" | "stretch";
 }

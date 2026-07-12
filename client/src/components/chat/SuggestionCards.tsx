@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Star } from "lucide-react";
+import { Play, Star } from "lucide-react";
 import { api } from "../../lib/api";
 import { poster } from "../../lib/img";
 import type { SuggestionItem } from "../../lib/types";
@@ -13,10 +13,11 @@ function Card({ item }: { item: SuggestionItem }) {
   });
   const details = q.data?.details;
   const src = poster(details?.posterPath, "w185");
+  const streaming = details?.watchProviders?.flatrate?.slice(0, 2) ?? [];
 
   if (q.isPending) {
     return (
-      <div className="w-[104px] shrink-0">
+      <div className="w-[128px] shrink-0">
         <div className="skeleton aspect-[2/3] rounded-lg" />
         <div className="skeleton mt-1.5 h-3 w-3/4 rounded" />
       </div>
@@ -26,9 +27,9 @@ function Card({ item }: { item: SuggestionItem }) {
   return (
     <Link
       to={`/title/${item.mediaType}/${item.tmdbId}`}
-      className="group w-[104px] shrink-0"
+      className="group w-[128px] shrink-0"
     >
-      <div className="aspect-[2/3] overflow-hidden rounded-lg bg-ink-700 ring-1 ring-white/10 transition group-hover:ring-gold-400/50">
+      <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-ink-700 ring-1 ring-white/10 transition group-hover:ring-gold-400/50">
         {src ? (
           <img
             src={src}
@@ -36,15 +37,26 @@ function Card({ item }: { item: SuggestionItem }) {
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full items-center justify-center p-2 text-center text-[0.68rem] text-mist-400">
+          <div className="flex h-full items-center justify-center p-2 text-center text-2xs text-mist-400">
             {item.title}
           </div>
         )}
+        {item.pick && (
+          <span
+            className={`absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[0.58rem] font-bold uppercase tracking-wider ${
+              item.pick === "stretch"
+                ? "bg-gold-400 text-ink-950"
+                : "bg-ink-950/85 text-mist-200 ring-1 ring-white/20"
+            }`}
+          >
+            {item.pick}
+          </span>
+        )}
       </div>
-      <p className="mt-1.5 truncate text-[0.72rem] font-medium text-mist-300">
+      <p className="mt-1.5 truncate text-2xs font-medium text-mist-300">
         {item.title}
       </p>
-      <p className="flex items-center gap-1 text-[0.66rem] text-mist-400">
+      <p className="flex items-center gap-1 text-2xs text-mist-400">
         {details?.year ?? item.year ?? ""}
         {details?.voteAverage != null && (
           <>
@@ -53,6 +65,17 @@ function Card({ item }: { item: SuggestionItem }) {
           </>
         )}
       </p>
+      {streaming.length > 0 && (
+        <p className="mt-0.5 flex items-center gap-1 truncate text-2xs text-gold-300/90">
+          <Play className="h-2.5 w-2.5" />
+          {streaming.map((p) => p.name).join(" · ")}
+        </p>
+      )}
+      {item.reason && (
+        <p className="mt-1 line-clamp-3 text-2xs leading-snug text-mist-400">
+          {item.reason}
+        </p>
+      )}
     </Link>
   );
 }

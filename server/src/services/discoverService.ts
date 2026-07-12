@@ -176,6 +176,24 @@ export function upNext(db: DB): UpNextItem[] {
   return items;
 }
 
+/**
+ * "The Encore" — beloved titles (9-10s and favorites) the user hasn't
+ * touched in a long while. Pure local data; rewatching is intimate.
+ */
+export function encore(db: DB): LibraryEntry[] {
+  const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  return listLibrary(db, { status: "watched", sort: "rating" })
+    .filter(
+      (e) =>
+        (e.favorite || (e.rating ?? 0) >= 9) &&
+        !!e.watchedAt &&
+        e.watchedAt <= cutoff,
+    )
+    .slice(0, 20);
+}
+
 export interface BecauseResult {
   source: { title: string; tmdbId: number; mediaType: MediaType } | null;
   items: CatalogItemWithFlags[];

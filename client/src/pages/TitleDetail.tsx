@@ -47,15 +47,24 @@ function TrailerLightbox({
   title: string;
   onClose: () => void;
 }) {
+  const reduceMotion = useReducedMotion();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
+    openerRef.current = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      openerRef.current?.focus();
+    };
   }, [onClose]);
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={reduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[70] flex items-center justify-center bg-ink-950/95 p-4 backdrop-blur-sm"
@@ -65,6 +74,7 @@ function TrailerLightbox({
       aria-label={`${title} trailer`}
     >
       <button
+        ref={closeRef}
         type="button"
         aria-label="Close trailer"
         onClick={onClose}
@@ -478,7 +488,7 @@ function ActionBar({
             onClick={() => add.mutate("watched")}
             className="btn-primary"
           >
-            {add.isPending ? (
+            {add.isPending && add.variables === "watched" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Plus className="h-4 w-4" />
@@ -491,6 +501,9 @@ function ActionBar({
             onClick={() => add.mutate("watchlist")}
             className="btn-ghost"
           >
+            {add.isPending && add.variables === "watchlist" && (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            )}
             Save to watchlist
           </button>
           {details.mediaType === "tv" && (
@@ -500,6 +513,9 @@ function ActionBar({
               onClick={() => add.mutate("watching")}
               className="btn-ghost"
             >
+              {add.isPending && add.variables === "watching" && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
               Currently watching
             </button>
           )}
@@ -615,6 +631,7 @@ function TagsEditor({ entry }: { entry: LibraryEntry }) {
           </span>
         ))}
         <input
+          aria-label="Add a taste tag"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -647,6 +664,18 @@ function NotesBlock({ entry }: { entry: LibraryEntry }) {
     latestPersisted.current = entry.notes;
     draftRef.current = entry.notes;
   }, [entry.id]);
+
+  // adopt external updates (e.g. the AI appended a note) when not dirty
+  useEffect(() => {
+    if (
+      entry.notes !== latestPersisted.current &&
+      draftRef.current === latestPersisted.current
+    ) {
+      setNotes(entry.notes);
+      latestPersisted.current = entry.notes;
+      draftRef.current = entry.notes;
+    }
+  }, [entry.notes]);
 
   const persist = useCallback(
     (value: string) => {
@@ -707,6 +736,7 @@ export default function TitleDetail() {
   const id = Number(tmdbId);
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [heroImgFailed, setHeroImgFailed] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   const q = useQuery({
     queryKey: ["title", type, id],
@@ -714,7 +744,10 @@ export default function TitleDetail() {
     enabled: (type === "movie" || type === "tv") && Number.isFinite(id),
   });
 
-  useEffect(() => setHeroImgFailed(false), [id]);
+  useEffect(() => {
+    setHeroImgFailed(false);
+    setLogoFailed(false);
+  }, [id]);
 
   if (q.isLoading) {
     return (
@@ -794,25 +827,18 @@ export default function TitleDetail() {
               />
             )}
             <div className="min-w-0">
-              {logoSrc ? (
+              {logoSrc && !logoFailed ? (
                 <img
                   src={logoSrc}
                   alt={details.title}
-                  className="max-h-24 w-auto max-w-[380px] object-contain object-left drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] sm:max-h-32 sm:max-w-[460px]"
-                  onError={(e) => {
-                    // fall back to the serif title if the logo 404s
-                    (e.currentTarget.style.display = "none");
-                    const h1 = e.currentTarget.nextElementSibling as HTMLElement | null;
-                    if (h1) h1.style.display = "";
-                  }}
+                  onError={() => setLogoFailed(true)}
+                  className="max-h-24 w-auto max-w-full object-contain object-left drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] sm:max-h-32 sm:max-w-[460px]"
                 />
-              ) : null}
-              <h1
-                style={logoSrc ? { display: "none" } : undefined}
-                className="font-display text-4xl font-semibold leading-tight text-white [text-wrap:balance] sm:text-5xl"
-              >
-                {details.title}
-              </h1>
+              ) : (
+                <h1 className="font-display text-4xl font-semibold leading-tight text-white [text-wrap:balance] sm:text-5xl">
+                  {details.title}
+                </h1>
+              )}
               {details.tagline && (
                 <p className="mt-2 font-display italic text-mist-300">
                   {details.tagline}
@@ -874,7 +900,7 @@ export default function TitleDetail() {
           <p className="max-w-[68ch] text-lg leading-[1.75] text-mist-200 [text-wrap:pretty]">
             {details.overview}
           </p>
-          <div className="grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid items-start gap-5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
             <InsightCard details={details} />
             <WhereToWatch details={details} />
             <FactsCard details={details} entry={null} />

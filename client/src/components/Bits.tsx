@@ -21,6 +21,21 @@ export function HeroSkeleton() {
   return <div className="skeleton mb-12 h-[420px] w-full rounded-3xl" />;
 }
 
+/** Skeleton matching the Library's responsive poster grid (no CLS). */
+export function PosterSkeletonGrid({ count = 12 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(138px,1fr))] gap-x-4 gap-y-7 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))]">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i}>
+          <div className="skeleton aspect-[2/3]" />
+          <div className="skeleton mt-2 h-3.5 w-3/4 rounded-md" />
+          <div className="skeleton mt-1.5 h-3 w-1/2 rounded-md" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ── Empty state ─────────────────────────────────────────────────── */
 
 export function EmptyState({
@@ -66,7 +81,7 @@ export function RatingDial({
             aria-label={`Rate ${n}/10`}
             title={value === n ? "Click again to clear" : `Rate ${n}/10`}
             onClick={() => onChange(value === n ? null : n)}
-            className={`h-7 w-7 rounded-lg text-[0.72rem] font-bold transition-all duration-150 ${
+            className={`h-7 w-7 rounded-lg text-2xs font-bold transition-all duration-150 ${
               active
                 ? "bg-gold-400 text-ink-950 shadow-[0_0_14px_rgba(232,184,75,0.35)]"
                 : "bg-white/[0.05] text-mist-400 ring-1 ring-white/10 hover:bg-white/10 hover:text-mist-200"
@@ -84,7 +99,7 @@ export function RatingDial({
 
 export function Chip({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[0.72rem] font-medium text-mist-300 ring-1 ring-white/10">
+    <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-2xs font-medium text-mist-300 ring-1 ring-white/10">
       {children}
     </span>
   );
