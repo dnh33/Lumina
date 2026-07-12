@@ -49,6 +49,30 @@ app.use(
 
 getDb(); // open + migrate on boot
 
+// ── Safety net: daily JSON snapshot of everything (library, ratings,
+// notes, tags, episodes, conversations) into data/backups, keep 10.
+// The SQLite db itself is gitignored by design — this guards against
+// corruption/mistakes without putting private data in the repo.
+try {
+  const backupDir = path.join(path.dirname(env.dbPath), "backups");
+  fs.mkdirSync(backupDir, { recursive: true });
+  const today = new Date().toISOString().slice(0, 10);
+  const target = path.join(backupDir, `lumina-${today}.json`);
+  if (!fs.existsSync(target)) {
+    const { exportAll } = await import("./services/exportService.js");
+    fs.writeFileSync(target, JSON.stringify(exportAll(getDb())));
+    const old = fs
+      .readdirSync(backupDir)
+      .filter((f) => f.startsWith("lumina-") && f.endsWith(".json"))
+      .sort()
+      .slice(0, -10);
+    for (const f of old) fs.unlinkSync(path.join(backupDir, f));
+    console.log(`  ✦ Backup written: data/backups/lumina-${today}.json`);
+  }
+} catch (err) {
+  console.warn("[lumina] backup skipped:", (err as Error).message);
+}
+
 app.listen(env.port, env.host, () => {
   console.log(`
   ✦ Lumina API listening on http://${env.host}:${env.port}
