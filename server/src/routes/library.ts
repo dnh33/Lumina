@@ -14,6 +14,8 @@ import {
   type LibraryStatus,
   type ListFilters,
 } from "../services/libraryService.js";
+import { ensureRatings } from "../services/ratingsService.js";
+import { env } from "../env.js";
 import type { MediaType } from "../tmdb/types.js";
 
 export const libraryRouter = Router();
@@ -68,6 +70,30 @@ libraryRouter.get("/library", (req, res) => {
     sort: (req.query.sort as ListFilters["sort"]) || "added",
   };
   res.json(listLibrary(getDb(), f));
+});
+
+// Backfill critics scores for every title in the library. Respects the OMDb
+// 30-day cache and 1k/day quota: ensureRatings() no-ops on fresh rows and
+// skips the network entirely when OMDB_API_KEY is unset. Designed to be run
+// on a schedule or manually — never call this per-render.
+libraryRouter.post("/library/enrich-all", async (_req, res) => {
+  if (!env.omdbApiKey) {
+    res.json({ ok: true, skipped: true, reason: "no OMDB_API_KEY", enriched: 0 });
+    return;
+  }
+  const db = getDb();
+  const rows = db
+    .prepare(
+      "SELECT tmdb_id, media_type FROM titles WHERE imdb_rating IS NULL OR rt_rating IS NULL",
+    )
+    .all() as { tmdb_id: number; media_type: MediaType }[];
+
+  let enriched = 0;
+  for (const r of rows) {
+    const scores = await ensureRatings(db, r.tmdb_id, r.media_type);
+    if (scores.imdb != null || scores.rt != null) enriched++;
+  }
+  res.json({ ok: true, checked: rows.length, enriched });
 });
 
 libraryRouter.get("/library/stats", (_req, res) => {

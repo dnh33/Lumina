@@ -225,6 +225,7 @@ export default function Library() {
             <option value="added">Recently added</option>
             <option value="updated">Recently updated</option>
             <option value="rating">Highest rated</option>
+            <option value="critics">Top critics score</option>
             <option value="title">A–Z</option>
             <option value="year">Newest</option>
           </select>

@@ -35,6 +35,8 @@ export interface SparkAvatarProps {
   toolBeads?: number;
   /** One-shot: pop a gold "memory constellation" star (P13) when true. */
   showMemoryPulse?: boolean;
+  /** Hide the Fraunces state-whisper (used when the parent renders status text). */
+  hideWhisper?: boolean;
   /** Rendered pixel size of the core. Preserved from the wave-1 API. */
   size?: number;
   /** Extra classes on the root. Preserved from the wave-1 API. */
@@ -292,6 +294,7 @@ export function SparkAvatar({
   state,
   toolBeads = 3,
   showMemoryPulse = false,
+  hideWhisper = false,
   size = 20,
   className = "",
 }: SparkAvatarProps) {
@@ -370,7 +373,7 @@ export function SparkAvatar({
         {showMemoryPulse && <MemoryPulse reduce={reduce} />}
       </span>
 
-      {whisper && (
+      {whisper && !hideWhisper && (
         <motion.span
           // The ONLY element permitted the Fraunces serif (P-type). In this repo
           // Fraunces is exposed via the `font-display` utility, not `font-serif`.

@@ -112,6 +112,17 @@ const migrations: string[] = [
   ALTER TABLE episodes ADD COLUMN still_path TEXT;
   ALTER TABLE episodes ADD COLUMN vote_average REAL;
   `,
+
+  // ── v4: critics scores (IMDb + Rotten Tomatoes) ────────────────
+  // These describe the TITLE, not your personal rating (library.rating,
+  // 1–10, stays separate). imdb_id is the bridge to OMDb; the two ratings
+  // are cached from OMDb and refreshed on a TTL.
+  `
+  ALTER TABLE titles ADD COLUMN imdb_id TEXT;
+  ALTER TABLE titles ADD COLUMN imdb_rating REAL;
+  ALTER TABLE titles ADD COLUMN rt_rating REAL;
+  ALTER TABLE titles ADD COLUMN ratings_fetched_at INTEGER;
+  `,
 ];
 
 export function migrate(db: DB): void {

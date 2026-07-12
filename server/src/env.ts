@@ -70,6 +70,7 @@ export const env = {
   tmdbAccessToken: process.env.TMDB_ACCESS_TOKEN ?? "",
   openRouterApiKey: process.env.OPENROUTER_API_KEY ?? "",
   openRouterModel: process.env.OPENROUTER_MODEL ?? "anthropic/claude-sonnet-5",
+  omdbApiKey: process.env.OMDB_API_KEY ?? "",
   watchRegion: process.env.WATCH_REGION ?? "DK",
   dbPath:
     process.env.LUMINA_DB ?? path.join(repoRoot, "data", "lumina.db"),

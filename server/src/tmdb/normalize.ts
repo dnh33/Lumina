@@ -158,6 +158,7 @@ export function normalizeDetails(
     logoPath,
     trailerKey,
     watchProviders: normalizeWatchProviders(raw, region),
+    imdbId: raw.external_ids?.imdb_id ?? null,
     nextEpisodeToAir: raw.next_episode_to_air
       ? {
           season: raw.next_episode_to_air.season_number,
@@ -176,6 +177,8 @@ export function normalizeDetails(
         airDate: s.air_date ?? null,
         posterPath: s.poster_path ?? null,
       })),
+    imdbRating: null,
+    rtRating: null,
   };
 }
 

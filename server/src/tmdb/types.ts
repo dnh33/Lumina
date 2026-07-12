@@ -58,6 +58,11 @@ export interface TitleDetails extends CatalogItem {
   } | null;
   similar: CatalogItem[];
   seasons: SeasonSummary[];
+  /** IMDb id — the bridge to OMDb for critics scores (IMDb + RT) */
+  imdbId: string | null;
+  /** Critics scores, populated lazily from OMDb. Null until fetched. */
+  imdbRating?: number | null;
+  rtRating?: number | null;
 }
 
 export interface SeasonSummary {
@@ -171,6 +176,9 @@ export interface RawTmdbDetails extends RawTmdbItem {
   } | null;
   similar?: { results?: RawTmdbItem[] };
   recommendations?: { results?: RawTmdbItem[] };
+  "external_ids"?: {
+    imdb_id?: string | null;
+  };
   seasons?: {
     season_number: number;
     name: string;

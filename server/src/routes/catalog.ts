@@ -15,6 +15,7 @@ import {
   getEntryByTmdb,
   libraryTmdbIds,
 } from "../services/libraryService.js";
+import { ensureRatings } from "../services/ratingsService.js";
 import { tmdbGet } from "../tmdb/client.js";
 import { normalizePerson, normalizeSeason } from "../tmdb/normalize.js";
 import type { MediaType, RawPerson, RawSeason } from "../tmdb/types.js";
@@ -52,6 +53,10 @@ catalogRouter.get("/tmdb/title/:type/:id", async (req, res) => {
   }
   const db = getDb();
   const details = await fetchDetailsFromTmdb(tmdbId, mediaType);
+  // Lazily ensure critics scores (OMDb), then surface them on the details.
+  const scores = await ensureRatings(db, tmdbId, mediaType);
+  details.imdbRating = scores.imdb;
+  details.rtRating = scores.rt;
   const entry = getEntryByTmdb(db, tmdbId, mediaType);
   // the title page needs episode progress too (RecapCard, Library ribbons)
   if (entry && entry.mediaType === "tv") {

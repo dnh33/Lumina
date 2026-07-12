@@ -23,8 +23,11 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <Shell>
       <AnimatePresence mode="wait">
+        {/* Stable key across /chat and /chat/:id so the first-send navigate
+            re-renders ChatPage (param change) instead of remounting it — a
+            remount would fire useChat's cleanup and abort the in-flight stream. */}
         <motion.div
-          key={location.pathname}
+          key={location.pathname.startsWith("/chat") ? "chat" : location.pathname}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
@@ -36,8 +39,10 @@ export default function App() {
             <Route path="/library" element={<Library />} />
             <Route path="/title/:type/:tmdbId" element={<TitleDetail />} />
             <Route path="/person/:id" element={<PersonPage />} />
-            <Route path="/chat" element={<ChatPage />} />
-            <Route path="/chat/:id" element={<ChatPage />} />
+            {/* Single splat route: navigating /chat → /chat/:id only changes the
+                param (re-render), never remounts ChatPage. Prevents the
+                first-send race where the remount aborted the in-flight stream. */}
+            <Route path="/chat/*" element={<ChatPage />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Discover />} />
           </Routes>

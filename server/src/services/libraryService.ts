@@ -40,6 +40,9 @@ export interface LibraryEntry {
   updatedAt: string;
   /** for tv: watched episode count (filled by listLibrary) */
   watchedEpisodes?: number;
+  /** Critics scores (lazy, from OMDb). Kept separate from `rating` (your score). */
+  imdbRating?: number | null;
+  rtRating?: number | null;
 }
 
 interface TitleRow {
@@ -58,6 +61,10 @@ interface TitleRow {
   director: string | null;
   top_cast: string;
   vote_average: number | null;
+  imdb_id: string | null;
+  imdb_rating: number | null;
+  rt_rating: number | null;
+  ratings_fetched_at: number | null;
 }
 
 interface LibraryRow {
@@ -98,6 +105,8 @@ function rowToEntry(t: TitleRow, l: LibraryRow): LibraryEntry {
     watchedAt: l.watched_at,
     addedAt: l.added_at,
     updatedAt: l.updated_at,
+    imdbRating: t.imdb_rating,
+    rtRating: t.rt_rating,
   };
 }
 
@@ -124,6 +133,7 @@ export function upsertTitle(db: DB, d: TitleDetails): number {
     top_cast: JSON.stringify(d.cast.slice(0, 8).map((c) => c.name)),
     vote_average: d.voteAverage,
     release_date: d.releaseDate,
+    imdb_id: d.imdbId ?? null,
   };
 
   if (existing) {
@@ -132,7 +142,7 @@ export function upsertTitle(db: DB, d: TitleDetails): number {
         poster_path=@poster_path, backdrop_path=@backdrop_path, genres=@genres,
         runtime=@runtime, seasons_count=@seasons_count, episodes_count=@episodes_count,
         director=@director, top_cast=@top_cast, vote_average=@vote_average,
-        release_date=@release_date
+        release_date=@release_date, imdb_id=COALESCE(@imdb_id, imdb_id)
        WHERE id = ${existing.id}`,
     ).run(params);
     return existing.id;
@@ -141,10 +151,10 @@ export function upsertTitle(db: DB, d: TitleDetails): number {
     .prepare(
       `INSERT INTO titles (tmdb_id, media_type, title, year, overview, tagline,
         poster_path, backdrop_path, genres, runtime, seasons_count, episodes_count,
-        director, top_cast, vote_average, release_date)
+        director, top_cast, vote_average, release_date, imdb_id)
        VALUES (@tmdb_id, @media_type, @title, @year, @overview, @tagline,
         @poster_path, @backdrop_path, @genres, @runtime, @seasons_count, @episodes_count,
-        @director, @top_cast, @vote_average, @release_date)`,
+        @director, @top_cast, @vote_average, @release_date, @imdb_id)`,
     )
     .run(params);
   return Number(info.lastInsertRowid);
@@ -192,8 +202,8 @@ export async function fetchDetailsFromTmdb(
 ): Promise<TitleDetails> {
   const append =
     mediaType === "movie"
-      ? "credits,similar,recommendations,videos,images,watch/providers"
-      : "credits,aggregate_credits,similar,recommendations,videos,images,watch/providers";
+      ? "credits,similar,recommendations,videos,images,watch/providers,external_ids"
+      : "credits,aggregate_credits,similar,recommendations,videos,images,watch/providers,external_ids";
   const raw = await tmdbGet<RawTmdbDetails>(`/${mediaType}/${tmdbId}`, {
     append_to_response: append,
     include_image_language: "en,null",
@@ -372,7 +382,7 @@ export interface ListFilters {
   genre?: string;
   tag?: string;
   search?: string;
-  sort?: "added" | "rating" | "title" | "year" | "updated";
+  sort?: "added" | "rating" | "title" | "year" | "updated" | "critics";
 }
 
 export function listLibrary(db: DB, f: ListFilters = {}): LibraryEntry[] {
@@ -408,7 +418,9 @@ export function listLibrary(db: DB, f: ListFilters = {}): LibraryEntry[] {
           ? "t.year DESC"
           : f.sort === "updated"
             ? "l.updated_at DESC"
-            : "l.added_at DESC";
+            : f.sort === "critics"
+              ? `COALESCE(t.imdb_rating, t.rt_rating / 10.0, t.vote_average) DESC NULLS LAST, l.updated_at DESC`
+              : "l.added_at DESC";
 
   // Single JOIN (no per-row getEntry) — stays fast on large libraries.
   const rows = db

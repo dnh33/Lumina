@@ -325,33 +325,47 @@ function FactsCard({
     });
     if (details.status) rows.push({ label: "Status", value: details.status });
   }
-  if (details.voteAverage != null) {
-    rows.push({
-      label: "TMDB score",
-      value: (
-        <span className="flex items-center gap-1 tabular-nums">
+  if (details.imdbRating != null || details.rtRating != null || details.voteAverage != null) {
+    const parts: ReactNode[] = [];
+    if (details.imdbRating != null)
+      parts.push(<span key="imdb">IMDb {details.imdbRating.toFixed(1)}</span>);
+    if (details.rtRating != null)
+      parts.push(
+        <span key="rt" className="text-green-300">
+          RT {details.rtRating}%
+        </span>,
+      );
+    if (details.voteAverage != null)
+      parts.push(
+        <span key="tmdb" className="flex items-center gap-1">
           <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" />
-          {details.voteAverage.toFixed(1)}
-        </span>
-      ),
+          TMDB {details.voteAverage.toFixed(1)}
+        </span>,
+      );
+    rows.push({
+      label: "Critics",
+      value: <span className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">{parts}</span>,
     });
   }
   // Your hottest take — you vs the crowd
-  if (entry?.rating != null && details.voteAverage != null) {
-    const delta = entry.rating - details.voteAverage;
-    rows.push({
-      label: "You vs the crowd",
-      value: (
-        <span
-          className={`tabular-nums font-medium ${
-            Math.abs(delta) >= 2 ? "text-gold-300" : "text-mist-200"
-          }`}
-        >
-          You {entry.rating} · TMDB {details.voteAverage.toFixed(1)}
-          {Math.abs(delta) >= 2 ? (delta > 0 ? " ↑ bold take" : " ↓ contrarian") : ""}
-        </span>
-      ),
-    });
+  if (entry?.rating != null && (details.imdbRating != null || details.rtRating != null || details.voteAverage != null)) {
+    const crowd = details.imdbRating ?? (details.rtRating != null ? details.rtRating / 10 : details.voteAverage);
+    if (crowd != null) {
+      const delta = entry.rating - crowd;
+      rows.push({
+        label: "You vs the crowd",
+        value: (
+          <span
+            className={`tabular-nums font-medium ${
+              Math.abs(delta) >= 2 ? "text-gold-300" : "text-mist-200"
+            }`}
+          >
+            You {entry.rating} · Crowd {crowd.toFixed(1)}
+            {Math.abs(delta) >= 2 ? (delta > 0 ? " ↑ bold take" : " ↓ contrarian") : ""}
+          </span>
+        ),
+      });
+    }
   }
   if (!rows.length) return null;
 
@@ -863,6 +877,32 @@ export default function TitleDetail() {
                   </span>
                 )}
               </div>
+              {/* Critics scores strip — visible for every title, library or not */}
+              {details.imdbRating != null || details.rtRating != null || details.voteAverage != null ? (
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  {library?.rating != null && (
+                    <span className="flex items-center gap-1 rounded-md bg-gold-400/[0.14] px-1.5 py-0.5 text-2xs font-semibold tabular-nums text-gold-300 ring-1 ring-gold-400/25">
+                      You {library.rating}
+                    </span>
+                  )}
+                  {details.imdbRating != null && (
+                    <span className="flex items-center gap-1 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-2xs font-medium tabular-nums text-mist-100 ring-1 ring-white/10">
+                      IMDb {details.imdbRating.toFixed(1)}
+                    </span>
+                  )}
+                  {details.rtRating != null && (
+                    <span className="flex items-center gap-1 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-2xs font-medium tabular-nums text-green-300 ring-1 ring-white/10">
+                      RT {details.rtRating}%
+                    </span>
+                  )}
+                  {details.voteAverage != null && (
+                    <span className="flex items-center gap-1 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-2xs font-medium tabular-nums text-mist-200 ring-1 ring-white/10">
+                      <Star className="h-3 w-3 fill-gold-400 text-gold-400" />
+                      {details.voteAverage.toFixed(1)} TMDb
+                    </span>
+                  )}
+                </div>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {details.genres.map((g) => (
                   <Chip key={g}>{g}</Chip>

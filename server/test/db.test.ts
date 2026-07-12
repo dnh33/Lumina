@@ -28,6 +28,32 @@ describe("schema & migrations", () => {
     }
     expect(db.pragma("user_version", { simple: true })).toBeGreaterThan(0);
   });
+
+  it("v4 migration adds critics columns to titles and round-trips", () => {
+    const db = memoryDb();
+    const cols = db
+      .prepare("PRAGMA table_info(titles)")
+      .all()
+      .map((r) => (r as { name: string }).name);
+    for (const c of ["imdb_id", "imdb_rating", "rt_rating", "ratings_fetched_at"]) {
+      expect(cols).toContain(c);
+    }
+    db.prepare(
+      "INSERT INTO titles (tmdb_id, media_type, title, imdb_id, imdb_rating, rt_rating, ratings_fetched_at) VALUES (?,?,?,?,?,?,?)",
+    ).run(1, "movie", "Test", "tt123", 8.1, 92, Date.now());
+    const row = db
+      .prepare("SELECT imdb_id, imdb_rating, rt_rating, ratings_fetched_at FROM titles WHERE tmdb_id = 1")
+      .get() as {
+      imdb_id: string;
+      imdb_rating: number;
+      rt_rating: number;
+      ratings_fetched_at: number;
+    };
+    expect(row.imdb_id).toBe("tt123");
+    expect(row.imdb_rating).toBe(8.1);
+    expect(row.rt_rating).toBe(92);
+    expect(row.ratings_fetched_at).toBeGreaterThan(0);
+  });
 });
 
 describe("library service", () => {
@@ -85,5 +111,34 @@ describe("library service", () => {
       db.prepare("SELECT COUNT(*) n FROM library_fts").get(),
     ).toMatchObject({ n: 0 });
     expect(db.prepare("SELECT COUNT(*) n FROM titles").get()).toMatchObject({ n: 0 });
+  });
+
+  it("sorts by critics score (composite IMDb/RT/TMDb, nulls last)", () => {
+    const db = memoryDb();
+    const a = seedEntry(db, { title: "Alpha", tmdbId: 101 }, { rating: 5 });
+    const b = seedEntry(db, { title: "Bravo", tmdbId: 102 }, { rating: 5 });
+    const c = seedEntry(db, { title: "Charlie", tmdbId: 103 }, { rating: 5 });
+    // Set distinct IMDb ratings on the underlying titles rows.
+    const setRating = (id: number, imdb: number) =>
+      db
+        .prepare(
+          "UPDATE titles SET imdb_rating = ? WHERE id = (SELECT title_id FROM library WHERE id = ?)",
+        )
+        .run(imdb, id);
+    setRating(a, 9);
+    setRating(b, 4);
+    setRating(c, 7);
+
+    const ordered = listLibrary(db, { sort: "critics" }).map((e) => e.title);
+    expect(ordered).toEqual(["Alpha", "Charlie", "Bravo"]);
+
+    // Nulls sort last — wipe IMDb AND the TMDb fallback so the row is fully null
+    db
+      .prepare(
+        "UPDATE titles SET imdb_rating = NULL, vote_average = NULL WHERE id = (SELECT title_id FROM library WHERE id = ?)",
+      )
+      .run(b);
+    const withNull = listLibrary(db, { sort: "critics" }).map((e) => e.title);
+    expect(withNull[withNull.length - 1]).toBe("Bravo");
   });
 });

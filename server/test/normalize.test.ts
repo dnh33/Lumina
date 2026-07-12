@@ -61,6 +61,19 @@ describe("TMDB normalizers", () => {
     expect(d.runtime).toBe(148);
   });
 
+  it("maps external_ids.imdb_id to imdbId", () => {
+    const d = normalizeDetails(
+      {
+        id: 27205,
+        title: "Inception",
+        release_date: "2010-07-15",
+        "external_ids": { imdb_id: "tt1375666" },
+      },
+      "movie",
+    );
+    expect(d.imdbId).toBe("tt1375666");
+  });
+
   it("normalizes tv details with creator and seasons, skipping specials", () => {
     const d = normalizeDetails(
       {

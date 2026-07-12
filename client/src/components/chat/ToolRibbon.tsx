@@ -13,6 +13,7 @@ export function ToolRibbon({ steps }: { steps: ToolStep[] }) {
   const nodes: ToolTraceNode[] = steps.map((s) => ({
     name: s.name,
     done: s.done,
+    summary: s.summary ?? undefined,
   }));
   return <ToolTrace steps={nodes} />;
 }

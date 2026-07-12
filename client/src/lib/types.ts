@@ -13,6 +13,10 @@ export interface CatalogItem {
   genreIds: number[];
   popularity: number | null;
   inLibrary?: boolean;
+  /** Critics scores (lazy, from OMDb). Null until fetched. Your personal
+   *  rating is `rating` on LibraryEntry / the hero number — kept separate. */
+  imdbRating?: number | null;
+  rtRating?: number | null;
 }
 
 export interface PersonCredit {
@@ -134,6 +138,9 @@ export interface LibraryEntry {
   addedAt: string;
   updatedAt: string;
   watchedEpisodes?: number;
+  /** Critics scores (lazy, from OMDb). Kept separate from `rating` (your score). */
+  imdbRating?: number | null;
+  rtRating?: number | null;
 }
 
 export interface EpisodeRow {

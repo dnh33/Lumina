@@ -72,8 +72,10 @@ function ConversationItem({
 }
 
 export default function ChatPage() {
-  const { id } = useParams<{ id: string }>();
-  const conversationId = id ? Number(id) : null;
+  // Splat route "/chat/*": the segment after /chat is the conversation id.
+  // Staying on one Route element means URL changes re-render, never remount.
+  const { "*": splat } = useParams<{ "*": string }>();
+  const conversationId = splat ? Number(splat) : null;
   const navigate = useNavigate();
   const location = useLocation();
   const qc = useQueryClient();

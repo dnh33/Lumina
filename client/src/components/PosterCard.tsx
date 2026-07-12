@@ -103,6 +103,16 @@ export const PosterCard = memo(function PosterCard({
             {item.voteAverage.toFixed(1)}
           </div>
         )}
+        {item.imdbRating != null && (
+          <div className="absolute left-2 top-9 flex items-center gap-1 rounded-md bg-ink-950/80 px-1.5 py-0.5 text-2xs font-semibold tabular-nums text-mist-200 backdrop-blur">
+            IMDb {item.imdbRating.toFixed(1)}
+          </div>
+        )}
+        {item.rtRating != null && (
+          <div className="absolute right-2 top-2 rounded-md bg-ink-950/80 px-1.5 py-0.5 text-2xs font-semibold tabular-nums text-green-300 backdrop-blur">
+            {item.rtRating}%
+          </div>
+        )}
         {myRating != null && (
           <div className="absolute right-2 top-2 rounded-md bg-gold-400 px-1.5 py-0.5 text-2xs font-bold tabular-nums text-ink-950">
             {myRating}

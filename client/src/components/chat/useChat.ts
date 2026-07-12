@@ -40,6 +40,8 @@ export type TurnPhase = "starting" | "thinking" | "tooling" | "writing";
 export interface ToolStep {
   name: string;
   done: boolean;
+  /** Human label for the step (server summary, else TOOL_LABELS). */
+  summary?: string | null;
 }
 
 export interface StreamState {
@@ -102,7 +104,16 @@ export function useChat(
 
   // never leave a stream dangling when the surface unmounts
   useEffect(() => {
-    return () => abortRef.current?.abort();
+    return () => {
+      // [DEBUG] smoke test for the first-send remount race: if this logs
+      // during an active turn, the stream was killed by an unmount.
+      if (abortRef.current && !abortRef.current.signal.aborted) {
+        if (import.meta.env.DEV) {
+          console.log("[DEBUG] useChat unmounted mid-flight → aborting active stream");
+        }
+      }
+      abortRef.current?.abort();
+    };
   }, []);
 
   // a stale error from one conversation must not haunt another
@@ -122,6 +133,9 @@ export function useChat(
     async (text: string) => {
       const content = text.trim();
       if (!content || inFlightRef.current) return;
+      if (import.meta.env.DEV) {
+        console.log("[DEBUG] useChat.send", { fromNull: conversationId == null, len: content.length });
+      }
       playCue("tick"); // one acknowledgment covers every entry point
       inFlightRef.current = true;
       setError(null);
@@ -231,15 +245,23 @@ export function useChat(
                   return {
                     ...s,
                     phase: "tooling",
-                    steps: [...s.steps, { name: e.name, done: false }],
+                    steps: [
+                      ...s.steps,
+                      {
+                        name: e.name,
+                        done: false,
+                        summary: TOOL_LABELS[e.name] ?? e.name,
+                      },
+                    ],
                   };
                 case "tool_done": {
                   if (WRITE_TOOLS.has(e.name)) wroteToLibrary = true;
+                  const label = e.summary ?? TOOL_LABELS[e.name] ?? e.name;
                   return {
                     ...s,
                     steps: s.steps.map((st, i) =>
                       i === s.steps.length - 1 && st.name === e.name
-                        ? { ...st, done: true }
+                        ? { ...st, done: true, summary: label }
                         : st,
                     ),
                     receipts: e.summary ? [...s.receipts, e.summary] : s.receipts,
@@ -252,7 +274,13 @@ export function useChat(
           },
           controller.signal,
         );
+        if (import.meta.env.DEV) {
+          console.log("[DEBUG] useChat.send stream resolved", { convId });
+        }
       } catch (e) {
+        if (import.meta.env.DEV) {
+          console.log("[DEBUG] useChat.send error", (e as Error).name, (e as Error).message);
+        }
         if ((e as Error).name === "AbortError") {
           aborted = true;
         } else if (!completed) {

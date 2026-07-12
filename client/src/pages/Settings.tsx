@@ -8,6 +8,7 @@ import {
   Flame,
   KeyRound,
   Loader2,
+  Star,
   Upload,
   X,
 } from "lucide-react";
@@ -106,6 +107,22 @@ export default function Settings() {
       localStorage.removeItem(DOCK_CONVERSATION_KEY);
       setWiped(true);
       setTimeout(() => setWiped(false), 2000);
+    },
+  });
+
+  const [enrichMsg, setEnrichMsg] = useState<string | null>(null);
+  const enrich = useMutation({
+    mutationFn: () => api.enrichAll(),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["library"] });
+      playCue("success");
+      if (r.skipped) setEnrichMsg("OMDB_API_KEY isn't set — add it to .env to enable critics.");
+      else setEnrichMsg(`Checked ${r.checked} titles · filled ${r.enriched} with IMDb/RT scores.`);
+      setTimeout(() => setEnrichMsg(null), 5000);
+    },
+    onError: (e) => {
+      setEnrichMsg(`Couldn't refresh — ${(e as Error).message}`);
+      setTimeout(() => setEnrichMsg(null), 5000);
     },
   });
 
@@ -266,6 +283,19 @@ export default function Settings() {
               )}
               Import watch history (CSV)
             </button>
+            <button
+              type="button"
+              disabled={enrich.isPending}
+              onClick={() => enrich.mutate()}
+              className="btn-ghost"
+            >
+              {enrich.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin text-gold-400" />
+              ) : (
+                <Star className="h-4 w-4 text-gold-400" />
+              )}
+              Refresh critics (IMDb · RT)
+            </button>
             <input
               ref={fileRef}
               type="file"
@@ -278,6 +308,9 @@ export default function Settings() {
               }}
             />
           </div>
+          {enrichMsg && (
+            <p className="text-sm text-gold-300/90">{enrichMsg}</p>
+          )}
           <p className="text-2xs leading-relaxed text-mist-400">
             CSV columns: title, year, type (movie/tv), rating (1–10), status,
             notes — only the title is required. Each row is matched against

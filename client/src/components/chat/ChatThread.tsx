@@ -140,26 +140,27 @@ function AssistantTurn({
   return (
     <div className="flex gap-3">
       <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] ring-1 ring-white/[0.07]">
-        <SparkAvatar state={companionState} toolBeads={steps.length || 3} />
+        <SparkAvatar state={companionState} toolBeads={steps.length || 3} hideWhisper />
       </div>
-      <div className="min-w-0 flex-1 space-y-2">
+      <div className="min-w-0 flex-1 space-y-1.5">
         <p className="flex items-baseline gap-2 text-2xs text-mist-400">
           <span className="font-display text-[0.8rem] font-semibold text-mist-300">
             Lumina
           </span>
           {time && <span className="tabular-nums">{time}</span>}
-          {contextNote && (
-            <span className="flex items-center gap-1 truncate italic">
-              <Sparkles className="h-2.5 w-2.5 shrink-0 text-gold-400/70" />
-              {contextNote}
-            </span>
-          )}
         </p>
+
+        {contextNote && (
+          <p className="flex items-center gap-1 text-2xs italic text-mist-400">
+            <Sparkles className="h-2.5 w-2.5 shrink-0 text-gold-400/70" />
+            <span className="truncate">{contextNote}</span>
+          </p>
+        )}
 
         <ToolRibbon steps={steps} />
 
         {thinking && !content ? (
-          <p className="text-[0.8rem] text-mist-400">Thinking…</p>
+          <p className="text-[0.8rem] italic text-mist-400">Thinking…</p>
         ) : (
           <MessageBubble
             role="assistant"
@@ -476,18 +477,22 @@ export function ChatThread({
               )}
             </div>
           )}
-        </div>
 
-        {/* Client-simulated reasoning interstitial (Task 6, D1=a) — anchored,
-            shown only during tool-heavy turns; pure client state, no backend. */}
-        <ReasoningInterstitial
-          visible={!!stream && stream.steps.length > 0}
-          steps={stream?.steps.map<ReasoningStep>((s) => ({
-            label: TOOL_LABELS[s.name] ?? s.name,
-            status: s.done ? "done" : "running",
-          })) ?? []}
-          className="mt-3"
-        />
+          {/* Client-simulated reasoning interstitial (Task 6, D1=a) — lives
+              INSIDE the scroll flow (not as a floating sibling) so it can never
+              overlap the composer. Shown during tool-heavy turns; pure client
+              state, no backend. Uses the server summary when present so the
+              trace reads human instead of dumping raw tool names like
+              `search_library`. */}
+          <ReasoningInterstitial
+            visible={!!stream && stream.steps.length > 0}
+            steps={stream?.steps.map<ReasoningStep>((s) => ({
+              label: s.summary ?? TOOL_LABELS[s.name] ?? s.name,
+              status: s.done ? "done" : "running",
+            })) ?? []}
+            className="mt-3"
+          />
+        </div>
 
         {detached && (isStreaming || messages.length > 0) && (
           <button

@@ -40,6 +40,7 @@ export function makeDetails(overrides: Partial<TitleDetails> = {}): TitleDetails
     nextEpisodeToAir: null,
     similar: [],
     seasons: [],
+    imdbId: null,
     ...overrides,
   };
 }

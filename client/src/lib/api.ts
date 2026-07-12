@@ -88,6 +88,15 @@ export const api = {
       if (!r.ok) throw new Error("Delete failed");
     }),
 
+  enrichAll: () =>
+    send<{
+      ok: true;
+      checked?: number;
+      enriched?: number;
+      skipped?: boolean;
+      reason?: string;
+    }>("POST", "/api/library/enrich-all"),
+
   /* episodes */
   episodes: (libraryId: number, sync = false) =>
     get<EpisodeRow[]>(`/api/library/${libraryId}/episodes${sync ? "?sync=1" : ""}`),
