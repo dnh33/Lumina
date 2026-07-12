@@ -74,6 +74,14 @@ body {
   border-radius: 6px;
 }
 
+/* Text fields communicate focus via their container ring tokens —
+   the global outline would double up and mismatch the rounded shell. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

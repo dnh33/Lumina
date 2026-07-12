@@ -16,7 +16,7 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 interface Props {
-  /** commit a full-page search (Enter with nothing highlighted) */
+  /** commit a full-page search (Enter or the Search button) */
   onCommitQuery: (q: string) => void;
   /** active committed query, if any — shows the clear affordance */
   activeQuery: string;
@@ -24,9 +24,9 @@ interface Props {
 }
 
 /**
- * The box office: one bar that answers both "find this title" (instant
- * TMDB results, keyboard-first) and "find me a feeling" (hand-off to the
- * AI companion). Enter commits a full results grid below.
+ * The box office, in the mood bar's old clothes: one field that answers
+ * both "find this title" (instant TMDB results, keyboard-first) and
+ * "find me a feeling" (hand-off to the AI companion).
  */
 export function SearchOmnibar({ onCommitQuery, activeQuery, onClear }: Props) {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ export function SearchOmnibar({ onCommitQuery, activeQuery, onClear }: Props) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
   const debounced = useDebounced(q, 250);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const fieldRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const results = useQuery({
@@ -52,7 +52,7 @@ export function SearchOmnibar({ onCommitQuery, activeQuery, onClear }: Props) {
   // dismiss on outside click
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!fieldRef.current?.contains(e.target as Node)) setOpen(false);
     };
     window.addEventListener("mousedown", onDown);
     return () => window.removeEventListener("mousedown", onDown);
@@ -85,7 +85,7 @@ export function SearchOmnibar({ onCommitQuery, activeQuery, onClear }: Props) {
       return;
     }
     // last slot after the results = "Ask Lumina"
-    const lastIndex = items.length; // items 0..n-1, mood row = n
+    const lastIndex = items.length;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setHighlighted((h) => (h >= lastIndex ? 0 : h + 1));
@@ -109,141 +109,164 @@ export function SearchOmnibar({ onCommitQuery, activeQuery, onClear }: Props) {
   const showDropdown = open && q.trim().length >= 2;
 
   return (
-    <div ref={rootRef} className="relative z-30 mb-8">
-      <div className="flex items-center gap-3 rounded-2xl bg-ink-800/90 px-4 ring-1 ring-white/10 backdrop-blur transition focus-within:ring-gold-400/50">
-        <Search className="h-[18px] w-[18px] shrink-0 text-gold-400" />
-        <input
-          ref={inputRef}
-          role="combobox"
-          aria-expanded={showDropdown}
-          aria-label="Search films and series, or describe a mood"
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          onKeyDown={onKeyDown}
-          placeholder="Search any film or series — or describe a mood…"
-          className="w-full bg-transparent py-3.5 text-[0.95rem] text-mist-200 placeholder-mist-400/80 outline-none"
-        />
-        {results.isFetching && (
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-gold-400" />
-        )}
-        {(q || activeQuery) && (
-          <button
-            type="button"
-            aria-label="Clear search"
-            onClick={() => {
-              setQ("");
-              setOpen(false);
-              onClear();
-              inputRef.current?.focus();
-            }}
-            className="icon-btn shrink-0"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+    <div className="panel relative z-30 mb-12 flex flex-col gap-3 p-5 sm:flex-row sm:items-center">
+      <div className="flex items-center gap-2.5 sm:w-64 sm:shrink-0">
+        <Sparkles className="h-5 w-5 text-gold-400" />
+        <p className="text-sm font-medium text-mist-200">
+          What are we watching next?
+        </p>
       </div>
 
-      <AnimatePresence>
-        {showDropdown && (
-          <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-x-0 top-full mt-2 overflow-hidden rounded-2xl bg-ink-850 ring-1 ring-white/10 shadow-[0_24px_70px_-16px_rgba(0,0,0,0.8)]"
-            role="listbox"
-          >
-            {results.isError ? (
-              <p className="px-4 py-5 text-sm text-red-300/90">
-                Search failed — check the connection and try again.
-              </p>
-            ) : items.length === 0 && !results.isFetching ? (
-              <p className="px-4 py-5 text-sm text-mist-400">
-                No titles match — try the mood route below.
-              </p>
-            ) : (
-              <ul className="max-h-[46vh] overflow-y-auto p-1.5">
-                {items.map((item, i) => {
-                  const src = poster(item.posterPath, "w185");
-                  return (
-                    <li key={`${item.mediaType}${item.tmdbId}`} role="option" aria-selected={highlighted === i}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpen(false);
-                          navigate(`/title/${item.mediaType}/${item.tmdbId}`);
-                        }}
-                        onMouseEnter={() => setHighlighted(i)}
-                        className={`flex w-full cursor-pointer items-center gap-3 rounded-xl p-2 text-left transition ${
-                          highlighted === i ? "bg-white/[0.06]" : ""
-                        }`}
+      {/* field + dropdown anchor */}
+      <div ref={fieldRef} className="relative w-full flex-1">
+        <div className="flex items-center gap-2.5 rounded-xl bg-ink-800/80 px-4 ring-1 ring-white/10 transition focus-within:ring-gold-400/50">
+          <Search className="h-4 w-4 shrink-0 text-mist-400" />
+          <input
+            ref={inputRef}
+            role="combobox"
+            aria-expanded={showDropdown}
+            aria-label="Search films and series, or describe a mood"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={onKeyDown}
+            placeholder="a title… or a mood: cozy autumn mystery, mind-bending escapism…"
+            className="w-full bg-transparent py-2.5 text-sm text-mist-200 placeholder-mist-400/80 outline-none"
+          />
+          {results.isFetching && (
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-gold-400" />
+          )}
+          {(q || activeQuery) && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => {
+                setQ("");
+                setOpen(false);
+                onClear();
+                inputRef.current?.focus();
+              }}
+              className="icon-btn -mr-1.5 shrink-0"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <AnimatePresence>
+          {showDropdown && (
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-x-0 top-full mt-2 overflow-hidden rounded-2xl bg-ink-850 ring-1 ring-white/10 shadow-[0_24px_70px_-16px_rgba(0,0,0,0.8)]"
+              role="listbox"
+            >
+              {results.isError ? (
+                <p className="px-4 py-5 text-sm text-red-300/90">
+                  Search failed — check the connection and try again.
+                </p>
+              ) : items.length === 0 && !results.isFetching ? (
+                <p className="px-4 py-5 text-sm text-mist-400">
+                  No titles match — try the mood route below.
+                </p>
+              ) : (
+                <ul className="max-h-[46vh] overflow-y-auto p-1.5">
+                  {items.map((item, i) => {
+                    const src = poster(item.posterPath, "w185");
+                    return (
+                      <li
+                        key={`${item.mediaType}${item.tmdbId}`}
+                        role="option"
+                        aria-selected={highlighted === i}
                       >
-                        <span className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-ink-700 ring-1 ring-white/10">
-                          {src && (
-                            <img src={src} alt="" className="h-full w-full object-cover" />
-                          )}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium text-mist-200">
-                            {item.title}
-                          </span>
-                          <span className="flex items-center gap-2 text-2xs text-mist-400">
-                            {item.year}
-                            <span className="uppercase tracking-wider">
-                              {item.mediaType === "tv" ? "Series" : "Film"}
-                            </span>
-                            {item.voteAverage != null && item.voteAverage > 0 && (
-                              <span className="flex items-center gap-0.5 tabular-nums text-gold-300/90">
-                                <Star className="h-2.5 w-2.5 fill-gold-400 text-gold-400" />
-                                {item.voteAverage.toFixed(1)}
-                              </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpen(false);
+                            navigate(`/title/${item.mediaType}/${item.tmdbId}`);
+                          }}
+                          onMouseEnter={() => setHighlighted(i)}
+                          className={`flex w-full cursor-pointer items-center gap-3 rounded-xl p-2 text-left transition ${
+                            highlighted === i ? "bg-white/[0.06]" : ""
+                          }`}
+                        >
+                          <span className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-ink-700 ring-1 ring-white/10">
+                            {src && (
+                              <img src={src} alt="" className="h-full w-full object-cover" />
                             )}
                           </span>
-                        </span>
-                        {item.inLibrary && (
-                          <span className="shrink-0 rounded-md bg-gold-400/[0.12] px-1.5 py-0.5 text-2xs font-semibold text-gold-300 ring-1 ring-gold-400/25">
-                            In library
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-mist-200">
+                              {item.title}
+                            </span>
+                            <span className="flex items-center gap-2 text-2xs text-mist-400">
+                              {item.year}
+                              <span className="uppercase tracking-wider">
+                                {item.mediaType === "tv" ? "Series" : "Film"}
+                              </span>
+                              {item.voteAverage != null && item.voteAverage > 0 && (
+                                <span className="flex items-center gap-0.5 tabular-nums text-gold-300/90">
+                                  <Star className="h-2.5 w-2.5 fill-gold-400 text-gold-400" />
+                                  {item.voteAverage.toFixed(1)}
+                                </span>
+                              )}
+                            </span>
                           </span>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-                <li role="option" aria-selected={highlighted === items.length}>
-                  <button
-                    type="button"
-                    onClick={askLumina}
-                    onMouseEnter={() => setHighlighted(items.length)}
-                    className={`mt-1 flex w-full cursor-pointer items-center gap-3 rounded-xl border-t border-white/[0.06] p-2.5 text-left transition ${
-                      highlighted === items.length ? "bg-gold-400/[0.08]" : ""
-                    }`}
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold-400/10 ring-1 ring-gold-400/25">
-                      <Sparkles className="h-4 w-4 text-gold-400" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-gold-300">
-                        Ask Lumina for a mood match
+                          {item.inLibrary && (
+                            <span className="shrink-0 rounded-md bg-gold-400/[0.12] px-1.5 py-0.5 text-2xs font-semibold text-gold-300 ring-1 ring-gold-400/25">
+                              In library
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                  <li role="option" aria-selected={highlighted === items.length}>
+                    <button
+                      type="button"
+                      onClick={askLumina}
+                      onMouseEnter={() => setHighlighted(items.length)}
+                      className={`mt-1 flex w-full cursor-pointer items-center gap-3 rounded-xl border-t border-white/[0.06] p-2.5 text-left transition ${
+                        highlighted === items.length ? "bg-gold-400/[0.08]" : ""
+                      }`}
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold-400/10 ring-1 ring-gold-400/25">
+                        <Sparkles className="h-4 w-4 text-gold-400" />
                       </span>
-                      <span className="block truncate text-2xs text-mist-400">
-                        "{q.trim()}" as a feeling, matched to your taste
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-gold-300">
+                          Ask Lumina for a mood match
+                        </span>
+                        <span className="block truncate text-2xs text-mist-400">
+                          "{q.trim()}" as a feeling, matched to your taste
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                </li>
-              </ul>
-            )}
-            <p className="border-t border-white/[0.06] px-4 py-2 text-2xs text-mist-400">
-              ↑↓ navigate · Enter opens · Enter with nothing selected shows all
-              results
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                    </button>
+                  </li>
+                </ul>
+              )}
+              <p className="border-t border-white/[0.06] px-4 py-2 text-2xs text-mist-400">
+                ↑↓ navigate · Enter opens · Enter with nothing selected shows
+                all results
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <button
+        type="button"
+        onClick={commit}
+        disabled={q.trim().length < 2}
+        className="btn-primary"
+      >
+        <Search className="h-4 w-4" /> Search
+      </button>
     </div>
   );
 }

@@ -225,6 +225,15 @@ export default function Discover() {
 
   return (
     <div>
+      {/* Marquee stays up — even while searching */}
+      {trending.isLoading ? (
+        <HeroSkeleton />
+      ) : heroItem ? (
+        <Hero item={heroItem} />
+      ) : trending.isError ? (
+        <RowError label="Trending" onRetry={() => trending.refetch()} />
+      ) : null}
+
       {/* The box office: search anything, or hand a mood to the AI */}
       <SearchOmnibar
         activeQuery={activeQuery}
@@ -236,14 +245,6 @@ export default function Discover() {
         <SearchResults query={activeQuery} onClear={() => setActiveQuery("")} />
       ) : (
         <>
-          {trending.isLoading ? (
-            <HeroSkeleton />
-          ) : heroItem ? (
-            <Hero item={heroItem} />
-          ) : trending.isError ? (
-            <RowError label="Trending" onRetry={() => trending.refetch()} />
-          ) : null}
-
           <UpNextRail />
 
           {/* ── Personal tier: bigger art, gold eyebrows ─────────── */}
@@ -366,8 +367,7 @@ export default function Discover() {
               </p>
             </div>
           )}
-        </>
-      )}
+        </>      )}
     </div>
   );
 }
