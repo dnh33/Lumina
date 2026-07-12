@@ -10,6 +10,12 @@
 
 ---
 
+
+
+https://github.com/user-attachments/assets/475fc954-b7b2-4002-8350-4c721595744f
+
+
+
 Lumina turns your personal watch history into a living understanding of your taste. Log what you have seen, rate it, tag it, scribble notes. Then talk to an AI companion that retrieves your real history before every reply. It recommends with reasons ("you rated *Arrival* 10 and wrote 'quiet dread', this has the same nerve"), never spoils, never suggests what you have already seen, and remembers past conversations.
 
 Everything lives in a single SQLite file on your machine. No accounts, no cloud sync, no tracking.
