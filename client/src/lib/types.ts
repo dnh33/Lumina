@@ -198,6 +198,11 @@ export interface MessageMeta {
   writeReceipts?: string[];
   stopped?: boolean;
   model?: string;
+  retrieved?: {
+    libraryMatches?: string[];
+    memoryHits?: number;
+    librarySize?: number;
+  };
 }
 
 export interface ForYou {
@@ -229,6 +234,7 @@ export interface SuggestionItem {
   mediaType: MediaType;
   title: string;
   year?: number;
+  /** one-clause taste rationale from the model */
   /** one-clause taste rationale from the model */
   reason?: string;
   /** safe = squarely their taste, stretch = adventurous */

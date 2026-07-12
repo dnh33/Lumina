@@ -24,14 +24,22 @@ const WRITE_TOOLS = new Set([
   "set_episode_progress",
 ]);
 
+export type TurnPhase = "starting" | "thinking" | "tooling" | "writing";
+
+export interface ToolStep {
+  name: string;
+  done: boolean;
+}
+
 export interface StreamState {
   userText: string;
   assistantText: string;
-  activeTool: string | null;
-  toolsUsed: string[];
+  phase: TurnPhase;
+  steps: ToolStep[];
   /** durable proof of library writes ("Saved Dune · 9/10 · watchlist") */
   receipts: string[];
   contextNote: string | null;
+  stopping: boolean;
 }
 
 export function useChat(
@@ -70,6 +78,18 @@ export function useChat(
       setError(null);
       setFailedText(null);
 
+      // Optimistic: the user bubble and thinking state paint IMMEDIATELY,
+      // before any network round-trip. The companion never plays dead.
+      setStream({
+        userText: content,
+        assistantText: "",
+        phase: "starting",
+        steps: [],
+        receipts: [],
+        contextNote: null,
+        stopping: false,
+      });
+
       let convId = conversationId;
       let completed = false;
       let wroteToLibrary = false;
@@ -93,20 +113,14 @@ export function useChat(
       } catch (e) {
         setError((e as Error).message);
         setFailedText(content);
+        setStream(null);
         inFlightRef.current = false;
         return;
       }
 
       const controller = new AbortController();
       abortRef.current = controller;
-      setStream({
-        userText: content,
-        assistantText: "",
-        activeTool: null,
-        toolsUsed: [],
-        receipts: [],
-        contextNote: null,
-      });
+      setStream((s) => (s ? { ...s, phase: "thinking" } : s));
 
       try {
         await streamChat(
@@ -114,6 +128,12 @@ export function useChat(
           content,
           (e) => {
             if (e.type === "done") completed = true;
+            if (e.type === "error") {
+              // model-side failure: always leave a retry path
+              setError(e.message);
+              setFailedText(content);
+              return;
+            }
             setStream((s) => {
               if (!s) return s;
               switch (e.type) {
@@ -125,25 +145,29 @@ export function useChat(
                   return { ...s, contextNote: note };
                 }
                 case "delta":
-                  return { ...s, assistantText: s.assistantText + e.text, activeTool: null };
+                  return {
+                    ...s,
+                    assistantText: s.assistantText + e.text,
+                    phase: "writing",
+                  };
                 case "tool":
                   return {
                     ...s,
-                    activeTool: e.name,
-                    toolsUsed: [...s.toolsUsed, e.name],
+                    phase: "tooling",
+                    steps: [...s.steps, { name: e.name, done: false }],
                   };
                 case "tool_done": {
                   if (WRITE_TOOLS.has(e.name)) wroteToLibrary = true;
                   return {
                     ...s,
-                    activeTool: null,
+                    steps: s.steps.map((st, i) =>
+                      i === s.steps.length - 1 && st.name === e.name
+                        ? { ...st, done: true }
+                        : st,
+                    ),
                     receipts: e.summary ? [...s.receipts, e.summary] : s.receipts,
                   };
                 }
-                case "error":
-                  setError(e.message);
-                  setError(e.message);
-                  return s;
                 default:
                   return s;
               }
@@ -173,7 +197,10 @@ export function useChat(
     [conversationId, onConversationChange, qc],
   );
 
-  const stop = useCallback(() => abortRef.current?.abort(), []);
+  const stop = useCallback(() => {
+    setStream((s) => (s ? { ...s, stopping: true } : s));
+    abortRef.current?.abort();
+  }, []);
 
   return {
     messages: messages.data ?? [],

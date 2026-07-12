@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Maximize2, Sparkles, X } from "lucide-react";
+import { Maximize2, MessageSquarePlus, Sparkles, X } from "lucide-react";
+import { api } from "../../lib/api";
 import { ChatThread } from "./ChatThread";
 import { DOCK_CONVERSATION_KEY as DOCK_KEY } from "../../lib/keys";
 
@@ -43,7 +44,7 @@ export function ChatDock() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.97 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-[min(620px,72dvh)] w-[min(430px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl bg-ink-850/95 ring-1 ring-white/10 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl md:bottom-8 md:right-8"
+            className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-[min(620px,72dvh)] w-[min(430px,calc(100vw-2rem))] origin-bottom-right flex-col overflow-hidden rounded-3xl bg-ink-850/95 ring-1 ring-white/10 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl md:bottom-8 md:right-8"
           >
             <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3">
               <div className="flex items-center gap-2">
@@ -56,6 +57,18 @@ export function ChatDock() {
                 </span>
               </div>
               <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  title="New conversation"
+                  aria-label="Start a new conversation"
+                  onClick={async () => {
+                    const created = await api.createConversation();
+                    handleConversationChange(created.id);
+                  }}
+                  className="icon-btn"
+                >
+                  <MessageSquarePlus className="h-4 w-4" />
+                </button>
                 <button
                   type="button"
                   title="Open full screen"
