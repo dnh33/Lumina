@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   assembleInsight,
+  migrateCachedInsight,
   profileStateOf,
   type ProfileState,
 } from "../src/llm/insightService.js";
@@ -148,5 +149,31 @@ describe("profileStateOf", () => {
         dislikedTitles: [{ title: "y" }],
       } as any),
     ).toBe("rich");
+  });
+});
+
+describe("migrateCachedInsight", () => {
+  it("backfills missing fields for a prose-only cached entry", () => {
+    const r = migrateCachedInsight({ text: "old prose", model: "m" }, "m");
+    expect(r.text).toBe("old prose");
+    expect(r.verdict).toBe("maybe");
+    expect(r.cached).toBe(true);
+    expect(r.comparisons).toEqual([]);
+    expect(r.followups.length).toBeGreaterThan(0);
+  });
+
+  it("preserves a full structured cached entry", () => {
+    const full = {
+      text: "t",
+      verdict: "love" as const,
+      matchScore: 90,
+      comparisons: [],
+      hook: "h",
+      followups: [],
+      profileState: "rich" as const,
+    };
+    const r = migrateCachedInsight(full, "m");
+    expect(r.verdict).toBe("love");
+    expect(r.matchScore).toBe(90);
   });
 });
