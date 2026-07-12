@@ -80,6 +80,7 @@ export function RatingDial({
             type="button"
             aria-label={`Rate ${n}/10`}
             title={value === n ? "Click again to clear" : `Rate ${n}/10`}
+            data-cuelume-toggle="tick"
             onClick={() => onChange(value === n ? null : n)}
             className={`h-7 w-7 rounded-lg text-2xs font-bold transition-all duration-150 ${
               active

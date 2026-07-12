@@ -1,8 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useScroll,
+  useSpring,
+  useTransform,
+} from "framer-motion";
 import { Maximize2, MessageSquarePlus, Sparkles, X } from "lucide-react";
 import { api } from "../../lib/api";
+import { playCue } from "../../lib/sound";
 import { ChatThread } from "./ChatThread";
 import { DOCK_CONVERSATION_KEY as DOCK_KEY } from "../../lib/keys";
 
@@ -32,6 +39,17 @@ export function ChatDock() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // R15 — scroll-reactive dock compression. The scroll container lives inside
+  // ChatThread (its overflow-y-auto body); we own the ref here and pass it down
+  // so useScroll watches the real scroller. As it scrolls down the dock
+  // compresses to ~0.92 scale (transform only) via a damped spring, easing back
+  // at the top. GPU-only (scale / opacity).
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { scrollY } = useScroll({ container: scrollRef });
+  const dockScaleRaw = useSpring(scrollY, { stiffness: 200, damping: 30 });
+  const dockScale = useTransform(dockScaleRaw, [0, 320], [1, 0.92], { clamp: true });
+  const dockOpacity = useTransform(dockScaleRaw, [0, 320], [1, 0.92], { clamp: true });
+
   return (
     <>
       <AnimatePresence>
@@ -46,7 +64,15 @@ export function ChatDock() {
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-[min(620px,72dvh)] w-[min(430px,calc(100vw-2rem))] origin-bottom-right flex-col overflow-hidden rounded-3xl bg-ink-850/95 ring-1 ring-white/10 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl md:bottom-8 md:right-8"
           >
-            <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3">
+            {/* R15 — scroll-reactive dock compression: the body scales to ~0.92
+                and dims slightly as the conversation scrolls down (transform /
+                opacity only), then eases back at the top. Kept on an inner
+                wrapper so it never fights the dialog's enter/exit animation. */}
+            <motion.div
+              style={{ scale: dockScale, opacity: dockOpacity }}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-gold-400" />
                 <span className="font-display text-[0.95rem] font-semibold text-mist-200">
@@ -63,6 +89,7 @@ export function ChatDock() {
                   aria-label="Start a new conversation"
                   onClick={async () => {
                     const created = await api.createConversation();
+                    playCue("droplet");
                     handleConversationChange(created.id);
                   }}
                   className="icon-btn"
@@ -96,7 +123,9 @@ export function ChatDock() {
               compact
               conversationId={conversationId}
               onConversationChange={handleConversationChange}
+              scrollRef={scrollRef}
             />
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -104,6 +133,8 @@ export function ChatDock() {
       <motion.button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        data-cuelume-hover="whisper"
+        data-cuelume-toggle="toggle"
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
         aria-label={open ? "Close Lumina chat" : "Talk to Lumina"}

@@ -25,6 +25,7 @@ import {
 import { api } from "../lib/api";
 import { invalidateLibraryData } from "../lib/invalidate";
 import { backdrop, logo, poster, profile } from "../lib/img";
+import { playCue } from "../lib/sound";
 import { Carousel } from "../components/Carousel";
 import { PosterCard } from "../components/PosterCard";
 import { Chip, RatingDial } from "../components/Bits";
@@ -451,7 +452,11 @@ function ActionBar({
         mediaType: details.mediaType,
         status,
       }),
-    onSuccess: done,
+    // first save is the moment — updates/removes stay on their gesture cues
+    onSuccess: () => {
+      playCue("success");
+      done();
+    },
     onError: fail,
   });
   const update = useMutation({
@@ -528,6 +533,7 @@ function ActionBar({
               <button
                 key={s}
                 type="button"
+                data-cuelume-toggle="toggle"
                 onClick={() => update.mutate({ status: s })}
                 className={`pill capitalize ${entry.status === s ? "pill-active" : ""}`}
               >
@@ -554,6 +560,7 @@ function ActionBar({
               type="button"
               aria-label={entry.favorite ? "Remove favorite" : "Mark favorite"}
               title={entry.favorite ? "Remove favorite" : "Mark favorite"}
+              data-cuelume-toggle="toggle"
               onClick={() => update.mutate({ favorite: !entry.favorite })}
               className={`flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl transition ${
                 entry.favorite

@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Loader2, Search, Sparkles, Star, X } from "lucide-react";
 import { api } from "../lib/api";
 import { poster } from "../lib/img";
+import { playCue } from "../lib/sound";
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -61,6 +62,7 @@ export function SearchOmnibar({ onCommitQuery, activeQuery, onClear }: Props) {
   const askLumina = useCallback(() => {
     const text = q.trim();
     if (!text) return;
+    playCue("sparkle"); // the app's single moment of delight
     navigate("/chat", {
       state: {
         prefill: `I'm in the mood for: ${text}. Suggest a few things that fit my taste — no spoilers.`,

@@ -52,6 +52,7 @@ function StatCard({
   return (
     <button
       type="button"
+      data-cuelume-toggle="tick"
       onClick={onClick}
       aria-pressed={active}
       className="panel cursor-pointer px-4 py-3 text-left transition hover:ring-gold-400/30"
@@ -176,6 +177,7 @@ export default function Library() {
             <button
               key={t.key}
               type="button"
+              data-cuelume-toggle="tick"
               onClick={() => setStatus(t.key)}
               aria-pressed={status === t.key}
               className={`pill flex items-center gap-1.5 ${status === t.key ? "pill-active" : ""}`}

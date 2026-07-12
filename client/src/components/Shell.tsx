@@ -39,6 +39,7 @@ export function Shell({ children }: { children: ReactNode }) {
               key={to}
               to={to}
               end={end}
+              data-cuelume-toggle="tick"
               className={({ isActive }) =>
                 `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.92rem] font-medium transition-all duration-200 ${
                   isActive
@@ -71,6 +72,7 @@ export function Shell({ children }: { children: ReactNode }) {
             key={to}
             to={to}
             end={end}
+            data-cuelume-toggle="tick"
             className={({ isActive }) =>
               `flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.65rem] font-medium transition-colors ${
                 isActive ? "text-gold-300" : "text-mist-400"

@@ -2,6 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, streamChat } from "../../lib/api";
 import { invalidateLibraryData } from "../../lib/invalidate";
+import { playCue } from "../../lib/sound";
+import {
+  reducer as companionReducer,
+  useCompanionState,
+  type CompanionState,
+  type CompanionEvent,
+} from "../../hooks/useCompanionState";
+import { useTokenBuffer } from "../../hooks/useTokenBuffer";
+import { buildToolNodes, deriveStopped } from "./buildToolNodes";
+
+export { buildToolNodes, deriveStopped };
 
 export const TOOL_LABELS: Record<string, string> = {
   search_library: "Reading your library",
@@ -42,6 +53,30 @@ export interface StreamState {
   stopping: boolean;
 }
 
+/**
+ * Pure map from an SSE event type to the companion-state machine event.
+ * Exported so the state transition wiring is unit-testable without React
+ * (useChat.test.ts). Returns null for events that must not move the machine.
+ */
+export function companionEventForSse(
+  type: string,
+): CompanionEvent | null {
+  switch (type) {
+    case "context":
+      return { type: "TOOL" }; // idle -> thinking
+    case "tool":
+      return { type: "TOOL_RUNNING" }; // -> tooling
+    case "delta":
+      return { type: "DELTA" }; // -> writing
+    case "done":
+      return { type: "DONE" }; // -> idle
+    case "error":
+      return { type: "ERROR" }; // -> error
+    default:
+      return null;
+  }
+}
+
 export function useChat(
   conversationId: number | null,
   onConversationChange: (id: number) => void,
@@ -52,6 +87,12 @@ export function useChat(
   const [failedText, setFailedText] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const inFlightRef = useRef(false); // synchronous double-send guard
+
+  // Wave 3: drive the SparkAvatar presence from streaming events.
+  const companion = useCompanionState();
+
+  // Wave 3: buffer raw token deltas so we re-render ~1×/24ms, never per-token.
+  const tokenBuffer = useTokenBuffer();
 
   const messages = useQuery({
     queryKey: ["messages", conversationId],
@@ -70,13 +111,25 @@ export function useChat(
     setFailedText(null);
   }, [conversationId]);
 
+  // When the stream ends, flush any pending buffered tokens so the displayed
+  // text always resolves to the full accumulated answer (no dangling partial).
+  const finishTurn = useCallback(() => {
+    tokenBuffer.flush();
+    setStream(null);
+  }, [tokenBuffer]);
+
   const send = useCallback(
     async (text: string) => {
       const content = text.trim();
       if (!content || inFlightRef.current) return;
+      playCue("tick"); // one acknowledgment covers every entry point
       inFlightRef.current = true;
       setError(null);
       setFailedText(null);
+
+      // A new turn begins: reset presence to idle, clear buffered text.
+      companion.dispatch({ type: "RESET" });
+      tokenBuffer.reset();
 
       // Optimistic: the user bubble and thinking state paint IMMEDIATELY,
       // before any network round-trip. The companion never plays dead.
@@ -94,11 +147,13 @@ export function useChat(
       let completed = false;
       let wroteToLibrary = false;
       let aborted = false;
+      let toolCueFired = false;
 
       try {
         if (convId == null) {
           const created = await api.createConversation();
           convId = created.id;
+          playCue("droplet");
           onConversationChange(convId);
         } else {
           // self-heal: a stored conversation may have been deleted elsewhere
@@ -113,7 +168,7 @@ export function useChat(
       } catch (e) {
         setError((e as Error).message);
         setFailedText(content);
-        setStream(null);
+        finishTurn();
         inFlightRef.current = false;
         return;
       }
@@ -127,7 +182,26 @@ export function useChat(
           convId,
           content,
           (e) => {
-            if (e.type === "done") completed = true;
+            // Move the presence machine in lock-step with the SSE stream.
+            const ce = companionEventForSse(e.type);
+            if (ce) companion.dispatch(ce);
+
+            // Audible turn anatomy: bloom (waking) → tick (first tool) →
+            // success (write receipt) → chime (clean finish). Errors/stop
+            // stay silent — the visuals carry those.
+            if (e.type === "context") playCue("bloom");
+            if (e.type === "tool" && !toolCueFired) {
+              toolCueFired = true;
+              playCue("tick");
+            }
+            if (e.type === "tool_done" && WRITE_TOOLS.has(e.name)) {
+              playCue("success");
+            }
+
+            if (e.type === "done") {
+              completed = true;
+              playCue("chime");
+            }
             if (e.type === "error") {
               // model-side failure: always leave a retry path
               setError(e.message);
@@ -145,6 +219,9 @@ export function useChat(
                   return { ...s, contextNote: note };
                 }
                 case "delta":
+                  // Authoritative accumulator (used for scroll + final persist).
+                  // Also feed the token buffer for a smoothed, flicker-free paint.
+                  tokenBuffer.push(e.text);
                   return {
                     ...s,
                     assistantText: s.assistantText + e.text,
@@ -191,16 +268,31 @@ export function useChat(
         await qc.invalidateQueries({ queryKey: ["conversations"] });
         await qc.refetchQueries({ queryKey: ["messages", convId] });
         if (wroteToLibrary) invalidateLibraryData(qc);
-        setStream(null);
+        // Flush pending tokens, then drop the optimistic stream. The persisted
+        // message (including any stopped partial) reloads from the server.
+        finishTurn();
       }
     },
-    [conversationId, onConversationChange, qc],
+    [conversationId, onConversationChange, qc, companion, tokenBuffer, finishTurn],
   );
 
   const stop = useCallback(() => {
     setStream((s) => (s ? { ...s, stopping: true } : s));
+    // Freeze whatever is on screen right now (graceful stop, T14/T15).
+    tokenBuffer.flush();
     abortRef.current?.abort();
-  }, []);
+  }, [tokenBuffer]);
+
+  // `streaming` means an active request is in flight; once we stop/abort it is
+  // false even though `stream` may still briefly exist during cleanup.
+  const isStreaming =
+    stream !== null && !stream.stopping && inFlightRef.current;
+
+  // ToolTrace nodes derived from the live steps (pure helper, tested).
+  const toolNodes = stream ? buildToolNodes(stream.steps) : [];
+
+  // "stopped" only reads true once the turn is fully over AND a stop happened.
+  const stopped = deriveStopped(isStreaming, stream?.stopping ?? false);
 
   return {
     messages: messages.data ?? [],
@@ -210,10 +302,14 @@ export function useChat(
       : null,
     refetchMessages: () => messages.refetch(),
     stream,
+    streamedText: tokenBuffer.text,
+    toolNodes,
+    stopped,
+    companionState: companion.state as CompanionState,
     error,
     failedText,
     send,
     stop,
-    isStreaming: stream !== null,
+    isStreaming,
   };
 }

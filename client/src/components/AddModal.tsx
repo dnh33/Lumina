@@ -5,6 +5,7 @@ import { AlertCircle, Check, Loader2, Search, X } from "lucide-react";
 import { api } from "../lib/api";
 import { invalidateLibraryData } from "../lib/invalidate";
 import { poster } from "../lib/img";
+import { playCue } from "../lib/sound";
 import type { CatalogItem, LibraryStatus } from "../lib/types";
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -24,6 +25,7 @@ function ResultRow({ item }: { item: CatalogItem }) {
     mutationFn: (status: LibraryStatus) =>
       api.addToLibrary({ tmdbId: item.tmdbId, mediaType: item.mediaType, status }),
     onSuccess: (_e, status) => {
+      playCue("success");
       setSavedAs(status);
       setFailed(false);
       invalidateLibraryData(qc);

@@ -204,6 +204,7 @@ export default function ChatPage() {
           conversationId={conversationId}
           onConversationChange={handleConversationChange}
           prefill={prefill}
+          dormant={false}
         />
       </div>
 

@@ -1,9 +1,8 @@
 import { memo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Clapperboard, Lock } from "lucide-react";
 import { SuggestionCards } from "./SuggestionCards";
+import { MarkdownMessage } from "./MarkdownMessage";
 import type { SuggestionItem } from "../../lib/types";
 
 const SUGGESTION_RE = /```lumina-suggestions\s*([\s\S]*?)```/;
@@ -26,11 +25,12 @@ export function parseMessage(content: string): ParsedMessage {
   if (sug) {
     try {
       const parsed = JSON.parse(sug[1]) as { items?: SuggestionItem[] };
-      items = (parsed.items ?? []).filter(
-        (i) =>
-          typeof i.tmdbId === "number" &&
-          (i.mediaType === "movie" || i.mediaType === "tv"),
-      );
+      items = (parsed.items ?? [])
+        .filter(
+          (i) =>
+            typeof i.tmdbId === "number" &&
+            (i.mediaType === "movie" || i.mediaType === "tv"),
+        );
     } catch {
       /* malformed block, hide it anyway */
     }
@@ -67,7 +67,11 @@ function veilEncode(text: string): string {
 function SpoilerVeil({ text }: { text: string }) {
   const [revealed, setRevealed] = useState(false);
   if (revealed) {
-    return <span className="rounded bg-gold-400/[0.08] px-1 text-mist-200">{text}</span>;
+    return (
+      <span className="rounded bg-gold-400/[0.08] px-1 text-mist-200">
+        {text}
+      </span>
+    );
   }
   return (
     <button
@@ -157,14 +161,9 @@ export const MessageBubble = memo(function MessageBubble({
           />
         </p>
       ) : (
-        <div className="prose-lumina">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{ a: SmartLink }}
-          >
-            {veilEncode(text)}
-          </ReactMarkdown>
-        </div>
+        // Wave 3: flicker-free streaming-safe renderer (Task 3). SmartLink +
+        // spoiler veil are ported into MarkdownMessage via MessageBubble.ports.
+        <MarkdownMessage content={text} className="prose-lumina" />
       )}
 
       {items.length > 0 && !streaming && <SuggestionCards items={items} />}

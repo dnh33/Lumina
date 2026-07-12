@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { invalidateLibraryData } from "../lib/invalidate";
 import { poster } from "../lib/img";
+import { playCue } from "../lib/sound";
 import type { CatalogItem } from "../lib/types";
 
 interface Props {
@@ -43,6 +44,7 @@ export const PosterCard = memo(function PosterCard({
         status: "watchlist",
       }),
     onSuccess: () => {
+      playCue("success");
       setSaved(true);
       setFailedSave(false);
       invalidateLibraryData(qc);

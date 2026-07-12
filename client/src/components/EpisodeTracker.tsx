@@ -4,6 +4,7 @@ import { Check, ChevronDown, Loader2, Shield, ShieldOff, Star } from "lucide-rea
 import { api } from "../lib/api";
 import { invalidateLibraryData } from "../lib/invalidate";
 import { still } from "../lib/img";
+import { playCue } from "../lib/sound";
 import {
   SPOILER_SHIELD_KEY as SHIELD_KEY,
   STILL_BACKFILL_KEY,
@@ -106,6 +107,7 @@ export function EpisodeTracker({ libraryId }: { libraryId: number }) {
       );
       return { prev };
     },
+    onSuccess: () => playCue("success"), // a season is a real archive change
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(["episodes", libraryId], ctx.prev);
     },
@@ -157,6 +159,7 @@ export function EpisodeTracker({ libraryId }: { libraryId: number }) {
           <div className="flex items-center gap-3">
             <button
               type="button"
+              data-cuelume-toggle="toggle"
               onClick={toggleShield}
               aria-pressed={shield}
               title={
@@ -254,6 +257,7 @@ export function EpisodeTracker({ libraryId }: { libraryId: number }) {
                     <button
                       key={e.id}
                       type="button"
+                      data-cuelume-toggle="tick"
                       onClick={() =>
                         toggleEpisode.mutate({ id: e.id, watched: !e.watched })
                       }

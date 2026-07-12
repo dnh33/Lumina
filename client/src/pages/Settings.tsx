@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { api } from "../lib/api";
 import { DOCK_CONVERSATION_KEY } from "../lib/keys";
+import { playCue, useSound } from "../lib/sound";
 
 function Row({
   ok,
@@ -40,6 +41,41 @@ function Row({
   );
 }
 
+function SoundSwitch() {
+  const { enabled, setEnabled } = useSound();
+  return (
+    <div className="flex items-center justify-between gap-4 border-t border-white/[0.06] pt-4">
+      <div>
+        <p className="text-sm font-medium text-mist-200">Interface sounds</p>
+        <p className="text-xs text-mist-400">
+          Quiet synthesized cues for saves and the companion. Respects your
+          system's reduced-motion setting.
+        </p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label="Interface sounds"
+        onClick={() => {
+          const next = !enabled;
+          setEnabled(next);
+          if (next) playCue("toggle");
+        }}
+        className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition ${
+          enabled ? "bg-gold-400" : "bg-white/[0.1] ring-1 ring-white/15"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-ink-950 transition-all ${
+            enabled ? "left-[22px]" : "left-0.5 bg-mist-400"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
 export default function Settings() {
   const qc = useQueryClient();
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
@@ -52,6 +88,7 @@ export default function Settings() {
   const saveModel = useMutation({
     mutationFn: (m: string) => api.setModel(m),
     onSuccess: () => {
+      playCue("chime");
       qc.invalidateQueries({ queryKey: ["health"] });
       setModelError(null);
       setModelSaved(true);
@@ -79,6 +116,7 @@ export default function Settings() {
   const importCsv = useMutation({
     mutationFn: (csv: string) => api.importCsv(csv),
     onSuccess: (report) => {
+      playCue("success");
       setImportReport(report);
       qc.invalidateQueries({ queryKey: ["library"] });
       qc.invalidateQueries({ queryKey: ["library-stats"] });
@@ -165,6 +203,8 @@ export default function Settings() {
               model with tool-calling support.
             </p>
           </div>
+
+          <SoundSwitch />
         </section>
 
         {/* What the AI sees */}

@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig } from "framer-motion";
+import { initSound } from "./lib/sound";
 import { Shell } from "./components/Shell";
 import { ChatDock } from "./components/chat/ChatDock";
 import Discover from "./pages/Discover";
@@ -13,8 +15,13 @@ export default function App() {
   const location = useLocation();
   const onChatPage = location.pathname.startsWith("/chat");
 
+  useEffect(() => {
+    initSound();
+  }, []);
+
   return (
-    <Shell>
+    <MotionConfig reducedMotion="user">
+      <Shell>
       <AnimatePresence mode="wait">
         <motion.div
           key={location.pathname}
@@ -38,5 +45,6 @@ export default function App() {
       </AnimatePresence>
       {!onChatPage && <ChatDock />}
     </Shell>
+    </MotionConfig>
   );
 }

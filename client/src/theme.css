@@ -18,6 +18,10 @@
   --font-display: "Fraunces", "Georgia", serif;
   --font-sans: "Inter", system-ui, sans-serif;
 
+  /* Motion easings (P13 / R16). --ease-out-expo = entrances, --ease-state = state changes. */
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-state: cubic-bezier(0.4, 0, 0.2, 1);
+
   /* Type scale: 2xs → xs → sm → base → lg (micro-labels to prose) */
   --text-2xs: 0.72rem;
   --text-2xs--line-height: 1rem;
@@ -228,4 +232,13 @@ select:focus-visible {
 }
 .prose-lumina pre code {
   @apply bg-transparent p-0;
+}
+
+/* ── Active-state gold glow (P5 / P10) ──────────────────────────── */
+/* Reserved for ACTIVE / important states only (composing caret, focused dock,
+   "now playing" pulse). GOLD IS RARE: never apply as default decoration.
+   Pair with an active selector (e.g. [aria-current="true"], :focus-within,
+   or a streaming indicator) so it only appears when the element is live. */
+.glow-gold {
+  box-shadow: 0 0 24px rgba(232, 184, 75, 0.25);
 }
