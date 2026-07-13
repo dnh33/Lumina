@@ -46,7 +46,7 @@ independent mechanisms:
   state (never a popup/banner/digest). Honors the user's "no notification
   fatigue" constraint.
 
-## Rejected alternatives
+- **Rejected alternatives**
 - *Autonomous hiding of fatigued titles* — rejected (YAGNI; user keeps
   control via the retire toggle).
 - *Genre-level fatigue* — rejected; genre-exclude (ADR-0005) already covers
@@ -55,3 +55,25 @@ independent mechanisms:
   per-title recency average is sufficient for the silent-diversify + hint
   behaviors and avoids a global window state. Revisit if per-session
   anchor-uniqueness metrics prove the per-title score too coarse.
+
+## Corrections (2026-07-13 — grill-with-docs post-implementation audit)
+
+This ADR was written (commit `026f362`) AFTER the original feature code
+already shipped `MIN_CITATIONS=3` and `FATIGUE_WINDOW_DAYS=14` (commit
+`6e7d51c`), but the "Trade-offs" section below misdescribes that code.
+Correcting the record so future readers aren't misled:
+
+- **The fatigue score DOES have a hard time window and a minimum-citation
+  floor.** `fatigueScores` (anchorService.ts) drops citations older than
+  `FATIGUE_WINDOW_DAYS = 14` (the `WHERE created_at >= ?` cutoff at line
+  53), and skips any title with `totals < MIN_CITATIONS` (line 72, `MIN_CITATIONS = 3`).
+  The earlier claim "no hard time window and no minimum-citation floor" is
+  **wrong** — the design-doc's "≥ 3 citations in window" floor *was*
+  implemented. This is the better behavior (a single or double fresh citation
+  must not read as "over-used"), so the code is kept; only this prose is fixed.
+- **The `take` surface DOES log.** Commit `6e7d51c` originally logged `take`
+  for **all 15** loved titles per card-open (the Claim #1 storm); commit
+  `fff38ba` corrected it to log `take` **only for the opened title**
+  (insightService.ts:233-234). The earlier claim "the `take`/insight-card-open
+  surface does NOT log anchors" is **wrong** — it was never absent, it was
+  just over-broad. After the fix, `take` is a real, correctly-scoped surface.

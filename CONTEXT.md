@@ -49,16 +49,19 @@ repetition of the **anchor**, not the title.
 
 **Anchor usage log** (`anchor_usage`): the append-only record of every time a
 title is cited as an anchor, keyed by `(tmdb_id, media_type, surface)`.
-The source of truth for the fatigue score. Surfaces that log: `compare_titles`
-and insight *neighbors*. (The insight-card-open / "take" surface does NOT
-log yet — see ADR-0006.)
+The source of truth for the fatigue score. Surfaces that log: `compare_titles`,
+insight *neighbors*, and `take` (opening a title's own insight card — logs
+only the opened title, fixed in commit `fff38ba`; before that it logged all
+loved titles and caused the fatigue storm).
 
 **Fatigue score**: a deterministic, recency-weighted value per title
 (`fatigueScores`) = Σexp(-age_days/7) ÷ citation_count. Range 0–1;
 ≥ 0.6 marks a title "over-used" (drives the silent diversify directive +
 the passive "Over-used" card hint). It measures how weighted *a title's own*
-citations are, not its dominance vs other titles. Has no hard time window and
-no minimum-citation floor.
+citations are, not its dominance vs other titles. Has a **hard 14-day window**
+(citations older than `FATIGUE_WINDOW_DAYS` are dropped) and a **minimum-citation
+floor of 3** (`MIN_CITATIONS`) — a title with fewer than 3 recent citations is
+never flagged "over-used," so a single fresh citation can't read as fatigue.
 
 **Retire-as-anchor**: the manual override — keep a loved title in the taste
 profile but stop it being used as a comparison anchor. Stored non-destructively
