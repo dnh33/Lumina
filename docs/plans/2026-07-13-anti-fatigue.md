@@ -182,13 +182,13 @@ Expected: PASS
 ### Task 3: tasteProfile.annotateFatigued — keep loved, pivot framing
 
 **Files:**
-- Modify: `server/src/rag/tasteProfile.ts` (add helper, use in `renderTasteProfile`)
-- Test: `server/test/tasteProfile.test.ts` (extend)
+- Modify: `server/src/rag/tasteProfile.ts` (add field to `TasteProfile`, use in `renderTasteProfile`)
+- Test: `server/test/rag.test.ts` (extend the "RAG layer 1 — taste profile" describe block — NOTE: there is NO `tasteProfile.test.ts`; the profile tests live in `rag.test.ts`)
 
-**Step 1: Write the failing test**
+**Step 1: Write the failing test** (add to the existing `describe("RAG layer 1 — taste profile", ...)` block in `server/test/rag.test.ts`)
 ```ts
-import { computeTasteProfile, renderTasteProfile } from "../src/rag/tasteProfile.js";
-import { memoryDb, seedEntry } from "./helpers.js";
+// (rag.test.ts already imports computeTasteProfile, renderTasteProfile, memoryDb, seedEntry)
+
 import { describe, it, expect } from "vitest";
 import { logAnchor } from "../src/services/anchorService.js";
 
@@ -210,7 +210,7 @@ describe("tasteProfile fatigue annotation", () => {
 ```
 
 **Step 2: Run test — confirm it fails**
-Command: `cd server && npx vitest run test/tasteProfile.test.ts -t "fatigued loved"`
+Command: `cd server && npx vitest run test/rag.test.ts -t "keeps a fatigued loved"`
 Expected: FAIL — no pivot directive in rendered profile.
 
 **Step 3: Write minimal implementation**
@@ -232,7 +232,7 @@ Command: `cd server && npx vitest run test/tasteProfile.test.ts`
 Expected: PASS
 
 **Step 5: Commit**
-`git add server/src/rag/tasteProfile.ts server/test/tasteProfile.test.ts && git commit -m "feat(profile): annotate fatigued loved titles as pivot-only, keep in profile"`
+`git add server/src/rag/tasteProfile.ts server/test/rag.test.ts && git commit -m "feat(profile): annotate fatigued loved titles as pivot-only, keep in profile"`
 
 ---
 
