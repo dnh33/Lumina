@@ -56,4 +56,34 @@ describe("anti-fatigue integration", () => {
     expect(p.fatiguedLovedTitles).toContain("Overused");
     expect(renderTasteProfile(p)).toMatch(/pivot|avoid referencing|fresh(er)?/i);
   });
+
+  it("SAFETY: opening a loved title's own card (take) alone does NOT fatigue it", () => {
+    // Measured: 3-4 take events within the window saturate ~0.58, under the
+    // 0.6 pivot. So a user re-reading a beloved title's insight card cannot,
+    // by itself, suppress that title in their own companion. Suppression only
+    // happens when the AI ALSO cites it as a comparison anchor. Guards against
+    // self-inflicted taste starvation.
+    const db = memoryDb();
+    seedEntry(db, { tmdbId: 11, mediaType: "movie", title: "Beloved" }, { rating: 10, favorite: true });
+    const now = Date.now();
+    for (let i = 0; i < 4; i++) {
+      db.prepare(
+        "INSERT INTO anchor_usage (tmdb_id,media_type,surface,created_at) VALUES (?,?,?,?)",
+      ).run(11, "movie", "take", now - i * 5 * 86_400_000);
+    }
+    const p = computeTasteProfile(db);
+    expect(p.fatiguedLovedTitles).not.toContain("Beloved");
+    expect((fatigueScores(db).get("movie:11") ?? 0) < 0.6).toBe(true);
+  });
+
+  it("SAFETY: a retired title is reported by isRetired so a UI can list it", () => {
+    const db = memoryDb();
+    const libId = seedEntry(
+      db,
+      { tmdbId: 7, mediaType: "movie", title: "LOTR" },
+      { rating: 10, favorite: true },
+    );
+    setRetired(db, libId, true);
+    expect(isRetired(db, 7, "movie")).toBe(true);
+  });
 });
