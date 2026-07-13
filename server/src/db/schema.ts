@@ -147,7 +147,6 @@ const migrations: string[] = [
   );
   CREATE INDEX IF NOT EXISTS idx_anchor_usage_key_time
     ON anchor_usage (tmdb_id, media_type, created_at);
-  ALTER TABLE library ADD COLUMN anchor_retired INTEGER NOT NULL DEFAULT 0;
   `,
 ];
 
@@ -159,5 +158,16 @@ export function migrate(db: DB): void {
       db.pragma(`user_version = ${v + 1}`);
     });
     apply();
+  }
+  // v6 also added anchor_retired to library. ALTER TABLE has no IF NOT EXISTS,
+  // so guard with a column-existence check: a drifted user_version (manual DDL,
+  // partial restore) must not trigger a "duplicate column" boot crash.
+  const hasRetired = db
+    .prepare(
+      "SELECT COUNT(*) c FROM pragma_table_info('library') WHERE name='anchor_retired'",
+    )
+    .get() as { c: number };
+  if (!hasRetired.c) {
+    db.exec("ALTER TABLE library ADD COLUMN anchor_retired INTEGER NOT NULL DEFAULT 0");
   }
 }

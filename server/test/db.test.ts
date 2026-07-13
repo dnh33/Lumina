@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { memoryDb, seedEntry } from "./helpers.js";
+import { migrate } from "../src/db/schema.js";
 import {
   getEntry,
   libraryStats,
@@ -27,6 +28,21 @@ describe("schema & migrations", () => {
       expect(tables).toContain(t);
     }
     expect(db.pragma("user_version", { simple: true })).toBeGreaterThan(0);
+  });
+
+  it("migrate() is idempotent — re-running on a drifted db (column present, version behind) does not throw", () => {
+    const db = memoryDb();
+    migrate(db);
+    const v = db.pragma("user_version", { simple: true });
+    // Simulate drift: a partial restore left the column present but the
+    // version behind. The ALTER must be guarded so this doesn't crash boot.
+    db.pragma("user_version = 5");
+    expect(() => migrate(db)).not.toThrow();
+    expect(db.pragma("user_version", { simple: true })).toBe(v);
+    const cols = db
+      .prepare("SELECT COUNT(*) c FROM pragma_table_info('library') WHERE name='anchor_retired'")
+      .get() as { c: number };
+    expect(cols.c).toBe(1);
   });
 
   it("v4 migration adds critics columns to titles and round-trips", () => {
