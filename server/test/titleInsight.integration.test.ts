@@ -138,6 +138,32 @@ describe("titleInsight (wiring)", () => {
     expect(r.comparisons[0].tmdbId).toBe(1);
   });
 
+  it("retries without JSON mode when the provider rejects response_format (400)", async () => {
+    const providerErr = Object.assign(new Error("Provider returned error"), {
+      status: 400,
+    });
+    create.mockRejectedValueOnce(providerErr);
+    create.mockResolvedValueOnce({
+      choices: [
+        {
+          message: {
+            content: '{"verdict":"maybe","text":"salvaged without JSON mode"}',
+          },
+        },
+      ],
+    });
+
+    const r = await titleInsight(fakeDb, 181, "movie", true);
+
+    expect(r.text).toBe("salvaged without JSON mode");
+    expect(create).toHaveBeenCalledTimes(2);
+    // First attempt asked for JSON mode; the retry dropped it.
+    expect(create.mock.calls[0][0].response_format).toEqual({
+      type: "json_object",
+    });
+    expect(create.mock.calls[1][0].response_format).toBeUndefined();
+  });
+
   it("degrades to a safe shape when the model returns prose", async () => {
     create.mockResolvedValue({
       choices: [

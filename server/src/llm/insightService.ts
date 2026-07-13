@@ -1,3 +1,4 @@
+import type OpenAI from "openai";
 import type { DB } from "../db/connection.js";
 import {
   computeTasteProfile,
@@ -260,18 +261,37 @@ export async function titleInsight(
 
   const llm = getLlm();
   const model = currentModel(db);
-  const completion = await llm.chat.completions.create({
-    model,
-    temperature: 0.7,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: insightPrompt(profileState) },
-      {
-        role: "user",
-        content: `## The user's taste profile\n${renderTasteProfile(profile)}\n\n## The title\n${titleBlock}\n\n## Their closest library titles\n${neighborBlock}`,
-      },
-    ],
-  });
+  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    { role: "system", content: insightPrompt(profileState) },
+    {
+      role: "user",
+      content: `## The user's taste profile\n${renderTasteProfile(profile)}\n\n## The title\n${titleBlock}\n\n## Their closest library titles\n${neighborBlock}`,
+    },
+  ];
+
+  // JSON mode (response_format) is not supported by every OpenRouter
+  // provider — free/community models often reject it with
+  // "400 Provider returned error". The prompt already demands a bare JSON
+  // object and assembleInsight parses tolerantly, so when the provider
+  // refuses the parameter we retry once without it instead of failing
+  // the whole card.
+  let completion;
+  try {
+    completion = await llm.chat.completions.create({
+      model,
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+      messages,
+    });
+  } catch (err) {
+    const status = (err as { status?: number }).status;
+    if (status !== 400 && status !== 404 && status !== 422) throw err;
+    completion = await llm.chat.completions.create({
+      model,
+      temperature: 0.7,
+      messages,
+    });
+  }
 
   const raw =
     completion.choices[0]?.message?.content?.trim() ??
