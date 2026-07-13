@@ -9,7 +9,6 @@ import {
   addToLibrary,
   fetchDetailsFromTmdb,
   getEntryByTmdb,
-  libraryTmdbIds,
   listEpisodes,
   setWatchedUpTo,
   syncEpisodes,
@@ -17,7 +16,8 @@ import {
   type LibraryEntry,
   type LibraryStatus,
 } from "../services/libraryService.js";
-import { searchMulti } from "../services/discoverService.js";
+import { flag, searchMulti } from "../services/discoverService.js";
+import { fatigueScores, isRetired, logAnchor } from "../services/anchorService.js";
 import { genreMap, tmdbGet } from "../tmdb/client.js";
 import { normalizeList } from "../tmdb/normalize.js";
 import type { MediaType, RawTmdbItem } from "../tmdb/types.js";
@@ -424,13 +424,8 @@ export async function executeTool(
           `/discover/${mediaType}`,
           params,
         );
-        const ownedIds = libraryTmdbIds(db);
-        const items = normalizeList(data.results, mediaType);
-        items.sort((a, b) => {
-          const aOwned = ownedIds.has(`${a.mediaType}:${a.tmdbId}`) ? 1 : 0;
-          const bOwned = ownedIds.has(`${b.mediaType}:${b.tmdbId}`) ? 1 : 0;
-          return aOwned - bOwned;
-        });
+        const items = flag(db, normalizeList(data.results, mediaType));
+        items.sort((a, b) => Number(a.inLibrary) - Number(b.inLibrary));
         return JSON.stringify(
           items.slice(0, 12).map((r) => ({
             tmdbId: r.tmdbId,
@@ -438,7 +433,7 @@ export async function executeTool(
             title: r.title,
             year: r.year,
             tmdbRating: r.voteAverage,
-            inUserLibrary: ownedIds.has(`${r.mediaType}:${r.tmdbId}`),
+            inUserLibrary: r.inLibrary,
             overview: r.overview.slice(0, 160),
           })),
         );
@@ -578,12 +573,18 @@ export async function executeTool(
         if (cands.length < 2) {
           return JSON.stringify({ error: "Need 2-4 candidates to compare" });
         }
+        const fatigue = fatigueScores(db);
         const out = await Promise.all(
           cands.map(async (c) => {
             const id = Number(c.tmdb_id);
             const mt = str(c.media_type) as MediaType;
             const d = await fetchDetailsFromTmdb(id, mt);
             const owned = getEntryByTmdb(db, id, mt);
+            // Anti-fatigue: reinforce only fresh anchors, so retired or
+            // overused titles stop accruing usage signal.
+            if (!isRetired(db, id, mt) && (fatigue.get(`${mt}:${id}`) ?? 0) < 0.6) {
+              logAnchor(db, id, mt, "compare_titles");
+            }
             return {
               tmdbId: id,
               mediaType: mt,
