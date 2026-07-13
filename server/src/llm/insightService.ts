@@ -4,6 +4,7 @@ import {
   computeTasteProfile,
   renderTasteProfile,
 } from "../rag/tasteProfile.js";
+import { fatigueScores, isRetired, logAnchor } from "../services/anchorService.js";
 import { fetchDetailsFromTmdb } from "../services/libraryService.js";
 import { getEntryByTmdb } from "../services/libraryService.js";
 import type { MediaType } from "../tmdb/types.js";
@@ -249,9 +250,23 @@ export async function titleInsight(
     `${details.title} ${details.genres.join(" ")} ${details.director ?? ""}`,
     8,
   );
-  const neighborBlock = neighbors.length
+  // Anti-fatigue: drop retired neighbors, surface fresh ones first, and log
+  // the chosen anchors so the fatigue signal keeps accruing on real usage.
+  const fatigue = fatigueScores(db);
+  const usableNeighbors = neighbors.filter(
+    (n) => !isRetired(db, n.tmdbId, n.mediaType),
+  );
+  const orderedNeighbors = [...usableNeighbors].sort(
+    (a, b) =>
+      (fatigue.get(`${a.mediaType}:${a.tmdbId}`) ?? 0) -
+      (fatigue.get(`${b.mediaType}:${b.tmdbId}`) ?? 0),
+  );
+  for (const n of orderedNeighbors.slice(0, 3)) {
+    logAnchor(db, n.tmdbId, n.mediaType, "insight_neighbors");
+  }
+  const neighborBlock = orderedNeighbors.length
     ? "Titles from THEIR LIBRARY most like this one (cite these tmdbIds in comparisons):\n" +
-      neighbors
+      orderedNeighbors
         .map(
           (n) =>
             `- ${n.title} (tmdbId ${n.tmdbId}, ${n.mediaType}, rated ${n.rating ?? "—"}/10)`,

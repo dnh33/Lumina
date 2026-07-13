@@ -1,10 +1,62 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   assembleInsight,
   migrateCachedInsight,
   profileStateOf,
+  titleInsight,
   type ProfileState,
 } from "../src/llm/insightService.js";
+import { memoryDb, seedEntry } from "./helpers.js";
+import { setRetired } from "../src/services/anchorService.js";
+
+const create = vi.fn(async () => ({
+  choices: [
+    {
+      message: {
+        content: JSON.stringify({
+          verdict: "maybe",
+          matchScore: 60,
+          comparisons: [],
+          hook: "h",
+          text: "t",
+          followups: [],
+        }),
+      },
+    },
+  ],
+}));
+
+vi.mock("../src/llm/openrouter.js", () => ({
+  getLlm: () => ({ chat: { completions: { create } } }),
+  currentModel: () => "test-model",
+  getSetting: () => null,
+  setSetting: () => {},
+}));
+vi.mock("../src/services/libraryService.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/services/libraryService.js")>();
+  return {
+    ...actual,
+    fetchDetailsFromTmdb: async () => ({
+      title: "X",
+      year: 2020,
+      tagline: "",
+      genres: ["Drama"],
+      director: "D",
+      cast: [],
+      voteAverage: 7,
+      overview: "o",
+      tmdbId: 999,
+      mediaType: "movie",
+    }),
+    getEntryByTmdb: () => null,
+  };
+});
+vi.mock("../src/rag/retrieval.js", () => ({
+  retrieveLibrary: () => [
+    { tmdbId: 1, mediaType: "movie", title: "Fresh", rating: 9 },
+    { tmdbId: 2, mediaType: "movie", title: "Retired", rating: 10 },
+  ],
+}));
 
 const ctx = (profileState: ProfileState, owned: any = null) => ({
   profileState,
@@ -175,5 +227,25 @@ describe("migrateCachedInsight", () => {
     const r = migrateCachedInsight(full, "m");
     expect(r.verdict).toBe("love");
     expect(r.matchScore).toBe(90);
+  });
+});
+
+describe("generateInsight anti-fatigue neighbors", () => {
+  it("excludes retired neighbors from the prompt and logs fresh ones", async () => {
+    const db = memoryDb();
+    const libId = seedEntry(db, { tmdbId: 2, mediaType: "movie", title: "Retired" });
+    setRetired(db, libId, true);
+    create.mockClear();
+
+    await titleInsight(db, 999, "movie");
+
+    const prompt = JSON.stringify(create.mock.calls[0][0].messages);
+    const neighborSection = prompt.split("Their closest library titles")[1] ?? "";
+    expect(neighborSection).toContain("Fresh"); // fresh neighbor present
+    expect(neighborSection).not.toContain("Retired"); // retired excluded from neighbors
+    const logged = db
+      .prepare("SELECT tmdb_id FROM anchor_usage")
+      .all() as { tmdb_id: number }[];
+    expect(logged.map((r) => r.tmdb_id)).toEqual([1]); // only fresh logged
   });
 });
