@@ -42,6 +42,10 @@ export interface ToolStep {
   done: boolean;
   /** Human label for the step (server summary, else TOOL_LABELS). */
   summary?: string | null;
+  /** Salient argument, from the server ("“korean thrillers”"). */
+  detail?: string;
+  /** Result digest, from the server ("8 results", "Counterpart (2018)"). */
+  outcome?: string;
 }
 
 export interface StreamState {
@@ -251,6 +255,7 @@ export function useChat(
                         name: e.name,
                         done: false,
                         summary: TOOL_LABELS[e.name] ?? e.name,
+                        detail: e.detail,
                       },
                     ],
                   };
@@ -261,7 +266,13 @@ export function useChat(
                     ...s,
                     steps: s.steps.map((st, i) =>
                       i === s.steps.length - 1 && st.name === e.name
-                        ? { ...st, done: true, summary: label }
+                        ? {
+                            ...st,
+                            done: true,
+                            summary: label,
+                            detail: e.detail ?? st.detail,
+                            outcome: e.outcome,
+                          }
                         : st,
                     ),
                     receipts: e.summary ? [...s.receipts, e.summary] : s.receipts,

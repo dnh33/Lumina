@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 // framer-motion's useReducedMotion() subscribes to a process-wide media-query
 // singleton the first time it mounts and never re-reads it — so per-test
@@ -17,40 +17,77 @@ vi.mock("framer-motion", async (importOriginal) => {
 
 import { ToolTrace, type ToolTraceNode } from "./ToolTrace";
 
-const STEPS: ToolTraceNode[] = [
-  { name: "search", done: true, summary: "Searched the catalog for slow-burn sci-fi" },
-  { name: "add_to_library", done: true, summary: "Saved 'Arrival' to your library" },
+const LIVE_STEPS: ToolTraceNode[] = [
+  {
+    name: "search_tmdb",
+    done: true,
+    summary: "Searching the catalog",
+    detail: "“slow-burn sci-fi”",
+    outcome: "8 results",
+  },
+  { name: "get_title_details", done: false, summary: "Pulling title details" },
 ];
 
-describe("ToolTrace (tool-use trace rail — T11 / T12 / T13)", () => {
-  it("renders tool steps in order with a connecting line, summary text, and a fixed node height", () => {
-    reducedRef.current = false;
-    render(<ToolTrace steps={STEPS} />);
+const DONE_STEPS: ToolTraceNode[] = [
+  { name: "search_library", done: true, summary: "Reading your library", outcome: "3 matches" },
+  { name: "search_tmdb", done: true, summary: "Searching the catalog", detail: "“korean thrillers”", outcome: "8 results" },
+  { name: "search_tmdb", done: true, summary: "Searching the catalog", detail: "“slow burn”", outcome: "5 results" },
+  { name: "get_title_details", done: true, summary: "Pulling title details", outcome: "Counterpart (2018)" },
+];
 
-    // Two nodes, in DOM order.
+describe("ToolTrace (compact trace rail — T11 / T12 / T13 + progressive disclosure)", () => {
+  it("while working: renders one compact row per step with label, argument detail and outcome", () => {
+    reducedRef.current = false;
+    render(<ToolTrace steps={LIVE_STEPS} />);
+
     const nodes = screen.getAllByTestId("tooltrace-node");
     expect(nodes).toHaveLength(2);
-    expect(nodes[0].textContent).toContain("Searched the catalog");
-    expect(nodes[1].textContent).toContain("Saved 'Arrival'");
-
-    // The connecting rail line is present.
-    expect(screen.getByTestId("tooltrace-line")).toBeInTheDocument();
-
-    // Human summary shown (not raw JSON args).
-    expect(
-      screen.getByText(/Searched the catalog for slow-burn sci-fi/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Saved 'Arrival' to your library/),
-    ).toBeInTheDocument();
-    // No raw JSON / event plumbing leaked into the trace.
+    // Verb label + salient argument + result digest — never raw JSON.
+    expect(nodes[0].textContent).toContain("Searching the catalog");
+    expect(nodes[0].textContent).toContain("“slow-burn sci-fi”");
+    expect(nodes[0].textContent).toContain("8 results");
+    expect(nodes[1].textContent).toContain("Pulling title details");
     expect(document.body.textContent).not.toContain("{");
     expect(document.body.textContent).not.toContain("tool_done");
 
-    // Each node container reserves a fixed min-height (no spinner→summary shift).
+    // The connecting rail line is present, rows reserve a fixed min-height
+    // (no shift when the outcome lands).
+    expect(screen.getByTestId("tooltrace-line")).toBeInTheDocument();
     for (const node of nodes) {
       expect(node.style.minHeight).toBeTruthy();
     }
+
+    // No collapsed summary while a step is still running.
+    expect(screen.queryByTestId("tooltrace-summary")).not.toBeInTheDocument();
+  });
+
+  it("when all steps are done: auto-collapses to one grouped past-tense summary line", () => {
+    reducedRef.current = false;
+    render(<ToolTrace steps={DONE_STEPS} />);
+
+    const summary = screen.getByTestId("tooltrace-summary");
+    expect(summary.textContent).toContain("Read your library");
+    expect(summary.textContent).toContain("Searched the catalog ×2");
+    expect(summary.textContent).toContain("Pulled title details");
+    expect(summary).toHaveAttribute("aria-expanded", "false");
+
+    // The full rows are tucked away.
+    expect(screen.queryByTestId("tooltrace-node")).not.toBeInTheDocument();
+  });
+
+  it("expands the collapsed summary on click, revealing the full trace, and collapses again", () => {
+    reducedRef.current = true; // exercise the reduce path too
+    render(<ToolTrace steps={DONE_STEPS} />);
+
+    const summary = screen.getByTestId("tooltrace-summary");
+    fireEvent.click(summary);
+    expect(summary).toHaveAttribute("aria-expanded", "true");
+    const nodes = screen.getAllByTestId("tooltrace-node");
+    expect(nodes).toHaveLength(4);
+    expect(nodes[3].textContent).toContain("Counterpart (2018)");
+
+    fireEvent.click(summary);
+    expect(summary).toHaveAttribute("aria-expanded", "false");
   });
 
   it("does NOT render the travelling spark under prefers-reduced-motion", () => {
@@ -58,7 +95,7 @@ describe("ToolTrace (tool-use trace rail — T11 / T12 / T13)", () => {
     render(
       <ToolTrace
         steps={[
-          { name: "search", done: false, summary: "Searching…" },
+          { name: "search_tmdb", done: false, summary: "Searching…" },
           { name: "add_to_library", done: false },
         ]}
       />,
@@ -71,7 +108,7 @@ describe("ToolTrace (tool-use trace rail — T11 / T12 / T13)", () => {
     render(
       <ToolTrace
         steps={[
-          { name: "search", done: true, summary: "Done" },
+          { name: "search_tmdb", done: true, summary: "Done" },
           { name: "add_to_library", done: false },
         ]}
       />,

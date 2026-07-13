@@ -5,6 +5,7 @@ import { indexMessage } from "../rag/memory.js";
 import { currentModel, getLlm } from "./openrouter.js";
 import { luminaSystemPrompt } from "./prompts.js";
 import { executeTool, toolDefinitions } from "./tools.js";
+import { toolDetail, toolOutcome } from "./toolPresenter.js";
 
 const MAX_TOOL_ROUNDS = 6;
 const HISTORY_LIMIT = 30;
@@ -12,10 +13,21 @@ const HISTORY_LIMIT = 30;
 export type ChatEvent =
   | { type: "context"; librarySize: number; matches: string[]; memoryHits: number }
   | { type: "delta"; text: string }
-  | { type: "tool"; name: string }
-  | { type: "tool_done"; name: string; summary?: string }
+  | { type: "tool"; name: string; detail?: string }
+  | { type: "tool_done"; name: string; summary?: string; detail?: string; outcome?: string }
   | { type: "done"; messageId: number; conversationTitle: string }
   | { type: "error"; message: string };
+
+/** One persisted trace entry: what a tool call did, in human terms. */
+export interface ToolTraceEntry {
+  name: string;
+  /** Salient argument ("“korean thrillers”"). */
+  detail?: string;
+  /** Result digest ("8 results", "Counterpart (2018)"). */
+  outcome?: string;
+  /** Write receipt, when the call mutated the library. */
+  summary?: string;
+}
 
 /** Tools that mutate the library — their results become visible receipts. */
 const WRITE_TOOLS = new Set([
@@ -139,6 +151,7 @@ export async function runChatTurn(
   ];
 
   const toolsUsed: string[] = [];
+  const toolTrace: ToolTraceEntry[] = [];
   const writeReceipts: string[] = [];
   let assistantText = "";
 
@@ -201,14 +214,19 @@ export async function runChatTurn(
 
       for (const call of calls) {
         if (signal?.aborted) break;
-        send({ type: "tool", name: call.name });
+        // Human fragments for the trace UI: WHAT the call is doing (from its
+        // args) now, and what it FOUND (from its result) once done. Never raw JSON.
+        const detail = toolDetail(call.name, call.arguments || "{}");
+        send({ type: "tool", name: call.name, detail });
         toolsUsed.push(call.name);
         const result = await executeTool(db, call.name, call.arguments);
         const summary = WRITE_TOOLS.has(call.name)
           ? writeReceipt(call.name, result)
           : undefined;
         if (summary) writeReceipts.push(summary);
-        send({ type: "tool_done", name: call.name, summary });
+        const outcome = toolOutcome(call.name, result);
+        toolTrace.push({ name: call.name, detail, outcome, summary });
+        send({ type: "tool_done", name: call.name, summary, detail, outcome });
         messages.push({
           role: "tool",
           tool_call_id: call.id || `call_${Math.random().toString(36).slice(2, 10)}`,
@@ -229,6 +247,7 @@ export async function runChatTurn(
     if (assistantText.trim()) {
       persistMessage(db, conversationId, "assistant", assistantText, {
         toolsUsed,
+        toolTrace,
         writeReceipts,
         stopped: true,
         model,
@@ -245,6 +264,7 @@ export async function runChatTurn(
 
   const messageId = persistMessage(db, conversationId, "assistant", assistantText, {
     toolsUsed,
+    toolTrace,
     writeReceipts,
     retrieved: ctx.meta,
     model,

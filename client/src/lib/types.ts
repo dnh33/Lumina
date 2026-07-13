@@ -199,9 +199,21 @@ export interface Health {
   dataDir: string;
 }
 
+/** One persisted trace entry — what a tool call did, in human terms. */
+export interface ToolTraceEntry {
+  name: string;
+  /** Salient argument ("“korean thrillers”"). */
+  detail?: string;
+  /** Result digest ("8 results", "Counterpart (2018)"). */
+  outcome?: string;
+  /** Write receipt, when the call mutated the library. */
+  summary?: string;
+}
+
 /** Parsed shape of ChatMessageRow.meta (best-effort). */
 export interface MessageMeta {
   toolsUsed?: string[];
+  toolTrace?: ToolTraceEntry[];
   writeReceipts?: string[];
   stopped?: boolean;
   model?: string;
@@ -255,8 +267,8 @@ export interface TitleInsight {
 export type ChatEvent =
   | { type: "context"; librarySize: number; matches: string[]; memoryHits: number }
   | { type: "delta"; text: string }
-  | { type: "tool"; name: string }
-  | { type: "tool_done"; name: string; summary?: string }
+  | { type: "tool"; name: string; detail?: string }
+  | { type: "tool_done"; name: string; summary?: string; detail?: string; outcome?: string }
   | { type: "done"; messageId: number; conversationTitle: string }
   | { type: "error"; message: string };
 

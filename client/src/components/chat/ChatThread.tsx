@@ -8,52 +8,23 @@ import {
 } from "framer-motion";
 import {
   ArrowDown,
-  BookOpen,
   BookmarkCheck,
-  BookmarkPlus,
-  Brain,
-  Check,
-  Compass,
-  Info,
-  LibraryBig,
-  ListChecks,
-  ListVideo,
   Loader2,
-  PenLine,
-  RefreshCw,
-  Scale,
-  Search,
   Send,
   Sparkles,
   Square,
 } from "lucide-react";
 import { api } from "../../lib/api";
 import { playCue } from "../../lib/sound";
-import type { ChatMessageRow, MessageMeta } from "../../lib/types";
+import type { ChatMessageRow, MessageMeta, ToolTraceEntry } from "../../lib/types";
 import { MessageBubble } from "./MessageBubble";
 import { SuggestionCards, DEFAULT_SUGGESTIONS, type Suggestion } from "./SuggestionCards";
 import { MemoryConstellation } from "./MemoryConstellation";
-import { ReasoningInterstitial, type ReasoningStep } from "./ReasoningInterstitial";
 import { ToolRibbon } from "./ToolRibbon";
 import { SparkAvatar } from "./SparkAvatar";
 import { TOOL_LABELS, useChat, type ToolStep } from "./useChat";
 import type { CompanionState } from "../../hooks/useCompanionState";
 import { messageEnter, stagger60 } from "../../lib/motion";
-
-const TOOL_ICONS: Record<string, typeof Search> = {
-  search_library: LibraryBig,
-  get_taste_profile: Brain,
-  search_tmdb: Search,
-  get_title_details: Info,
-  discover_titles: Compass,
-  add_to_library: BookmarkPlus,
-  update_library_entry: PenLine,
-  set_episode_progress: ListChecks,
-  get_episode_progress: ListVideo,
-  compare_titles: Scale,
-  get_episode_recap: BookOpen,
-  check_continuing_series: RefreshCw,
-};
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -140,7 +111,7 @@ function AssistantTurn({
   return (
     <div className="flex gap-3">
       <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] ring-1 ring-white/[0.07]">
-        <SparkAvatar state={companionState} toolBeads={steps.length || 3} hideWhisper />
+        <SparkAvatar state={companionState} hideWhisper />
       </div>
       <div className="min-w-0 flex-1 space-y-1.5">
         <p className="flex items-baseline gap-2 text-2xs text-mist-400">
@@ -180,9 +151,21 @@ function AssistantTurn({
 /** map a persisted message's meta into the same turn anatomy */
 function persistedTurnProps(m: ChatMessageRow, onChip?: (c: string) => void): TurnProps {
   const meta = parseMeta(m.meta);
+  // Prefer the rich toolTrace (detail + outcome per call); older rows only
+  // carry toolsUsed names — both render through the same ToolStep shape.
+  const trace: ToolTraceEntry[] =
+    meta.toolTrace ?? (meta.toolsUsed ?? []).map((name) => ({ name }));
   return {
     content: m.content,
-    steps: (meta.toolsUsed ?? []).map((name) => ({ name, done: true })),
+    steps: trace.map(
+      (t): ToolStep => ({
+        name: t.name,
+        done: true,
+        summary: t.summary ?? TOOL_LABELS[t.name] ?? t.name,
+        detail: t.detail,
+        outcome: t.outcome,
+      }),
+    ),
     receipts: meta.writeReceipts ?? [],
     contextNote:
       meta.retrieved?.libraryMatches?.length
@@ -501,20 +484,10 @@ export function ChatThread({
             </div>
           )}
 
-          {/* Client-simulated reasoning interstitial (Task 6, D1=a) — lives
-              INSIDE the scroll flow (not as a floating sibling) so it can never
-              overlap the composer. Shown during tool-heavy turns; pure client
-              state, no backend. Uses the server summary when present so the
-              trace reads human instead of dumping raw tool names like
-              `search_library`. */}
-          <ReasoningInterstitial
-            visible={!!stream && stream.steps.length > 0}
-            steps={stream?.steps.map<ReasoningStep>((s) => ({
-              label: s.summary ?? TOOL_LABELS[s.name] ?? s.name,
-              status: s.done ? "done" : "running",
-            })) ?? []}
-            className="mt-3"
-          />
+          {/* The tool trace inside AssistantTurn is now the single
+              transparency surface (compact live timeline → collapsed
+              "how I got there" summary) — the separate ReasoningInterstitial
+              panel duplicated it and was removed. */}
         </div>
 
         {detached && (isStreaming || messages.length > 0) && (
