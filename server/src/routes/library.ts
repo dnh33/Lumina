@@ -2,19 +2,27 @@ import { Router } from "express";
 import { getDb } from "../db/connection.js";
 import {
   addToLibrary,
+  fetchDetailsFromTmdb,
   getEntry,
+  getExcludedGenres,
+  ignoreTitle,
   libraryStats,
   listEpisodes,
+  listIgnored,
   listLibrary,
   removeEntry,
   setEpisodeWatched,
+  setExcludedGenres,
   setSeasonWatched,
   syncEpisodes,
+  unignoreTitle,
   updateEntry,
+  upsertTitle,
   type LibraryStatus,
   type ListFilters,
 } from "../services/libraryService.js";
 import { ensureRatings } from "../services/ratingsService.js";
+import { setRetired, isRetired } from "../services/anchorService.js";
 import { env } from "../env.js";
 import type { MediaType } from "../tmdb/types.js";
 
@@ -165,6 +173,88 @@ libraryRouter.delete("/library/:id", (req, res) => {
   if (!id) return void res.status(400).json({ error: "bad id" });
   removeEntry(getDb(), id);
   res.status(204).end();
+});
+
+/* ── Ignored titles ──────────────────────────────────────────────── */
+
+libraryRouter.get("/ignore", (_req, res) => {
+  res.json(listIgnored(getDb()));
+});
+
+libraryRouter.post("/ignore", async (req, res) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const tmdbId = Number(body.tmdbId);
+  const mediaType = body.mediaType as MediaType;
+  if (!Number.isInteger(tmdbId) || tmdbId <= 0 || (mediaType !== "movie" && mediaType !== "tv")) {
+    return void res.status(400).json({ error: "tmdbId and mediaType required" });
+  }
+  const db = getDb();
+  ignoreTitle(db, tmdbId, mediaType);
+  // Best-effort metadata snapshot so the manage list can show a real title
+  // and poster. The ignore itself must never fail on a TMDB hiccup.
+  try {
+    upsertTitle(db, await fetchDetailsFromTmdb(tmdbId, mediaType));
+  } catch {
+    /* listIgnored falls back to a placeholder title */
+  }
+  res.status(201).json({ ok: true });
+});
+
+libraryRouter.delete("/ignore/:type/:id", (req, res) => {
+  const mediaType = req.params.type as MediaType;
+  const tmdbId = intParam(req.params.id);
+  if (!tmdbId || (mediaType !== "movie" && mediaType !== "tv")) {
+    return void res.status(400).json({ error: "bad params" });
+  }
+  unignoreTitle(getDb(), tmdbId, mediaType);
+  res.status(204).end();
+});
+
+/* ── Discovery preferences ───────────────────────────────────────── */
+
+libraryRouter.get("/discovery-prefs", (_req, res) => {
+  res.json({ excludedGenres: getExcludedGenres(getDb()) });
+});
+
+libraryRouter.put("/discovery-prefs", (req, res) => {
+  const body = (req.body ?? {}) as { excludedGenres?: unknown };
+  if (
+    !Array.isArray(body.excludedGenres) ||
+    body.excludedGenres.some((x) => !Number.isInteger(x))
+  ) {
+    return void res
+      .status(400)
+      .json({ error: "excludedGenres must be an array of genre ids" });
+  }
+  setExcludedGenres(getDb(), body.excludedGenres as number[]);
+  res.json({ excludedGenres: getExcludedGenres(getDb()) });
+});
+
+/* ── Retire-as-anchor ─────────────────────────────────────────── */
+
+// Keep a loved title in the taste profile but stop it from being used as a
+// "like X" comparison anchor (anti-fatigue). Independent of ignore.
+libraryRouter.post("/library/:id/retire-anchor", (req, res) => {
+  const id = intParam(req.params.id);
+  if (!id) return void res.status(400).json({ error: "bad id" });
+  if (!getEntry(getDb(), id)) return void res.status(404).json({ error: "Not found" });
+  setRetired(getDb(), id, true);
+  res.status(201).json({ retired: true });
+});
+
+libraryRouter.delete("/library/:id/retire-anchor", (req, res) => {
+  const id = intParam(req.params.id);
+  if (!id) return void res.status(400).json({ error: "bad id" });
+  setRetired(getDb(), id, false);
+  res.status(204).end();
+});
+
+libraryRouter.get("/library/:id/retired", (req, res) => {
+  const id = intParam(req.params.id);
+  if (!id) return void res.status(400).json({ error: "bad id" });
+  const entry = getEntry(getDb(), id);
+  if (!entry) return void res.status(404).json({ error: "Not found" });
+  res.json({ retired: isRetired(getDb(), entry.tmdbId, entry.mediaType) });
 });
 
 /* ── Episodes ────────────────────────────────────────────────────── */

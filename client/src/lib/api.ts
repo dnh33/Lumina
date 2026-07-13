@@ -7,7 +7,9 @@ import type {
   EpisodeRecap,
   EpisodeRow,
   ForYou,
+  Genre,
   Health,
+  IgnoredTitle,
   LibraryEntry,
   LibraryStats,
   LibraryStatus,
@@ -87,6 +89,34 @@ export const api = {
     fetch(`/api/library/${id}`, { method: "DELETE" }).then((r) => {
       if (!r.ok) throw new Error("Delete failed");
     }),
+
+  /* ignore & discovery prefs */
+  ignore: (body: { tmdbId: number; mediaType: MediaType }) =>
+    send<{ ok: true }>("POST", "/api/ignore", body),
+  unignore: (mediaType: MediaType, tmdbId: number) =>
+    fetch(`/api/ignore/${mediaType}/${tmdbId}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok) throw new Error("Un-ignore failed");
+    }),
+  ignoredList: () => get<IgnoredTitle[]>("/api/ignore"),
+  genres: () => get<Genre[]>("/api/tmdb/genres"),
+  getDiscoveryPrefs: () =>
+    get<{ excludedGenres: number[] }>("/api/discovery-prefs"),
+  setDiscoveryPrefs: (excludedGenres: number[]) =>
+    send<{ excludedGenres: number[] }>("PUT", "/api/discovery-prefs", {
+      excludedGenres,
+    }),
+
+  /* retire-as-anchor (anti-fatigue): keep in taste profile, drop as comparison hook */
+  retireAnchor: (libraryId: number) =>
+    send<{ retired: true }>("POST", `/api/library/${libraryId}/retire-anchor`),
+  unretireAnchor: (libraryId: number) =>
+    fetch(`/api/library/${libraryId}/retire-anchor`, { method: "DELETE" }).then(
+      (r) => {
+        if (!r.ok) throw new Error("Unretire failed");
+      },
+    ),
+  anchorRetired: (libraryId: number) =>
+    get<{ retired: boolean }>(`/api/library/${libraryId}/retired`),
 
   enrichAll: () =>
     send<{
