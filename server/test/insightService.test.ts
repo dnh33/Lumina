@@ -244,8 +244,12 @@ describe("generateInsight anti-fatigue neighbors", () => {
     expect(neighborSection).toContain("Fresh"); // fresh neighbor present
     expect(neighborSection).not.toContain("Retired"); // retired excluded from neighbors
     const logged = db
-      .prepare("SELECT tmdb_id FROM anchor_usage")
+      .prepare("SELECT tmdb_id FROM anchor_usage WHERE surface='take'")
       .all() as { tmdb_id: number }[];
-    expect(logged.map((r) => r.tmdb_id)).toEqual([1]); // only fresh logged
+    // Option A: only the OPENED title (999) is logged as "take" — not the
+    // neighbor "Fresh" (1, logged as a comparison instead) and not the
+    // retired "Retired" (2, never logged at all).
+    expect(logged.map((r) => r.tmdb_id)).toEqual([999]);
+    expect(logged.map((r) => r.tmdb_id)).not.toContain(2); // retired never logged
   });
 });

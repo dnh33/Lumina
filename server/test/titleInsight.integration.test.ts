@@ -179,8 +179,9 @@ describe("titleInsight (wiring)", () => {
     expect(Array.isArray(r.followups)).toBe(true);
   });
 
-  it("logs the opened title's loved-profile titles as 'take' anchors", async () => {
-    // Fresh db so we own the anchor_usage rows.
+  it("logs the opened loved title as a 'take' anchor", async () => {
+    // Fresh db so we own the anchor_usage rows. The opened title IS a loved
+    // title; opening its card is the "like X" moment that gets logged.
     const db = memoryDb() as DB;
     seedEntry(db, { tmdbId: 424, mediaType: "movie", title: "Beloved" }, { rating: 10, favorite: true });
 
@@ -200,12 +201,40 @@ describe("titleInsight (wiring)", () => {
       ],
     });
 
-    await titleInsight(db, 181, "movie");
+    await titleInsight(db, 424, "movie");
 
     const rows = db
       .prepare("SELECT tmdb_id, media_type, surface FROM anchor_usage")
       .all() as { tmdb_id: number; media_type: string; surface: string }[];
-    // The insight card frames via the user's loved titles → logged as "take".
+    // The opened card frames via the user's loved title → logged as "take".
+    // Only the opened title (not the rest of the library) is logged.
     expect(rows).toContainEqual({ tmdb_id: 424, media_type: "movie", surface: "take" });
+  });
+
+  it("logs 'take' ONLY for the opened title, not the whole loved library", async () => {
+    // Regression for the whole-library fatigue storm: opening one card must
+    // NOT stamp all 15 loved titles (that fatigued every loved title after
+    // just 3 card-opens). Only the opened title is a "like X" moment.
+    const db = memoryDb() as DB;
+    const openedId = 909;
+    seedEntry(db, { tmdbId: openedId, mediaType: "movie", title: "Opened" }, { rating: 10, favorite: true });
+    for (let i = 0; i < 14; i++) {
+      seedEntry(db, { tmdbId: 1000 + i, mediaType: "movie", title: `Loved${i}` }, { rating: 10, favorite: true });
+    }
+
+    create.mockResolvedValue({
+      choices: [
+        { message: { content: JSON.stringify({ verdict: "love", matchScore: 90, comparisons: [], hook: "nice", text: "lovely" }) } },
+      ],
+    });
+
+    await titleInsight(db, openedId, "movie");
+
+    const rows = db
+      .prepare("SELECT tmdb_id FROM anchor_usage WHERE surface='take'")
+      .all() as { tmdb_id: number }[];
+    // Exactly one take row, for the opened title — not the other 14.
+    expect(rows).toHaveLength(1);
+    expect(rows[0].tmdb_id).toBe(openedId);
   });
 });
