@@ -76,6 +76,32 @@ describe("InsightBody", () => {
     expect(screen.getByText("Maybe")).toBeInTheDocument();
   });
 
+  it("splits paragraphs and renders **titles** as links (or emphasis when unknown)", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <InsightBody
+          insight={{
+            ...richInsight,
+            text: "Your rapture for **Severance** signals this fits.\n\nA second paragraph praising **Unknown Film** at length.",
+          }}
+          onRegenerate={() => {}}
+          onFollowup={() => {}}
+        />
+      </MemoryRouter>,
+    );
+    const prose = container.querySelector("[data-testid='insight-prose']")!;
+    // two paragraphs, no raw asterisks leaked
+    expect(prose.querySelectorAll("p")).toHaveLength(2);
+    expect(prose.textContent).not.toContain("**");
+    // known comparison title → in-prose link to its page
+    const proseLinks = prose.querySelectorAll("a[href='/title/tv/1']");
+    expect(proseLinks).toHaveLength(1);
+    expect(proseLinks[0].textContent).toBe("Severance");
+    // unmatched marked title → quiet emphasis, not a link
+    const strong = prose.querySelector("strong");
+    expect(strong?.textContent).toBe("Unknown Film");
+  });
+
   it("omits comparison links when none present", () => {
     const { container: withOne } = render(
       <MemoryRouter>

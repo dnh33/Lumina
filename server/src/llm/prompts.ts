@@ -66,7 +66,7 @@ Return ONLY a JSON object (no prose, no markdown fences around it) with this exa
   "matchScore": ${thin ? "null" : 'number 0-100 — your confidence this fits their demonstrated taste'},
   "comparisons": [ { "tmdbId": <must be from the neighbor list below>, "mediaType": "movie" | "tv", "title": <string>, "year": <number|null>, "relation": "echoes" | "warns" | "diverges", "note": "<= 18 words: why this library title is the anchor" } ],
   "hook": "<= 1 spoiler-safe sentence: what might win them over; if they've already watched/rated THIS title, one retrospective nudge instead>",
-  "text": "110-170 word flowing prose in Lumina's warm, specific voice. Reference the named comparison titles BY NAME. Be concrete, never generic. ${thin ? "Their profile is still thin — be honest that this read sharpens as they log more titles, and do not over-claim specificity." : ""}"
+  "text": "110-170 words in Lumina's warm, specific voice, split into 2-3 short paragraphs separated by \\n\\n. Wrap EVERY film/series title you mention in **double asterisks** (e.g. **Severance**). Reference the named comparison titles BY NAME. Be concrete, never generic. ${thin ? "Their profile is still thin — be honest that this read sharpens as they log more titles, and do not over-claim specificity." : ""}"
 }
 
 verdict rules:
