@@ -226,6 +226,14 @@ export async function titleInsight(
     fetchDetailsFromTmdb(tmdbId, mediaType),
     Promise.resolve(computeTasteProfile(db)),
   ]);
+  // Anti-fatigue: opening a title's insight card frames via the user's loved
+  // titles — that IS a "like X" comparison moment, so log those as anchors
+  // too (the "take" surface). Skips retired titles.
+  for (const t of profile.lovedTitles) {
+    if (!isRetired(db, t.tmdbId, t.mediaType)) {
+      logAnchor(db, t.tmdbId, t.mediaType, "take");
+    }
+  }
   const owned = getEntryByTmdb(db, tmdbId, mediaType);
   const profileState = profileStateOf(profile);
 

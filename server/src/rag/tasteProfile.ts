@@ -30,7 +30,7 @@ export interface TasteProfile {
   topTags: { name: string; count: number }[];
   topGenres: GenreAffinity[];
   avoidedGenres: GenreAffinity[];
-  lovedTitles: { title: string; year: number | null; rating: number | null; mediaType: string; notes: string }[];
+  lovedTitles: { title: string; year: number | null; rating: number | null; mediaType: string; tmdbId: number; notes: string }[];
   dislikedTitles: { title: string; year: number | null; rating: number | null }[];
   favoriteDirectors: PersonAffinity[];
   recentWatches: { title: string; rating: number | null; when: string | null }[];
@@ -143,12 +143,13 @@ export function computeTasteProfile(db: DB): TasteProfile {
     .slice(0, 15);
 
   const lovedTitles = lovedRows.map((r) => ({
-      title: r.title,
-      year: r.year,
-      rating: r.rating,
-      mediaType: r.media_type,
-      notes: r.notes.slice(0, 140),
-    }));
+    title: r.title,
+    year: r.year,
+    rating: r.rating,
+    mediaType: r.media_type,
+    tmdbId: r.tmdb_id,
+    notes: r.notes.slice(0, 140),
+  }));
 
   const dislikedTitles = watched
     .filter((r) => r.rating != null && r.rating <= 4)

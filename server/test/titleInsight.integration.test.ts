@@ -39,6 +39,7 @@ vi.mock("../src/rag/retrieval.js", () => ({
 import { titleInsight } from "../src/llm/insightService.js";
 import { memoryDb } from "./helpers.js";
 import { seedEntry } from "./helpers.js";
+import { logAnchor } from "../src/services/anchorService.js";
 import type { DB } from "../src/db/connection.js";
 
 // Real in-memory sqlite so computeTasteProfile / caching exercise the DB.
@@ -176,5 +177,35 @@ describe("titleInsight (wiring)", () => {
     expect(r.verdict).toBe("maybe");
     expect(r.comparisons).toEqual([]);
     expect(Array.isArray(r.followups)).toBe(true);
+  });
+
+  it("logs the opened title's loved-profile titles as 'take' anchors", async () => {
+    // Fresh db so we own the anchor_usage rows.
+    const db = memoryDb() as DB;
+    seedEntry(db, { tmdbId: 424, mediaType: "movie", title: "Beloved" }, { rating: 10, favorite: true });
+
+    create.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              verdict: "love",
+              matchScore: 90,
+              comparisons: [],
+              hook: "you'll adore this",
+              text: "Your love of Beloved shows.",
+            }),
+          },
+        },
+      ],
+    });
+
+    await titleInsight(db, 181, "movie");
+
+    const rows = db
+      .prepare("SELECT tmdb_id, media_type, surface FROM anchor_usage")
+      .all() as { tmdb_id: number; media_type: string; surface: string }[];
+    // The insight card frames via the user's loved titles → logged as "take".
+    expect(rows).toContainEqual({ tmdb_id: 424, media_type: "movie", surface: "take" });
   });
 });

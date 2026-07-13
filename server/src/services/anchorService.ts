@@ -11,13 +11,24 @@ export function logAnchor(db: DB, tmdbId: number, mediaType: string, surface: st
   ).run(tmdbId, mediaType, surface, Date.now());
 }
 
+// FATIGUE_WINDOW_DAYS: citations older than this contribute nothing. Keeps
+// the score anchored to recent framing behavior (a title cited a lot 2 months
+// ago is not "over-used" today).
+const FATIGUE_WINDOW_DAYS = 14;
+// MIN_CITATIONS: below this, a title is never flagged "over-used" regardless
+// of recency. One or two comparisons is normal variety, not fatigue.
+const MIN_CITATIONS = 3;
+
 export function fatigueScores(db: DB): Map<string, number> {
   const now = Date.now();
+  const cutoff = now - FATIGUE_WINDOW_DAYS * 86_400_000;
   const rows = db
-    .prepare("SELECT tmdb_id, media_type, created_at FROM anchor_usage")
-    .all() as { tmdb_id: number; media_type: string; created_at: number }[];
-  const totals = new Map<string, number>();
+    .prepare(
+      "SELECT tmdb_id, media_type, created_at FROM anchor_usage WHERE created_at >= ?",
+    )
+    .all(cutoff) as { tmdb_id: number; media_type: string; created_at: number }[];
   const weighted = new Map<string, number>();
+  const totals = new Map<string, number>();
   for (const r of rows) {
     const key = `${r.media_type}:${r.tmdb_id}`;
     const ageDays = (now - r.created_at) / 86_400_000;
@@ -27,6 +38,9 @@ export function fatigueScores(db: DB): Map<string, number> {
   }
   const out = new Map<string, number>();
   for (const [key, w] of weighted) {
+    // Require a real volume of recent citations before flagging; a single
+    // fresh citation must not read as "over-used".
+    if ((totals.get(key) ?? 0) < MIN_CITATIONS) continue;
     const norm = w / Math.max(1, totals.get(key) ?? 1);
     out.set(key, Math.round(norm * 100) / 100);
   }

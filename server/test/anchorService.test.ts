@@ -23,8 +23,11 @@ describe("anchorService", () => {
     ).run(2, "movie", "compare_titles", now - 30 * DAY);
 
     const scores = fatigueScores(db);
-    expect(scores.get("movie:1")!).toBeGreaterThan(scores.get("movie:2")!);
+    // movie:1 has 5 recent citations → over-used and above threshold.
     expect(scores.get("movie:1")!).toBeGreaterThan(0.5);
+    // movie:2 has a single old citation → below the 3-citation floor,
+    // so it is NOT flagged (a lone comparison is variety, not fatigue).
+    expect(scores.get("movie:2")).toBeUndefined();
   });
 
   it("honors the retired flag independently of fatigue", () => {
