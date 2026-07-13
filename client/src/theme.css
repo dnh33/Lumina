@@ -15,6 +15,12 @@
   --color-gold-500: #d9a532;
   --color-gold-600: #b9871f;
 
+  /* Amber — passive "you've seen this a lot" nudge (Over-used hint).
+     Distinct from gold (active/rating) and red (error). */
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+
   /* External critics brands — tuned to sit on the dark surface.
      Gold stays reserved for the user's own rating / active state;
      these are the *only* other hue families and are never glow-lit. */
