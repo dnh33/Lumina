@@ -262,7 +262,7 @@ export const PosterCard = memo(function PosterCard({
                   ) : (
                     <Ban className="h-3.5 w-3.5" />
                   )}
-                  {retired ? "Anchor active" : "Retire as anchor"}
+                  {retired ? "Retired as anchor" : "Retire as anchor"}
                 </button>
                 )}
             </motion.div>
