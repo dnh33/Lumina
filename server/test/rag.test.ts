@@ -81,6 +81,21 @@ describe("RAG layer 1 — taste profile", () => {
     expect(text).toContain("Denis Villeneuve");
   });
 
+  it("keeps a fatigued loved title in the profile but adds a pivot directive", () => {
+    const db = memoryDb();
+    seedEntry(db, { tmdbId: 7, mediaType: "movie", title: "LOTR" }, { rating: 10, favorite: true });
+    const now = Date.now();
+    for (let i = 0; i < 5; i++) {
+      db.prepare(
+        "INSERT INTO anchor_usage (tmdb_id,media_type,surface,created_at) VALUES (?,?,?,?)",
+      ).run(7, "movie", "compare_titles", now - i * 86_400_000);
+    }
+    const p = computeTasteProfile(db);
+    const text = renderTasteProfile(p);
+    expect(text).toContain("LOTR"); // still in profile
+    expect(text).toMatch(/pivot|avoid referencing|fresh(er)? (anchor|signal)|re-cit/i);
+  });
+
   it("handles an empty library gracefully", () => {
     const db = memoryDb();
     const p = computeTasteProfile(db);
