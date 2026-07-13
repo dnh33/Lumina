@@ -1,0 +1,37 @@
+import { memoryDb, seedEntry } from "./helpers.js";
+import { describe, it, expect } from "vitest";
+import {
+  logAnchor,
+  fatigueScores,
+  setRetired,
+  isRetired,
+} from "../src/services/anchorService.js";
+
+const DAY = 86_400_000;
+
+describe("anchorService", () => {
+  it("logs anchors and scores recently over-used titles higher", () => {
+    const db = memoryDb();
+    const now = Date.now();
+    for (let i = 0; i < 5; i++) {
+      db.prepare(
+        "INSERT INTO anchor_usage (tmdb_id,media_type,surface,created_at) VALUES (?,?,?,?)",
+      ).run(1, "movie", "compare_titles", now - i * DAY);
+    }
+    db.prepare(
+      "INSERT INTO anchor_usage (tmdb_id,media_type,surface,created_at) VALUES (?,?,?,?)",
+    ).run(2, "movie", "compare_titles", now - 30 * DAY);
+
+    const scores = fatigueScores(db);
+    expect(scores.get("movie:1")!).toBeGreaterThan(scores.get("movie:2")!);
+    expect(scores.get("movie:1")!).toBeGreaterThan(0.5);
+  });
+
+  it("honors the retired flag independently of fatigue", () => {
+    const db = memoryDb();
+    const libId = seedEntry(db, { tmdbId: 7, mediaType: "movie", title: "LOTR" });
+    expect(isRetired(db, 7, "movie")).toBe(false);
+    setRetired(db, libId, true);
+    expect(isRetired(db, 7, "movie")).toBe(true);
+  });
+});
