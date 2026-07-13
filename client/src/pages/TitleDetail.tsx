@@ -14,6 +14,8 @@ import {
   CalendarClock,
   Heart,
   Loader2,
+  Maximize2,
+  Minimize2,
   Play,
   Plus,
   RefreshCw,
@@ -100,60 +102,110 @@ function TrailerLightbox({
   );
 }
 
-/* ── AI insight (side rail) ─────────────────────────────────────── */
+/* ── AI insight — rail card that expands IN-FLOW into a full-width band ─ */
 
-function InsightCard({ details }: { details: TitleDetails }) {
-  const navigate = useNavigate();
+/** Reserved-height loading skeleton shared by the rail card and the band. */
+function InsightSkeleton({ tall = false }: { tall?: boolean }) {
+  return (
+    <div className={`${tall ? "min-h-[280px]" : "min-h-[280px]"} space-y-3`} aria-busy="true">
+      <div className="h-5 w-24 animate-pulse rounded-full bg-white/10" />
+      <div className="h-3 w-full animate-pulse rounded bg-white/10" />
+      <div className="h-3 w-11/12 animate-pulse rounded bg-white/10" />
+      <div className="h-3 w-10/12 animate-pulse rounded bg-white/10" />
+      <div className="h-3 w-3/4 animate-pulse rounded bg-white/10" />
+    </div>
+  );
+}
+
+const EMPTY_PROFILE_NUDGE =
+  "Log a few favorites first — your taste profile is still empty, and Lumina needs signal to read this one well.";
+
+/**
+ * Shared query wiring for the take — called by both the rail card and the
+ * expanded band; TanStack dedupes on the query key so they see one request.
+ * The take is generated ON REQUEST (button), never on page entry — an LLM
+ * roundtrip is too heavy to fire as a page side-effect.
+ */
+function useTitleInsight(details: TitleDetails, requested: boolean) {
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
   const insight = useQuery({
     queryKey: ["insight", details.mediaType, details.tmdbId],
     queryFn: () => api.insight(details.mediaType, details.tmdbId),
-    enabled: health.isSuccess && health.data.aiConfigured,
+    enabled: requested && health.isSuccess && health.data.aiConfigured,
     staleTime: Infinity,
   });
   const refresh = useMutation({
     mutationFn: () => api.insight(details.mediaType, details.tmdbId, true),
     onSuccess: () => insight.refetch(),
   });
+  return { health, insight, refresh };
+}
 
-  // No flash-then-vanish: only render once we know AI is configured.
-  if (!health.isSuccess || !health.data.aiConfigured) return null;
-
+/**
+ * TakeBand — the take expanded INTO the page flow: a full-width section
+ * above the editorial grid (no modal — content simply makes room). Shares
+ * layoutId with the rail card so activation reads as the card gliding out
+ * of the rail; collapse tucks it back.
+ */
+function TakeBand({
+  details,
+  requested,
+  onCollapse,
+}: {
+  details: TitleDetails;
+  requested: boolean;
+  onCollapse: () => void;
+}) {
+  const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
+  const { health, insight, refresh } = useTitleInsight(details, requested);
+  const ref = useRef<HTMLElement>(null);
   const onFollowup = useCallback(
     (prefill: string) => navigate("/chat", { state: { prefill } }),
     [navigate],
   );
 
-  // Empty profile — show a gentle nudge instead of a broken empty panel.
-  if (insight.data?.profileState === "empty") {
-    return (
-      <section className="panel p-5 ring-gold-400/15">
-        <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold text-gold-300">
-          <Sparkles className="h-[18px] w-[18px]" /> Lumina's take
-        </h3>
-        <p className="text-sm leading-relaxed text-mist-400">
-          Log a few favorites first — your taste profile is still empty, and
-          Lumina needs signal to read this one well.
-        </p>
-      </section>
-    );
-  }
+  // The band mounts from a rail-level action that may sit below the fold —
+  // bring it into view so the expansion is never invisible.
+  useEffect(() => {
+    ref.current?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "nearest",
+    });
+  }, [reduceMotion]);
+
+  if (!health.isSuccess || !health.data.aiConfigured) return null;
+
+  const loading = insight.isLoading || refresh.isPending;
 
   return (
-    <section className="panel p-5 ring-gold-400/15">
-      <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold text-gold-300">
-        <Sparkles className="h-[18px] w-[18px]" /> Lumina's take
-      </h3>
+    <motion.section
+      ref={ref}
+      layoutId="lumina-take"
+      initial={reduceMotion ? false : { opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+      className="panel mb-8 p-6 ring-gold-400/20 sm:p-8"
+      aria-label={`Lumina's take on ${details.title}`}
+    >
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h3 className="flex items-center gap-2.5 font-display text-xl font-semibold text-gold-300 sm:text-2xl">
+          <Sparkles className="h-5 w-5" /> Lumina's take
+        </h3>
+        <button
+          type="button"
+          aria-label="Tuck Lumina's take back into the rail"
+          title="Tuck away"
+          onClick={onCollapse}
+          className="icon-btn"
+        >
+          <Minimize2 className="h-4 w-4" />
+        </button>
+      </div>
 
-      {insight.isLoading || refresh.isPending ? (
-        // Reserved-height skeleton: prevents the reflow jump that broke layout.
-        <div className="min-h-[280px] space-y-3" aria-busy="true">
-          <div className="h-5 w-24 animate-pulse rounded-full bg-white/10" />
-          <div className="h-3 w-full animate-pulse rounded bg-white/10" />
-          <div className="h-3 w-11/12 animate-pulse rounded bg-white/10" />
-          <div className="h-3 w-10/12 animate-pulse rounded bg-white/10" />
-          <div className="h-3 w-3/4 animate-pulse rounded bg-white/10" />
-        </div>
+      {loading ? (
+        <InsightSkeleton tall />
       ) : insight.isError ? (
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-red-300/90">
@@ -167,19 +219,106 @@ function InsightCard({ details }: { details: TitleDetails }) {
             Retry
           </button>
         </div>
+      ) : insight.data?.profileState === "empty" ? (
+        <p className="text-sm leading-relaxed text-mist-400">{EMPTY_PROFILE_NUDGE}</p>
+      ) : insight.data ? (
+        <InsightBody
+          insight={insight.data}
+          spacious
+          onRegenerate={() => refresh.mutate()}
+          onFollowup={onFollowup}
+        />
+      ) : null}
+    </motion.section>
+  );
+}
+
+function InsightCard({
+  details,
+  requested,
+  expanded,
+  onActivate,
+  onExpand,
+}: {
+  details: TitleDetails;
+  requested: boolean;
+  /** While true the take lives in the TakeBand above — the rail slot empties. */
+  expanded: boolean;
+  /** First request: generate the take AND expand it into the band. */
+  onActivate: () => void;
+  /** Re-expand an already-generated take. */
+  onExpand: () => void;
+}) {
+  const navigate = useNavigate();
+  const { health, insight, refresh } = useTitleInsight(details, requested);
+  // Hooks must run unconditionally (this once sat below an early return —
+  // a hooks-order violation that crashed the card once health resolved).
+  const onFollowup = useCallback(
+    (prefill: string) => navigate("/chat", { state: { prefill } }),
+    [navigate],
+  );
+
+  // No flash-then-vanish: only render once we know AI is configured.
+  if (!health.isSuccess || !health.data.aiConfigured) return null;
+  // Expanded → the take has left the rail; the band above renders it.
+  if (expanded) return null;
+
+  return (
+    <motion.section layoutId="lumina-take" className="panel p-5 ring-gold-400/15">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-gold-300">
+          <Sparkles className="h-[18px] w-[18px]" /> Lumina's take
+        </h3>
+        {/* Mirrors the band's top-right tuck-away control, same corner. */}
+        {insight.data && (
+          <button
+            type="button"
+            aria-label="Expand Lumina's take"
+            title="Expand"
+            onClick={onExpand}
+            className="icon-btn"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {!requested && !insight.data ? (
+        <div>
+          <p className="mb-4 text-sm leading-relaxed text-mist-400">
+            A personal, spoiler-free reflection on whether this fits your
+            taste — grounded in your ratings and notes.
+          </p>
+          <button type="button" onClick={onActivate} className="btn-primary">
+            Why would I love this?
+          </button>
+        </div>
+      ) : insight.isLoading || refresh.isPending ? (
+        // Reserved-height skeleton: prevents the reflow jump that broke layout.
+        <InsightSkeleton />
+      ) : insight.isError ? (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-red-300/90">
+            {(insight.error as Error).message}
+          </p>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => insight.refetch()}
+          >
+            Retry
+          </button>
+        </div>
+      ) : insight.data?.profileState === "empty" ? (
+        <p className="text-sm leading-relaxed text-mist-400">{EMPTY_PROFILE_NUDGE}</p>
       ) : insight.data ? (
         <InsightBody
           insight={insight.data}
           onRegenerate={() => refresh.mutate()}
           onFollowup={onFollowup}
         />
-      ) : (
-        <p className="text-sm leading-relaxed text-mist-400">
-          A personal, spoiler-free reflection on whether this fits your taste —
-          grounded in your ratings and notes.
-        </p>
-      )}
-    </section>
+      ) : null}
+    </motion.section>
   );
 }
 
@@ -754,6 +893,11 @@ export default function TitleDetail() {
   const reduceMotion = useReducedMotion();
   const id = Number(tmdbId);
   const [trailerOpen, setTrailerOpen] = useState(false);
+  // Lumina's take: generated on request; expands in-flow into a band above
+  // the grid (never a modal). Both flags lift here so the band and the rail
+  // card stay in step.
+  const [takeRequested, setTakeRequested] = useState(false);
+  const [takeExpanded, setTakeExpanded] = useState(false);
   const [heroImgFailed, setHeroImgFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
 
@@ -911,6 +1055,18 @@ export default function TitleDetail() {
         onPlayTrailer={details.trailerKey ? () => setTrailerOpen(true) : null}
       />
 
+      {/* Lumina's take, expanded in-flow: a full-width band that the rest of
+          the page simply makes room for (no overlay). */}
+      <AnimatePresence>
+        {takeExpanded && (
+          <TakeBand
+            details={details}
+            requested={takeRequested}
+            onCollapse={() => setTakeExpanded(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Editorial main column + reference rail.
           Not in library yet → single relaxed column (no void). */}
       {library ? (
@@ -928,7 +1084,16 @@ export default function TitleDetail() {
           </div>
 
           <div className="space-y-5 self-start lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1">
-            <InsightCard details={details} />
+            <InsightCard
+              details={details}
+              requested={takeRequested}
+              expanded={takeExpanded}
+              onActivate={() => {
+                setTakeRequested(true);
+                setTakeExpanded(true);
+              }}
+              onExpand={() => setTakeExpanded(true)}
+            />
             <WhereToWatch details={details} />
             <FactsCard details={details} entry={library} />
           </div>
@@ -939,7 +1104,16 @@ export default function TitleDetail() {
             {details.overview}
           </p>
           <div className="grid items-start gap-5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
-            <InsightCard details={details} />
+            <InsightCard
+              details={details}
+              requested={takeRequested}
+              expanded={takeExpanded}
+              onActivate={() => {
+                setTakeRequested(true);
+                setTakeExpanded(true);
+              }}
+              onExpand={() => setTakeExpanded(true)}
+            />
             <WhereToWatch details={details} />
             <FactsCard details={details} entry={null} />
           </div>
