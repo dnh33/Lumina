@@ -39,6 +39,7 @@ vi.mock("../src/rag/retrieval.js", () => ({
 import { titleInsight } from "../src/llm/insightService.js";
 import { memoryDb } from "./helpers.js";
 import { seedEntry } from "./helpers.js";
+import { logAnchor } from "../src/services/anchorService.js";
 import type { DB } from "../src/db/connection.js";
 
 // Real in-memory sqlite so computeTasteProfile / caching exercise the DB.
@@ -176,5 +177,64 @@ describe("titleInsight (wiring)", () => {
     expect(r.verdict).toBe("maybe");
     expect(r.comparisons).toEqual([]);
     expect(Array.isArray(r.followups)).toBe(true);
+  });
+
+  it("logs the opened loved title as a 'take' anchor", async () => {
+    // Fresh db so we own the anchor_usage rows. The opened title IS a loved
+    // title; opening its card is the "like X" moment that gets logged.
+    const db = memoryDb() as DB;
+    seedEntry(db, { tmdbId: 424, mediaType: "movie", title: "Beloved" }, { rating: 10, favorite: true });
+
+    create.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              verdict: "love",
+              matchScore: 90,
+              comparisons: [],
+              hook: "you'll adore this",
+              text: "Your love of Beloved shows.",
+            }),
+          },
+        },
+      ],
+    });
+
+    await titleInsight(db, 424, "movie");
+
+    const rows = db
+      .prepare("SELECT tmdb_id, media_type, surface FROM anchor_usage")
+      .all() as { tmdb_id: number; media_type: string; surface: string }[];
+    // The opened card frames via the user's loved title → logged as "take".
+    // Only the opened title (not the rest of the library) is logged.
+    expect(rows).toContainEqual({ tmdb_id: 424, media_type: "movie", surface: "take" });
+  });
+
+  it("logs 'take' ONLY for the opened title, not the whole loved library", async () => {
+    // Regression for the whole-library fatigue storm: opening one card must
+    // NOT stamp all 15 loved titles (that fatigued every loved title after
+    // just 3 card-opens). Only the opened title is a "like X" moment.
+    const db = memoryDb() as DB;
+    const openedId = 909;
+    seedEntry(db, { tmdbId: openedId, mediaType: "movie", title: "Opened" }, { rating: 10, favorite: true });
+    for (let i = 0; i < 14; i++) {
+      seedEntry(db, { tmdbId: 1000 + i, mediaType: "movie", title: `Loved${i}` }, { rating: 10, favorite: true });
+    }
+
+    create.mockResolvedValue({
+      choices: [
+        { message: { content: JSON.stringify({ verdict: "love", matchScore: 90, comparisons: [], hook: "nice", text: "lovely" }) } },
+      ],
+    });
+
+    await titleInsight(db, openedId, "movie");
+
+    const rows = db
+      .prepare("SELECT tmdb_id FROM anchor_usage WHERE surface='take'")
+      .all() as { tmdb_id: number }[];
+    // Exactly one take row, for the opened title — not the other 14.
+    expect(rows).toHaveLength(1);
+    expect(rows[0].tmdb_id).toBe(openedId);
   });
 });

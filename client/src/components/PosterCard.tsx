@@ -1,8 +1,18 @@
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
-import { AlertCircle, Check, Loader2, Plus, Star } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  AlertCircle,
+  Bookmark,
+  Check,
+  EyeOff,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+  Star,
+  Ban,
+} from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { invalidateLibraryData } from "../lib/invalidate";
 import { poster } from "../lib/img";
@@ -18,6 +28,8 @@ interface Props {
   width?: string;
   /** Top-10 style ranking numeral behind the card (Trending row) */
   rank?: number;
+  /** library entry id — enables the retire-as-anchor anti-fatigue toggle */
+  libraryId?: number;
 }
 
 export const PosterCard = memo(function PosterCard({
@@ -26,28 +38,49 @@ export const PosterCard = memo(function PosterCard({
   subtitle,
   width = "w-[138px] sm:w-[152px] lg:w-[168px]",
   rank,
+  libraryId,
 }: Props) {
   const qc = useQueryClient();
   const reduceMotion = useReducedMotion();
   const [saved, setSaved] = useState(!!item.inLibrary);
+  const [ignored, setIgnored] = useState(!!item.ignored);
   const [imgFailed, setImgFailed] = useState(false);
   const [failedSave, setFailedSave] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const src = poster(item.posterPath);
 
-  // keep the badge honest when fresher catalog data arrives
+  // anti-fatigue: fetch retire/over-used state for library-owned cards
+  const anchor = useQuery({
+    queryKey: ["anchorRetired", libraryId],
+    queryFn: () => api.anchorRetired(libraryId!),
+    enabled: libraryId != null,
+  });
+  const retired = anchor.data?.retired ?? false;
+  const fatigued = anchor.data?.fatigued ?? false;
+
+  // keep the badges honest when fresher catalog data arrives
   useEffect(() => setSaved(!!item.inLibrary), [item.inLibrary]);
+  useEffect(() => setIgnored(!!item.ignored), [item.ignored]);
+  useEffect(
+    () => () => {
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    },
+    [],
+  );
 
   const add = useMutation({
-    mutationFn: () =>
+    mutationFn: (status: "watched" | "watchlist") =>
       api.addToLibrary({
         tmdbId: item.tmdbId,
         mediaType: item.mediaType,
-        status: "watchlist",
+        status,
       }),
     onSuccess: () => {
       playCue("success");
       setSaved(true);
       setFailedSave(false);
+      setMenuOpen(false);
       invalidateLibraryData(qc);
     },
     onError: () => {
@@ -56,10 +89,55 @@ export const PosterCard = memo(function PosterCard({
     },
   });
 
+  const ignore = useMutation({
+    mutationFn: () =>
+      api.ignore({ tmdbId: item.tmdbId, mediaType: item.mediaType }),
+    onSuccess: () => {
+      playCue("toggle");
+      setIgnored(true);
+      setMenuOpen(false);
+      invalidateLibraryData(qc);
+    },
+  });
+
+  // anti-fatigue: retire/unretire a library title as a comparison anchor
+  const retire = useMutation({
+    mutationFn: () => api.retireAnchor(libraryId!),
+    onSuccess: () => {
+      playCue("toggle");
+      qc.invalidateQueries({ queryKey: ["anchorRetired", libraryId] });
+      setMenuOpen(false);
+    },
+  });
+  const unretire = useMutation({
+    mutationFn: () => api.unretireAnchor(libraryId!),
+    onSuccess: () => {
+      playCue("toggle");
+      qc.invalidateQueries({ queryKey: ["anchorRetired", libraryId] });
+      setMenuOpen(false);
+    },
+  });
+
+  // 2s dwell reveals the quick-action bubble (mouse only; touch uses the
+  // ⋯ toggle, and reduced-motion users keep the plain hover controls).
+  const onEnter = () => {
+    if (reduceMotion || menuOpen) return;
+    hoverTimer.current = setTimeout(() => setMenuOpen(true), 2000);
+  };
+  const onLeave = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = null;
+    setMenuOpen(false);
+  };
+
+  const busy = add.isPending || ignore.isPending;
+
   return (
     <motion.div
       whileHover={reduceMotion ? undefined : { y: -6 }}
       transition={{ type: "spring", stiffness: 320, damping: 22 }}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
       className={`group relative shrink-0 ${width} ${
         rank !== undefined ? (rank >= 10 ? "pl-10 sm:pl-11" : "pl-7 sm:pl-8") : ""
       }`}
@@ -89,7 +167,7 @@ export const PosterCard = memo(function PosterCard({
             alt=""
             loading="lazy"
             onError={() => setImgFailed(true)}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+            className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] ${ignored ? "opacity-40 saturate-50" : ""}`}
           />
         ) : (
           <div className="flex h-full items-center justify-center p-3 text-center font-display text-sm text-mist-400">
@@ -115,6 +193,106 @@ export const PosterCard = memo(function PosterCard({
             {myRating}
           </div>
         )}
+        {ignored && (
+          <div className="absolute left-1/2 top-1/2 z-[6] -translate-x-1/2 -translate-y-1/2 rounded-md bg-ink-950/85 px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-mist-400 ring-1 ring-white/15 backdrop-blur">
+            <EyeOff className="mr-1 inline h-3 w-3 align-[-2px]" />
+            Ignored
+          </div>
+        )}
+        {libraryId != null && fatigued && !retired && (
+          <div
+            title="Over-cited as a comparison. Open ⋯ and choose “Retire as anchor” to stop it."
+            className="absolute right-2 top-1/2 z-[6] -translate-y-1/2 rounded-md bg-amber-500/15 px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-amber-300 ring-1 ring-amber-400/40 backdrop-blur"
+          >
+            Over-used
+          </div>
+        )}
+
+        {/* quick-action bubble — appears after a 2s hover dwell or the ⋯ tap */}
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.94 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: 6, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 380, damping: 26 }}
+              role="menu"
+              aria-label={`Quick actions for ${item.title}`}
+              className="absolute inset-x-2 bottom-13 z-20 flex flex-col overflow-hidden rounded-xl bg-ink-950/90 ring-1 ring-white/15 backdrop-blur"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                disabled={busy || saved}
+                onClick={() => add.mutate("watched")}
+                className="flex cursor-pointer items-center gap-2 px-3 py-2 text-left text-xs font-medium text-mist-200 transition hover:bg-gold-400 hover:text-ink-950 disabled:cursor-default disabled:opacity-50"
+              >
+                <Check className="h-3.5 w-3.5" /> Watched
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={busy || saved}
+                onClick={() => add.mutate("watchlist")}
+                className="flex cursor-pointer items-center gap-2 px-3 py-2 text-left text-xs font-medium text-mist-200 transition hover:bg-gold-400 hover:text-ink-950 disabled:cursor-default disabled:opacity-50"
+              >
+                <Bookmark className="h-3.5 w-3.5" /> Watchlist
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={busy || ignored}
+                onClick={() => ignore.mutate()}
+                className="flex cursor-pointer items-center gap-2 px-3 py-2 text-left text-xs font-medium text-mist-300 transition hover:bg-white/10 disabled:cursor-default disabled:opacity-50"
+              >
+                {ignore.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <EyeOff className="h-3.5 w-3.5" />
+                  )}
+                  Ignore
+                  <span className="ml-auto pl-2 text-2xs font-normal text-mist-500">
+                    Hide everywhere, drop from taste
+                  </span>
+                  </button>
+                  {libraryId != null && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={retire.isPending || unretire.isPending}
+                    onClick={() => (retired ? unretire.mutate() : retire.mutate())}
+                    className="flex cursor-pointer items-center gap-2 px-3 py-2 text-left text-xs font-medium text-mist-300 transition hover:bg-white/10 disabled:cursor-default disabled:opacity-50"
+                  >
+                    {retire.isPending || unretire.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Ban className="h-3.5 w-3.5" />
+                    )}
+                    {retired ? "Retired as anchor" : "Retire as anchor"}
+                    <span className="ml-auto pl-2 text-2xs font-normal text-mist-500">
+                      Stop comparisons, keep in profile
+                    </span>
+                  </button>
+                  )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* menu toggle — the touch/no-hover path into the bubble */}
+        <button
+          type="button"
+          aria-label={`More actions for ${item.title}`}
+          aria-expanded={menuOpen}
+          onClick={() => {
+            if (hoverTimer.current) clearTimeout(hoverTimer.current);
+            setMenuOpen((v) => !v);
+          }}
+          className={`absolute left-2 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-ink-950/80 text-mist-200 ring-1 ring-white/20 backdrop-blur transition-all duration-200 hover:bg-white/15 focus-visible:opacity-100 max-md:opacity-100 md:opacity-0 md:group-hover:opacity-100 ${
+            item.rtRating != null ? "bottom-10" : "bottom-2"
+          }`}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
 
         {/* quick save — anchored inside the artwork, always visible on touch */}
         <button
@@ -128,7 +306,7 @@ export const PosterCard = memo(function PosterCard({
           }
           title={failedSave ? "Save failed — tap to retry" : saved ? "In your library" : "Save to watchlist"}
           disabled={saved || add.isPending}
-          onClick={() => add.mutate()}
+          onClick={() => add.mutate("watchlist")}
           className={`absolute bottom-2 right-2 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur transition-all duration-200 ${
             saved
               ? "bg-gold-400 text-ink-950 opacity-100"

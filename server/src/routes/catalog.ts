@@ -33,6 +33,23 @@ catalogRouter.get("/tmdb/search", async (req, res) => {
   res.json(await searchMulti(getDb(), q));
 });
 
+catalogRouter.get("/tmdb/genres", async (_req, res) => {
+  // Union of movie + tv genres — some ids overlap (Comedy, Drama…), some are
+  // exclusive to one medium (War & Politics). Deduped by id.
+  const merged = new Map<number, string>();
+  for (const mediaType of ["movie", "tv"] as const) {
+    const data = await tmdbGet<{ genres: { id: number; name: string }[] }>(
+      `/genre/${mediaType}/list`,
+    );
+    for (const g of data.genres) merged.set(g.id, g.name);
+  }
+  res.json(
+    [...merged.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  );
+});
+
 catalogRouter.get("/tmdb/trending", async (_req, res) => {
   res.json(await trending(getDb()));
 });

@@ -1,18 +1,33 @@
 import type { DB } from "../db/connection.js";
 import { addToLibrary, type LibraryStatus } from "./libraryService.js";
 import { searchMulti } from "./discoverService.js";
+import { ignoredTmdbIds } from "./libraryService.js";
 
 export function exportAll(db: DB): unknown {
+  const ignored = ignoredTmdbIds(db);
   const grab = (sql: string) => db.prepare(sql).all();
+  const library = (grab("SELECT * FROM library") as { title_id: number }[]).filter(
+    (row) => {
+      // mirror in-app surfaces: ignored-but-kept titles do not reappear in export
+      const t = db
+        .prepare("SELECT tmdb_id, media_type FROM titles WHERE id = ?")
+        .get(row.title_id) as { tmdb_id: number; media_type: string } | undefined;
+      return !t || !ignored.has(`${t.media_type}:${t.tmdb_id}`);
+    },
+  );
   return {
     app: "lumina",
     version: 1,
     exportedAt: new Date().toISOString(),
     titles: grab("SELECT * FROM titles"),
-    library: grab("SELECT * FROM library"),
+    library,
     episodes: grab("SELECT * FROM episodes"),
     conversations: grab("SELECT * FROM conversations"),
     messages: grab("SELECT * FROM messages"),
+    // Behavior log (right of access): users can SEE their own anchor data.
+    anchorUsage: grab(
+      "SELECT tmdb_id, media_type, surface, created_at FROM anchor_usage",
+    ),
   };
 }
 

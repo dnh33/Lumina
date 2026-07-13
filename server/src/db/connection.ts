@@ -19,7 +19,15 @@ export function createDb(dbPath: string): DB {
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.pragma("synchronous = NORMAL");
-  migrate(db);
+  try {
+    migrate(db);
+  } catch (err) {
+    throw new Error(
+      `DB migration failed (user_version=${db.pragma("user_version", { simple: true })}) ` +
+        `— ${(err as Error).message}. If you restored from a backup, ensure user_version matches ` +
+        `the schema, or start from a fresh database.`,
+    );
+  }
   return db;
 }
 

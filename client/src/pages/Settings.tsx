@@ -3,16 +3,21 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Brain,
   Check,
+  Compass,
   Database,
   Download,
+  EyeOff,
   Flame,
   KeyRound,
   Loader2,
   Star,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
 import { api } from "../lib/api";
+import { invalidateLibraryData } from "../lib/invalidate";
+import { poster } from "../lib/img";
 import { DOCK_CONVERSATION_KEY } from "../lib/keys";
 import { playCue, useSound } from "../lib/sound";
 
@@ -74,6 +79,298 @@ function SoundSwitch() {
         />
       </button>
     </div>
+  );
+}
+
+function DiscoveryPrefs() {
+  const qc = useQueryClient();
+  const genres = useQuery({ queryKey: ["tmdb-genres"], queryFn: api.genres });
+  const prefs = useQuery({
+    queryKey: ["discovery-prefs"],
+    queryFn: api.getDiscoveryPrefs,
+  });
+  const ignored = useQuery({ queryKey: ["ignored"], queryFn: api.ignoredList });
+
+  const savePrefs = useMutation({
+    mutationFn: (ids: number[]) => api.setDiscoveryPrefs(ids),
+    onSuccess: () => {
+      playCue("toggle");
+      qc.invalidateQueries({ queryKey: ["discovery-prefs"] });
+      invalidateLibraryData(qc);
+    },
+  });
+
+  const unignore = useMutation({
+    mutationFn: (t: { mediaType: "movie" | "tv"; tmdbId: number }) =>
+      api.unignore(t.mediaType, t.tmdbId),
+    onSuccess: () => {
+      playCue("toggle");
+      invalidateLibraryData(qc);
+    },
+  });
+
+  const retiredAnchors = useQuery({
+    queryKey: ["retired-anchors"],
+    queryFn: api.retiredAnchors,
+  });
+
+  const unretire = useMutation({
+    mutationFn: (libraryId: number) => api.unretireAnchor(libraryId),
+    onSuccess: () => {
+      playCue("toggle");
+      retiredAnchors.refetch();
+      invalidateLibraryData(qc);
+    },
+  });
+
+  const anchorLogging = useQuery({
+    queryKey: ["anchor-logging"],
+    queryFn: api.anchorLogging,
+  });
+
+  const setLogging = useMutation({
+    mutationFn: (enabled: boolean) => api.setAnchorLogging(enabled),
+    onSuccess: (data) => {
+      playCue(data.enabled ? "toggle" : "success");
+      anchorLogging.refetch();
+    },
+  });
+
+  const clearUsage = useMutation({
+    mutationFn: () => api.clearAnchorUsage(),
+    onSuccess: () => {
+      playCue("success");
+      qc.invalidateQueries({ queryKey: ["anchor-logging"] });
+      // Over-used ribbons read fatigueScores from anchor_usage — refresh them.
+      qc.invalidateQueries({ queryKey: ["anchorRetired"] });
+    },
+  });
+
+  const resetAll = useMutation({
+    mutationFn: async () => {
+      for (const t of ignored.data ?? []) {
+        await api.unignore(t.mediaType, t.tmdbId);
+      }
+    },
+    onSuccess: () => {
+      playCue("success");
+      invalidateLibraryData(qc);
+    },
+  });
+
+  const excluded = new Set(prefs.data?.excludedGenres ?? []);
+  const toggleGenre = (id: number) => {
+    const next = new Set(excluded);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    savePrefs.mutate([...next]);
+  };
+
+  return (
+    <section className="panel space-y-5 p-6">
+      <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-mist-200">
+        <Compass className="h-[18px] w-[18px] text-gold-400" /> Discovery preferences
+      </h2>
+
+      <div>
+        <p className="mb-1 text-sm font-medium text-mist-200">Excluded genres</p>
+        <p className="mb-3 text-xs text-mist-400">
+          Titles in these genres never appear in trending, search or
+          recommendations. Your library is untouched.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {genres.data?.map((g) => (
+            <button
+              key={g.id}
+              type="button"
+              data-cuelume-toggle="tick"
+              aria-pressed={excluded.has(g.id)}
+              disabled={savePrefs.isPending}
+              onClick={() => toggleGenre(g.id)}
+              className={`pill ${excluded.has(g.id) ? "pill-active" : ""}`}
+            >
+              {g.name}
+            </button>
+          ))}
+          {genres.isError && (
+            <p className="text-sm text-mist-400">
+              Couldn't load genres — check the TMDB connection above.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="border-t border-white/[0.06] pt-4">
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-mist-200">Comparison tracking</p>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={anchorLogging.data?.enabled ?? false}
+            disabled={setLogging.isPending || anchorLogging.isLoading}
+            onClick={() => setLogging.mutate(!(anchorLogging.data?.enabled ?? false))}
+            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+              anchorLogging.data?.enabled ? "bg-gold-400" : "bg-white/15"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-4 w-4 rounded-full bg-ink-950 transition-transform ${
+                anchorLogging.data?.enabled ? "left-0.5 translate-x-4" : "left-0.5"
+              }`}
+            />
+          </button>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-mist-400">
+          Lumina tallies which titles you revisit to vary its suggestions. This
+          stays on your device — only a hint reaches the AI, never the raw list.
+          Turning it off stops new tracking; use Clear usage data to erase what's
+          already recorded.
+        </p>
+        <button
+          type="button"
+          disabled={clearUsage.isPending}
+          onClick={() => {
+            if (
+              window.confirm(
+                "Erase your comparison tracking history? This cannot be undone.",
+              )
+            ) {
+              clearUsage.mutate();
+            }
+          }}
+          className="btn-ghost"
+        >
+          {clearUsage.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin text-gold-400" />
+          ) : (
+            <Trash2 className="h-4 w-4 text-gold-400" />
+          )}
+          Clear usage data
+        </button>
+      </div>
+
+      <div className="border-t border-white/[0.06] pt-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-mist-200">Ignored titles</p>
+            <p className="text-xs text-mist-400">
+              Hidden from every discovery surface until you un-ignore them.
+            </p>
+          </div>
+          {(ignored.data?.length ?? 0) > 0 && (
+            <button
+              type="button"
+              disabled={resetAll.isPending}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Un-ignore all ${ignored.data?.length} titles? They reappear in discovery immediately.`,
+                  )
+                ) {
+                  resetAll.mutate();
+                }
+              }}
+              className="btn-ghost"
+            >
+              {resetAll.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin text-gold-400" />
+              ) : (
+                <EyeOff className="h-4 w-4 text-gold-400" />
+              )}
+              Reset all ignored
+            </button>
+          )}
+        </div>
+
+        {ignored.data && ignored.data.length > 0 ? (
+          <div className="inset-block max-h-72 divide-y divide-white/[0.06] overflow-y-auto">
+            {ignored.data.map((t) => (
+              <div
+                key={`${t.mediaType}:${t.tmdbId}`}
+                className="flex items-center gap-3 px-3 py-2"
+              >
+                {poster(t.posterPath) ? (
+                  <img
+                    src={poster(t.posterPath)!}
+                    alt=""
+                    className="h-12 w-8 shrink-0 rounded object-cover ring-1 ring-white/10"
+                  />
+                ) : (
+                  <div className="flex h-12 w-8 shrink-0 items-center justify-center rounded bg-ink-800 ring-1 ring-white/10">
+                    <EyeOff className="h-3.5 w-3.5 text-mist-400" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-mist-200">{t.title}</p>
+                  <p className="text-2xs text-mist-400">
+                    {[t.year, t.mediaType === "tv" ? "Series" : "Film"]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={unignore.isPending}
+                  onClick={() =>
+                    unignore.mutate({ mediaType: t.mediaType, tmdbId: t.tmdbId })
+                  }
+                  className="btn-ghost"
+                >
+                  Un-ignore
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-mist-400">
+            Nothing ignored. Hover any poster for a moment (or tap ⋯) and
+            choose Ignore to hide a title from discovery.
+          </p>
+        )}
+      </div>
+
+      <div className="border-t border-white/[0.06] pt-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-mist-200">Retired anchors</p>
+            <p className="text-xs text-mist-400">
+              Kept in your taste profile, but no longer used as comparison hooks.
+            </p>
+          </div>
+        </div>
+
+        {retiredAnchors.data && retiredAnchors.data.length > 0 ? (
+          <div className="inset-block max-h-72 divide-y divide-white/[0.06] overflow-y-auto">
+            {retiredAnchors.data.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-3 px-3 py-2"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-mist-200">{t.title}</p>
+                  <p className="text-2xs text-mist-400">
+                    {t.mediaType === "tv" ? "Series" : "Film"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={unretire.isPending}
+                  onClick={() => unretire.mutate(t.id)}
+                  className="btn-ghost"
+                >
+                  Un-retire
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-mist-400">
+            No retired anchors. Use “Retire as anchor” on a poster to stop a
+            title from being over-cited as a comparison.
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -223,6 +520,9 @@ export default function Settings() {
 
           <SoundSwitch />
         </section>
+
+        {/* Discovery preferences */}
+        <DiscoveryPrefs />
 
         {/* What the AI sees */}
         <section className="panel p-6">

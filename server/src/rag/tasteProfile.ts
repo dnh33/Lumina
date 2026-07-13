@@ -1,4 +1,6 @@
 import type { DB } from "../db/connection.js";
+import { ignoredTmdbIds } from "../services/libraryService.js";
+import { fatigueScores } from "../services/anchorService.js";
 
 /**
  * RAG · Layer 1 — Taste profile.
@@ -28,12 +30,13 @@ export interface TasteProfile {
   topTags: { name: string; count: number }[];
   topGenres: GenreAffinity[];
   avoidedGenres: GenreAffinity[];
-  lovedTitles: { title: string; year: number | null; rating: number | null; mediaType: string; notes: string }[];
+  lovedTitles: { title: string; year: number | null; rating: number | null; mediaType: string; tmdbId: number; notes: string }[];
   dislikedTitles: { title: string; year: number | null; rating: number | null }[];
   favoriteDirectors: PersonAffinity[];
   recentWatches: { title: string; rating: number | null; when: string | null }[];
   watchlistSample: { title: string; year: number | null }[];
   currentlyWatching: { title: string; progress: string }[];
+  fatiguedLovedTitles: string[]; // loved titles with fatigue score >= 0.6
 }
 
 interface EntryRow {
@@ -50,17 +53,21 @@ interface EntryRow {
   watched_at: string | null;
   updated_at: string;
   title_id: number;
+  tmdb_id: number;
   episodes_count: number | null;
 }
 
 export function computeTasteProfile(db: DB): TasteProfile {
-  const rows = db
-    .prepare(
-      `SELECT t.title, t.year, t.media_type, t.genres, t.director, t.episodes_count,
-              l.status, l.rating, l.notes, l.tags, l.favorite, l.watched_at, l.updated_at, l.title_id
-       FROM library l JOIN titles t ON t.id = l.title_id`,
-    )
-    .all() as EntryRow[];
+  const hidden = ignoredTmdbIds(db);
+  const rows = (
+    db
+      .prepare(
+        `SELECT t.title, t.year, t.media_type, t.genres, t.director, t.episodes_count, t.tmdb_id,
+                l.status, l.rating, l.notes, l.tags, l.favorite, l.watched_at, l.updated_at, l.title_id
+         FROM library l JOIN titles t ON t.id = l.title_id`,
+      )
+      .all() as EntryRow[]
+  ).filter((r) => !hidden.has(`${r.media_type}:${r.tmdb_id}`));
 
   // Personal tags — the user's own vocabulary for their taste
   const tagAgg = new Map<string, number>();
@@ -130,17 +137,19 @@ export function computeTasteProfile(db: DB): TasteProfile {
 
   const watched = rows.filter((r) => r.status !== "watchlist");
 
-  const lovedTitles = watched
+  const lovedRows = watched
     .filter((r) => r.favorite || (r.rating != null && r.rating >= 9))
     .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
-    .slice(0, 15)
-    .map((r) => ({
-      title: r.title,
-      year: r.year,
-      rating: r.rating,
-      mediaType: r.media_type,
-      notes: r.notes.slice(0, 140),
-    }));
+    .slice(0, 15);
+
+  const lovedTitles = lovedRows.map((r) => ({
+    title: r.title,
+    year: r.year,
+    rating: r.rating,
+    mediaType: r.media_type,
+    tmdbId: r.tmdb_id,
+    notes: r.notes.slice(0, 140),
+  }));
 
   const dislikedTitles = watched
     .filter((r) => r.rating != null && r.rating <= 4)
@@ -178,6 +187,11 @@ export function computeTasteProfile(db: DB): TasteProfile {
       return { title: r.title, progress };
     });
 
+  const fatigue = fatigueScores(db);
+  const fatiguedLovedTitles = lovedRows
+    .filter((r) => (fatigue.get(`${r.media_type}:${r.tmdb_id}`) ?? 0) >= 0.6)
+    .map((r) => r.title);
+
   const rated = watched.filter((r) => r.rating != null);
   return {
     librarySize: rows.length,
@@ -196,6 +210,7 @@ export function computeTasteProfile(db: DB): TasteProfile {
     recentWatches,
     watchlistSample,
     currentlyWatching,
+    fatiguedLovedTitles,
   };
 }
 
@@ -235,6 +250,13 @@ export function renderTasteProfile(p: TasteProfile): string {
         p.lovedTitles
           .map((t) => `${t.title}${t.year ? ` (${t.year})` : ""}${t.rating ? ` ${t.rating}/10` : ""}${t.notes ? ` — "${t.notes}"` : ""}`)
           .join("; ") + ".",
+    );
+  }
+  if (p.fatiguedLovedTitles.length) {
+    lines.push(
+      `Diversify: the user has seen ${p.fatiguedLovedTitles.join(", ")} used as ` +
+        `comparison anchors a lot — when framing recommendations, pivot to other ` +
+        `shared genres or directors instead of re-citing these.`,
     );
   }
   if (p.dislikedTitles.length) {
