@@ -16,7 +16,6 @@
  * so ChatThread keeps compiling.
  */
 
-import { useMemo } from "react";
 import {
   motion,
   useMotionValue,
@@ -31,8 +30,6 @@ import type { CompanionState } from "../../hooks/useCompanionState";
 export interface SparkAvatarProps {
   /** Presence state. Drives every visual. */
   state: CompanionState;
-  /** Number of per-step tool beads to light (tooling state). Default 3. */
-  toolBeads?: number;
   /** One-shot: pop a gold "memory constellation" star (P13) when true. */
   showMemoryPulse?: boolean;
   /** Hide the Fraunces state-whisper (used when the parent renders status text). */
@@ -139,67 +136,27 @@ function Ripples({ reduce }: { reduce: boolean }) {
   );
 }
 
-/* ── Tooling: satellite orbit + per-step beads (P4, P5) ─────────── */
+/* ── Tooling: satellite orbit (P4) ──────────────────────────────── */
 
-function ToolingLayer({
-  beads,
-  reduce,
-}: {
-  beads: number;
-  reduce: boolean;
-}) {
-  const beadArr = useMemo(
-    () => Array.from({ length: Math.max(0, beads) }),
-    [beads],
-  );
+function ToolingLayer({ reduce }: { reduce: boolean }) {
   return (
-    <>
-      {/* Satellite dot orbiting the core (R7 offset-path / rotate). */}
-      <motion.div
-        data-part="satellite"
-        className="pointer-events-none absolute inset-0"
-        style={{ transformOrigin: "50% 50%" }}
-        animate={reduce ? { rotate: 0 } : { rotate: 360 }}
-        transition={
-          reduce
-            ? { duration: 0 }
-            : { duration: 2.8, repeat: Infinity, ease: "linear" }
-        }
-      >
-        <span
-          className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
-          style={{ background: GOLD_SOFT, boxShadow: `0 0 6px ${GOLD}` }}
-        />
-      </motion.div>
-
-      {/* Per-step beads lighting up (staggered). */}
-      <div className="pointer-events-none absolute -bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
-        {beadArr.map((_, i) => (
-          <motion.span
-            key={i}
-            data-part="bead"
-            className="h-1 w-1 rounded-full"
-            style={{ background: GOLD }}
-            initial={{ opacity: reduce ? 0.6 : 0.2, scale: 1 }}
-            animate={
-              reduce
-                ? { opacity: 0.6 }
-                : { opacity: [0.2, 1, 0.2], scale: [1, 1.25, 1] }
-            }
-            transition={
-              reduce
-                ? { duration: 0.2 }
-                : {
-                    duration: 1.2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: i * 0.18,
-                  }
-            }
-          />
-        ))}
-      </div>
-    </>
+    /* Satellite dot orbiting the core (R7 offset-path / rotate). */
+    <motion.div
+      data-part="satellite"
+      className="pointer-events-none absolute inset-0"
+      style={{ transformOrigin: "50% 50%" }}
+      animate={reduce ? { rotate: 0 } : { rotate: 360 }}
+      transition={
+        reduce
+          ? { duration: 0 }
+          : { duration: 2.8, repeat: Infinity, ease: "linear" }
+      }
+    >
+      <span
+        className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
+        style={{ background: GOLD_SOFT, boxShadow: `0 0 6px ${GOLD}` }}
+      />
+    </motion.div>
   );
 }
 
@@ -292,7 +249,6 @@ function MemoryPulse({ reduce }: { reduce: boolean }) {
 
 export function SparkAvatar({
   state,
-  toolBeads = 3,
   showMemoryPulse = false,
   hideWhisper = false,
   size = 20,
@@ -365,9 +321,7 @@ export function SparkAvatar({
         />
 
         {state === "thinking" && <Ripples reduce={reduce} />}
-        {state === "tooling" && (
-          <ToolingLayer beads={toolBeads} reduce={reduce} />
-        )}
+        {state === "tooling" && <ToolingLayer reduce={reduce} />}
         {state === "writing" && <Comet reduce={reduce} />}
         {state === "error" && <FaultLine reduce={reduce} />}
         {showMemoryPulse && <MemoryPulse reduce={reduce} />}

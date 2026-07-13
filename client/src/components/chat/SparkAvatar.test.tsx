@@ -75,10 +75,10 @@ describe("SparkAvatar — presence system (Task 4)", () => {
     ).toBeGreaterThanOrEqual(2);
   });
 
-  it("tooling renders an orbiting satellite and the requested number of beads", () => {
-    const { container } = render(<SparkAvatar state="tooling" toolBeads={3} />);
+  it("tooling renders an orbiting satellite and no beads beneath the core", () => {
+    const { container } = render(<SparkAvatar state="tooling" />);
     expect(container.querySelector("[data-part='satellite']")).not.toBeNull();
-    expect(container.querySelectorAll("[data-part='bead']").length).toBe(3);
+    expect(container.querySelectorAll("[data-part='bead']").length).toBe(0);
   });
 
   it("writing renders a comet-trail element", () => {
