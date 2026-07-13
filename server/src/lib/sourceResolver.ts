@@ -12,6 +12,7 @@ export type BuildResult =
 
 export interface BuildVars {
   id: number | string;
+  imdbId?: number | string;
   s?: number | string;
   e?: number | string;
 }
@@ -37,6 +38,7 @@ export function buildUrl(template: string, vars: BuildVars): BuildResult {
     return true;
   };
   if (!fill("{id}", vars.id)) return { ok: false, error: "id required" };
+  if (!fill("{imdbId}", vars.imdbId)) return { ok: false, error: "imdbId required" };
   if (!fill("{s}", vars.s)) return { ok: false, error: "season required" };
   if (!fill("{e}", vars.e)) return { ok: false, error: "episode required" };
 

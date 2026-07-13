@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
 import { env } from "../env.js";
+import { getDb } from "../db/connection.js";
 import { buildUrl } from "../lib/sourceResolver.js";
 
 /**
@@ -61,11 +62,19 @@ export function createWatchRouter(
       return void res.status(400).json({ error: "bad media type" });
     }
 
+    // Resolve the IMDb id for {imdbId} templates (1flex-style embeds key
+    // off IMDb, not TMDB). Missing imdb_id → null; templates that need it fail.
+    const imdbRow = getDb()
+      .prepare("SELECT imdb_id FROM titles WHERE tmdb_id = ? AND media_type = ?")
+      .get(tmdbId, q.type) as { imdb_id: string | null } | undefined;
+    const imdbId = imdbRow?.imdb_id ?? undefined;
+
     const match = readSources(sourcesPath).find((s) => s.name === source);
     if (!match) return void res.status(404).json({ error: "Unknown source" });
 
     const built = buildUrl(match.template, {
       id: tmdbId,
+      imdbId,
       s: q.season,
       e: q.episode,
     });
