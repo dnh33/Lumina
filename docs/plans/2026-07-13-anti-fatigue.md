@@ -419,7 +419,13 @@ Expected: ALL PASS
 - Over-used hint is a static, threshold-gated card state — never a popup/banner/digest.
 - Retire is one-tap, one-time; no reminders.
 
-## Out of scope (YAGNI)
-- For-you feed card framing variation.
-- Genre-level fatigue (genre-exclude already covers genre boredom).
-- Autonomous hiding of titles the system deems fatigued.
+## Resume state (updated 2026-07-13)
+- T1–T4 DONE + committed + verified (commits 3ab131c, ae5506c, 8a07e1a, e20d201).
+  T3 also folded ignore-filter into computeTasteProfile; T4 also routed
+  discover_titles through flag() (closing the earlier ignore-build leak).
+- T5–T8 PENDING. Briefs ready (Task 5 brief written, tasks 6-8 per plan).
+- BLOCKER: Claude Code CLI hit 429 session limit again, resets 18:40
+  Europe/Copenhagen. Re-dispatch Task 5 (cc-task5.md) after reset.
+- NOTE: each CC call now consumes ~35k input tokens (system + brief), so the
+  per-session quota drains faster deeper in context. Keep briefs tight.
+
