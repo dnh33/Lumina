@@ -17,6 +17,8 @@ import type {
   TitleDetails,
   TitleInsight,
   UpNextItem,
+  WatchResolve,
+  WatchSource,
 } from "./types";
 
 async function j<T>(res: Response): Promise<T> {
@@ -126,6 +128,25 @@ export const api = {
       "/api/import/csv",
       { csv },
     ),
+
+  /* watch */
+  sources: () => get<WatchSource[]>("/api/sources"),
+  resolveWatch: (params: {
+    source: string;
+    type: MediaType;
+    tmdbId: number;
+    season?: number;
+    episode?: number;
+  }) => {
+    const q = new URLSearchParams({
+      source: params.source,
+      type: params.type,
+      tmdbId: String(params.tmdbId),
+    });
+    if (params.season != null) q.set("season", String(params.season));
+    if (params.episode != null) q.set("episode", String(params.episode));
+    return get<WatchResolve>(`/api/watch/resolve?${q}`);
+  },
 
   /* chat */
   conversations: () => get<ConversationSummary[]>("/api/conversations"),

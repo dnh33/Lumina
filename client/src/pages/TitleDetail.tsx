@@ -16,6 +16,7 @@ import {
   Loader2,
   Maximize2,
   Minimize2,
+  MonitorPlay,
   Play,
   Plus,
   RefreshCw,
@@ -324,7 +325,7 @@ function InsightCard({
 
 /* ── Previously on… (main column, tv you're resuming) ───────────── */
 
-function RecapCard({ entry }: { entry: LibraryEntry }) {
+export function RecapCard({ entry }: { entry: LibraryEntry }) {
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
   const [requested, setRequested] = useState(false);
   const recap = useQuery({
@@ -631,6 +632,18 @@ function ActionBar({
     </button>
   );
 
+  // Deep-link into in-app viewing; /watch defaults to the resume point
+  // (first unwatched episode) for shows you're tracking.
+  const watchButton = (
+    <button
+      type="button"
+      onClick={() => navigate(`/watch/${details.mediaType}/${details.tmdbId}`)}
+      className="btn-ghost"
+    >
+      <MonitorPlay className="h-4 w-4 text-gold-400" /> Watch
+    </button>
+  );
+
   return (
     <div className="panel mb-8 p-4 sm:px-5">
       {!entry ? (
@@ -675,6 +688,7 @@ function ActionBar({
               Currently watching
             </button>
           )}
+          {watchButton}
           {trailerButton}
         </div>
       ) : (
@@ -706,6 +720,7 @@ function ActionBar({
           </div>
 
           <div className="ml-auto flex items-center gap-1.5">
+            {watchButton}
             {trailerButton}
             <button
               type="button"

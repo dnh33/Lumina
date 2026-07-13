@@ -108,6 +108,18 @@ export interface EpisodeRecap {
   cached: boolean;
 }
 
+/** A configured watch source — names only; templates never leave the server. */
+export interface WatchSource {
+  name: string;
+  type: string;
+  trusted: boolean;
+}
+
+export interface WatchResolve {
+  url: string;
+  trusted: boolean;
+}
+
 export interface TagCount {
   name: string;
   count: number;

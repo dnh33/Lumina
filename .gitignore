@@ -5,8 +5,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# local data — your private library and chat history live here
-data/
+# local data — your private library, chat history and watch sources live
+# here; sources.local.json is private config and must never be committed
+# (data/* not data/ so the committed example below can be re-included)
+data/*
+!data/sources.local.example.json
 
 # secrets
 .env

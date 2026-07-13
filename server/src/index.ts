@@ -8,6 +8,7 @@ import { catalogRouter } from "./routes/catalog.js";
 import { libraryRouter } from "./routes/library.js";
 import { chatRouter } from "./routes/chat.js";
 import { miscRouter } from "./routes/misc.js";
+import { watchRouter } from "./routes/watch.js";
 import { TmdbError } from "./tmdb/client.js";
 import { LlmError } from "./llm/openrouter.js";
 
@@ -19,6 +20,7 @@ app.use("/api", catalogRouter);
 app.use("/api", libraryRouter);
 app.use("/api", chatRouter);
 app.use("/api", miscRouter);
+app.use("/api", watchRouter);
 
 // Production: serve the built client and fall back to index.html.
 const clientDist = path.join(env.repoRoot, "client", "dist");

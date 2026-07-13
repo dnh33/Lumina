@@ -7,6 +7,7 @@ import { ChatDock } from "./components/chat/ChatDock";
 import Discover from "./pages/Discover";
 import Library from "./pages/Library";
 import TitleDetail from "./pages/TitleDetail";
+import Watch from "./pages/Watch";
 import PersonPage from "./pages/PersonPage";
 import ChatPage from "./pages/ChatPage";
 import Settings from "./pages/Settings";
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/" element={<Discover />} />
             <Route path="/library" element={<Library />} />
             <Route path="/title/:type/:tmdbId" element={<TitleDetail />} />
+            <Route path="/watch/:type/:tmdbId" element={<Watch />} />
             <Route path="/person/:id" element={<PersonPage />} />
             {/* Single splat route: navigating /chat → /chat/:id only changes the
                 param (re-render), never remounts ChatPage. Prevents the

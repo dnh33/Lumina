@@ -1,0 +1,11 @@
+{
+  "//": "Copy to data/sources.local.json (gitignored — never committed). Point entries at media endpoints YOU own or subscribe to. {id} = TMDB id, {s} = season, {e} = episode. Templates must be https.",
+  "sources": [
+    {
+      "name": "My media server",
+      "type": "webdav",
+      "template": "https://your-server.example/media/{id}?s={s}&e={e}",
+      "trusted": true
+    }
+  ]
+}
