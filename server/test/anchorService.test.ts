@@ -7,6 +7,7 @@ import {
   isRetired,
   setAnchorLoggingEnabled,
   isAnchorLoggingEnabled,
+  clearAnchorUsage,
 } from "../src/services/anchorService.js";
 
 const DAY = 86_400_000;
@@ -53,5 +54,15 @@ describe("anchorService", () => {
     logAnchor(db, 1, "movie", "take");
     const rows2 = db.prepare("SELECT COUNT(*) c FROM anchor_usage").get() as { c: number };
     expect(rows2.c).toBe(1);
+  });
+
+  it("clearAnchorUsage wipes all behavior logs (right to erasure)", () => {
+    const db = memoryDb();
+    const now = Date.now();
+    db.prepare("INSERT INTO anchor_usage (tmdb_id,media_type,surface,created_at) VALUES (?,?,?,?)").run(1, "movie", "take", now);
+    db.prepare("INSERT INTO anchor_usage (tmdb_id,media_type,surface,created_at) VALUES (?,?,?,?)").run(2, "tv", "compare_titles", now);
+    expect((db.prepare("SELECT COUNT(*) c FROM anchor_usage").get() as { c: number }).c).toBe(2);
+    clearAnchorUsage(db);
+    expect((db.prepare("SELECT COUNT(*) c FROM anchor_usage").get() as { c: number }).c).toBe(0);
   });
 });

@@ -21,13 +21,16 @@ export function setAnchorLoggingEnabled(db: DB, enabled: boolean): void {
   ).run(enabled ? "1" : "0");
 }
 
+export function clearAnchorUsage(db: DB): void {
+  db.prepare("DELETE FROM anchor_usage").run();
+}
+
 export function isAnchorLoggingEnabled(db: DB): boolean {
   const row = db
     .prepare("SELECT value FROM settings WHERE key = 'anchorLogging'")
     .get() as { value: string } | undefined;
   return row ? row.value !== "0" : true;
 }
-
 // FATIGUE_WINDOW_DAYS: citations older than this contribute nothing. Keeps
 // the score anchored to recent framing behavior (a title cited a lot 2 months
 // ago is not "over-used" today).
