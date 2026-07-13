@@ -200,7 +200,10 @@ export const PosterCard = memo(function PosterCard({
           </div>
         )}
         {libraryId != null && fatigued && !retired && (
-          <div className="absolute right-2 top-1/2 z-[6] -translate-y-1/2 rounded-md bg-amber-500/15 px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-amber-300 ring-1 ring-amber-400/40 backdrop-blur">
+          <div
+            title="Over-cited as a comparison. Open ⋯ and choose “Retire as anchor” to stop it."
+            className="absolute right-2 top-1/2 z-[6] -translate-y-1/2 rounded-md bg-amber-500/15 px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-amber-300 ring-1 ring-amber-400/40 backdrop-blur"
+          >
             Over-used
           </div>
         )}
@@ -246,25 +249,31 @@ export const PosterCard = memo(function PosterCard({
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <EyeOff className="h-3.5 w-3.5" />
-                )}
-                Ignore
-                </button>
-                {libraryId != null && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={retire.isPending || unretire.isPending}
-                  onClick={() => (retired ? unretire.mutate() : retire.mutate())}
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-left text-xs font-medium text-mist-300 transition hover:bg-white/10 disabled:cursor-default disabled:opacity-50"
-                >
-                  {retire.isPending || unretire.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Ban className="h-3.5 w-3.5" />
                   )}
-                  {retired ? "Retired as anchor" : "Retire as anchor"}
-                </button>
-                )}
+                  Ignore
+                  <span className="ml-auto pl-2 text-2xs font-normal text-mist-500">
+                    Hide everywhere
+                  </span>
+                  </button>
+                  {libraryId != null && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={retire.isPending || unretire.isPending}
+                    onClick={() => (retired ? unretire.mutate() : retire.mutate())}
+                    className="flex cursor-pointer items-center gap-2 px-3 py-2 text-left text-xs font-medium text-mist-300 transition hover:bg-white/10 disabled:cursor-default disabled:opacity-50"
+                  >
+                    {retire.isPending || unretire.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Ban className="h-3.5 w-3.5" />
+                    )}
+                    {retired ? "Retired as anchor" : "Retire as anchor"}
+                    <span className="ml-auto pl-2 text-2xs font-normal text-mist-500">
+                      Stop comparisons
+                    </span>
+                  </button>
+                  )}
             </motion.div>
           )}
         </AnimatePresence>
