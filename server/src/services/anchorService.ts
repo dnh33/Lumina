@@ -6,9 +6,26 @@ import type { DB } from "../db/connection.js";
 const HALF_LIFE_DAYS = 7;
 
 export function logAnchor(db: DB, tmdbId: number, mediaType: string, surface: string): void {
+  if (!isAnchorLoggingEnabled(db)) return;
   db.prepare(
     "INSERT INTO anchor_usage (tmdb_id, media_type, surface, created_at) VALUES (?,?,?,?)",
   ).run(tmdbId, mediaType, surface, Date.now());
+}
+
+// Opt-out: local-first users may disable anchor logging entirely. Stored in
+// the settings table (key "anchorLogging"); defaults to enabled when absent.
+export function setAnchorLoggingEnabled(db: DB, enabled: boolean): void {
+  db.prepare(
+    `INSERT INTO settings (key, value) VALUES ('anchorLogging', ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  ).run(enabled ? "1" : "0");
+}
+
+export function isAnchorLoggingEnabled(db: DB): boolean {
+  const row = db
+    .prepare("SELECT value FROM settings WHERE key = 'anchorLogging'")
+    .get() as { value: string } | undefined;
+  return row ? row.value !== "0" : true;
 }
 
 // FATIGUE_WINDOW_DAYS: citations older than this contribute nothing. Keeps

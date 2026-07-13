@@ -5,6 +5,8 @@ import {
   fatigueScores,
   setRetired,
   isRetired,
+  setAnchorLoggingEnabled,
+  isAnchorLoggingEnabled,
 } from "../src/services/anchorService.js";
 
 const DAY = 86_400_000;
@@ -36,5 +38,20 @@ describe("anchorService", () => {
     expect(isRetired(db, 7, "movie")).toBe(false);
     setRetired(db, libId, true);
     expect(isRetired(db, 7, "movie")).toBe(true);
+  });
+
+  it("respects the anchor-logging opt-out (logAnchor is a no-op when disabled)", () => {
+    const db = memoryDb();
+    setAnchorLoggingEnabled(db, false);
+    expect(isAnchorLoggingEnabled(db)).toBe(false);
+    logAnchor(db, 1, "movie", "take");
+    const rows = db.prepare("SELECT COUNT(*) c FROM anchor_usage").get() as { c: number };
+    expect(rows.c).toBe(0);
+
+    setAnchorLoggingEnabled(db, true);
+    expect(isAnchorLoggingEnabled(db)).toBe(true);
+    logAnchor(db, 1, "movie", "take");
+    const rows2 = db.prepare("SELECT COUNT(*) c FROM anchor_usage").get() as { c: number };
+    expect(rows2.c).toBe(1);
   });
 });

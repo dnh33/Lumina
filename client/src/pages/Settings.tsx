@@ -163,6 +163,15 @@ function DiscoveryPrefs() {
       </div>
 
       <div className="border-t border-white/[0.06] pt-4">
+        <p className="text-xs leading-relaxed text-mist-400">
+          Lumina tallies which titles you revisit to vary its suggestions. This
+          stays on your device — only a hint reaches the AI, never the raw list.
+          You can disable the tally in your settings file (key{" "}
+          <code className="text-mist-300">anchorLogging</code>).
+        </p>
+      </div>
+
+      <div className="border-t border-white/[0.06] pt-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-mist-200">Ignored titles</p>
