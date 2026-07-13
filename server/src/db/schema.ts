@@ -123,6 +123,32 @@ const migrations: string[] = [
   ALTER TABLE titles ADD COLUMN rt_rating REAL;
   ALTER TABLE titles ADD COLUMN ratings_fetched_at INTEGER;
   `,
+
+  // ── v5: ignored titles — hidden from discovery, independent of library ──
+  `
+  CREATE TABLE ignored (
+    id         INTEGER PRIMARY KEY,
+    tmdb_id    INTEGER NOT NULL,
+    media_type TEXT    NOT NULL CHECK (media_type IN ('movie','tv')),
+    added_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (tmdb_id, media_type)
+  );
+  CREATE INDEX idx_ignored ON ignored(media_type, tmdb_id);
+  `,
+
+  // ── v6: anchor usage tracking + retirable anchors ────────────────
+  `
+  CREATE TABLE IF NOT EXISTS anchor_usage (
+    id INTEGER PRIMARY KEY,
+    tmdb_id INTEGER NOT NULL,
+    media_type TEXT NOT NULL,
+    surface TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_anchor_usage_key_time
+    ON anchor_usage (tmdb_id, media_type, created_at);
+  ALTER TABLE library ADD COLUMN anchor_retired INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 export function migrate(db: DB): void {
