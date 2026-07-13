@@ -43,6 +43,11 @@ describe("schema & migrations", () => {
       .prepare("SELECT COUNT(*) c FROM pragma_table_info('library') WHERE name='anchor_retired'")
       .get() as { c: number };
     expect(cols.c).toBe(1);
+    // the created_at-leading index must exist (Claim #7 perf fix)
+    const idx = db
+      .prepare("SELECT COUNT(*) c FROM sqlite_master WHERE type='index' AND name='idx_anchor_usage_created'")
+      .get() as { c: number };
+    expect(idx.c).toBe(1);
   });
 
   it("v4 migration adds critics columns to titles and round-trips", () => {

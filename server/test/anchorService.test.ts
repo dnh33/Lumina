@@ -8,6 +8,7 @@ import {
   setAnchorLoggingEnabled,
   isAnchorLoggingEnabled,
   clearAnchorUsage,
+  pruneAnchorUsage,
 } from "../src/services/anchorService.js";
 
 const DAY = 86_400_000;
@@ -64,5 +65,16 @@ describe("anchorService", () => {
     expect((db.prepare("SELECT COUNT(*) c FROM anchor_usage").get() as { c: number }).c).toBe(2);
     clearAnchorUsage(db);
     expect((db.prepare("SELECT COUNT(*) c FROM anchor_usage").get() as { c: number }).c).toBe(0);
+  });
+
+  it("pruneAnchorUsage drops rows older than the retention window", () => {
+    const db = memoryDb();
+    const old = Date.now() - 40 * 86_400_000;
+    db.prepare("INSERT INTO anchor_usage (tmdb_id,media_type,surface,created_at) VALUES (?,?,?,?)").run(1, "movie", "take", old);
+    const fresh = Date.now() - 1 * 86_400_000;
+    db.prepare("INSERT INTO anchor_usage (tmdb_id,media_type,surface,created_at) VALUES (?,?,?,?)").run(2, "movie", "take", fresh);
+    expect((db.prepare("SELECT COUNT(*) c FROM anchor_usage").get() as { c: number }).c).toBe(2);
+    pruneAnchorUsage(db);
+    expect((db.prepare("SELECT COUNT(*) c FROM anchor_usage").get() as { c: number }).c).toBe(1);
   });
 });

@@ -25,6 +25,15 @@ export function clearAnchorUsage(db: DB): void {
   db.prepare("DELETE FROM anchor_usage").run();
 }
 
+// Older rows never contribute (the 14-day fatigue window already ignores them),
+// so prune to bound table growth on the hottest path (every companion message).
+const ANCHOR_RETENTION_DAYS = 30;
+
+export function pruneAnchorUsage(db: DB): void {
+  const cutoff = Date.now() - ANCHOR_RETENTION_DAYS * 86_400_000;
+  db.prepare("DELETE FROM anchor_usage WHERE created_at < ?").run(cutoff);
+}
+
 export function isAnchorLoggingEnabled(db: DB): boolean {
   const row = db
     .prepare("SELECT value FROM settings WHERE key = 'anchorLogging'")

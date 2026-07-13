@@ -147,6 +147,8 @@ const migrations: string[] = [
   );
   CREATE INDEX IF NOT EXISTS idx_anchor_usage_key_time
     ON anchor_usage (tmdb_id, media_type, created_at);
+  CREATE INDEX IF NOT EXISTS idx_anchor_usage_created
+    ON anchor_usage (created_at);
   `,
 ];
 

@@ -73,6 +73,15 @@ try {
   console.warn("[lumina] backup skipped:", (err as Error).message);
 }
 
+// Bound anchor_usage growth on the hottest path (every companion message
+// reads it). Fire-and-forget: a prune failure must never block boot.
+try {
+  const { pruneAnchorUsage } = await import("./services/anchorService.js");
+  pruneAnchorUsage(getDb());
+} catch (err) {
+  console.warn("[lumina] anchor_usage prune skipped:", (err as Error).message);
+}
+
 app.listen(env.port, env.host, () => {
   console.log(`
   ✦ Lumina API listening on http://${env.host}:${env.port}
