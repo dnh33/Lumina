@@ -11,6 +11,7 @@ import {
   KeyRound,
   Loader2,
   Star,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
@@ -122,6 +123,27 @@ function DiscoveryPrefs() {
     },
   });
 
+  const anchorLogging = useQuery({
+    queryKey: ["anchor-logging"],
+    queryFn: api.anchorLogging,
+  });
+
+  const setLogging = useMutation({
+    mutationFn: (enabled: boolean) => api.setAnchorLogging(enabled),
+    onSuccess: (data) => {
+      playCue(data.enabled ? "toggle" : "success");
+      anchorLogging.refetch();
+    },
+  });
+
+  const clearUsage = useMutation({
+    mutationFn: () => api.clearAnchorUsage(),
+    onSuccess: () => {
+      playCue("success");
+      qc.invalidateQueries({ queryKey: ["anchor-logging"] });
+    },
+  });
+
   const resetAll = useMutation({
     mutationFn: async () => {
       for (const t of ignored.data ?? []) {
@@ -177,12 +199,50 @@ function DiscoveryPrefs() {
       </div>
 
       <div className="border-t border-white/[0.06] pt-4">
-        <p className="text-xs leading-relaxed text-mist-400">
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-mist-200">Comparison tracking</p>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={anchorLogging.data?.enabled ?? true}
+            disabled={setLogging.isPending}
+            onClick={() => setLogging.mutate(!(anchorLogging.data?.enabled ?? true))}
+            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+              anchorLogging.data?.enabled ? "bg-gold-400" : "bg-white/15"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-4 w-4 rounded-full bg-ink-950 transition-transform ${
+                anchorLogging.data?.enabled ? "left-0.5 translate-x-4" : "left-0.5"
+              }`}
+            />
+          </button>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-mist-400">
           Lumina tallies which titles you revisit to vary its suggestions. This
           stays on your device — only a hint reaches the AI, never the raw list.
-          You can disable the tally in your settings file (key{" "}
-          <code className="text-mist-300">anchorLogging</code>).
         </p>
+        <button
+          type="button"
+          disabled={clearUsage.isPending}
+          onClick={() => {
+            if (
+              window.confirm(
+                "Erase your comparison tracking history? This cannot be undone.",
+              )
+            ) {
+              clearUsage.mutate();
+            }
+          }}
+          className="btn-ghost"
+        >
+          {clearUsage.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin text-gold-400" />
+          ) : (
+            <Trash2 className="h-4 w-4 text-gold-400" />
+          )}
+          Clear usage data
+        </button>
       </div>
 
       <div className="border-t border-white/[0.06] pt-4">

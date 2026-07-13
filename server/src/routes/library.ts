@@ -23,7 +23,7 @@ import {
   type ListFilters,
 } from "../services/libraryService.js";
 import { ensureRatings } from "../services/ratingsService.js";
-import { setRetired, isRetired, fatigueScores } from "../services/anchorService.js";
+import { setRetired, isRetired, fatigueScores, clearAnchorUsage, isAnchorLoggingEnabled, setAnchorLoggingEnabled } from "../services/anchorService.js";
 import { env } from "../env.js";
 import type { MediaType } from "../tmdb/types.js";
 
@@ -268,6 +268,22 @@ libraryRouter.get("/library/:id/retired", (req, res) => {
 libraryRouter.get("/library/retired-anchors", (_req, res) => {
   const retired = listRetiredAnchors(getDb());
   res.json(retired);
+});
+
+// Anti-fatigue: anchor-logging opt-out state (privacy) — read + write.
+libraryRouter.get("/library/anchor-logging", (_req, res) => {
+  res.json({ enabled: isAnchorLoggingEnabled(getDb()) });
+});
+libraryRouter.post("/library/anchor-logging", (req, res) => {
+  const enabled = !!(req.body as { enabled?: boolean }).enabled;
+  setAnchorLoggingEnabled(getDb(), enabled);
+  res.json({ enabled: isAnchorLoggingEnabled(getDb()) });
+});
+
+// Anti-fatigue: erase the behavior log (GDPR right to erasure).
+libraryRouter.post("/library/clear-anchor-usage", (_req, res) => {
+  clearAnchorUsage(getDb());
+  res.json({ ok: true });
 });
 
 /* ── Episodes ────────────────────────────────────────────────────── */

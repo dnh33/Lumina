@@ -119,6 +119,13 @@ export const api = {
   anchorRetired: (libraryId: number) =>
     get<{ retired: boolean; fatigued: boolean }>(`/api/library/${libraryId}/retired`),
   retiredAnchors: () => get<RetiredAnchor[]>("/api/library/retired-anchors"),
+  anchorLogging: () => get<{ enabled: boolean }>("/api/library/anchor-logging"),
+  setAnchorLogging: (enabled: boolean) =>
+    send<{ enabled: boolean }>("POST", "/api/library/anchor-logging", {
+      enabled,
+    }),
+  clearAnchorUsage: () =>
+    send<{ ok: true }>("POST", "/api/library/clear-anchor-usage"),
 
   enrichAll: () =>
     send<{
