@@ -31,6 +31,16 @@ SELECT but no DELETE, and was omitted from export.
 - Honors the user's "no notification fatigue" bar: disclosure is a static
   Settings note, not a popup; erasure is pull-based.
 
+## Trust boundary
+Lumina is a local-first, single-user desktop app with **no API authentication**
+— any process or network peer that can reach the running port can read the
+library, read/write settings, and erase `anchor_usage` or export. The opt-out
+and erasure guarantees above therefore assume a trusted, local-only
+environment: they hold against the *user's own* intent, not against an
+untrusted peer who can already reach the API. This is by-design (matching the
+existing health/export endpoints) and not a defect; it is recorded here so the
+privacy claims are honest about the boundary.
+
 ## Rejected alternatives
 - *No opt-out at all* — rejected; local-first users must be able to disable
   on-device behavioral logging.
