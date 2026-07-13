@@ -108,6 +108,20 @@ function DiscoveryPrefs() {
     },
   });
 
+  const retiredAnchors = useQuery({
+    queryKey: ["retired-anchors"],
+    queryFn: api.retiredAnchors,
+  });
+
+  const unretire = useMutation({
+    mutationFn: (libraryId: number) => api.unretireAnchor(libraryId),
+    onSuccess: () => {
+      playCue("toggle");
+      retiredAnchors.refetch();
+      invalidateLibraryData(qc);
+    },
+  });
+
   const resetAll = useMutation({
     mutationFn: async () => {
       for (const t of ignored.data ?? []) {
@@ -247,6 +261,48 @@ function DiscoveryPrefs() {
           <p className="text-sm text-mist-400">
             Nothing ignored. Hover any poster for a moment (or tap ⋯) and
             choose Ignore to hide a title from discovery.
+          </p>
+        )}
+      </div>
+
+      <div className="border-t border-white/[0.06] pt-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-mist-200">Retired anchors</p>
+            <p className="text-xs text-mist-400">
+              Kept in your taste profile, but no longer used as comparison hooks.
+            </p>
+          </div>
+        </div>
+
+        {retiredAnchors.data && retiredAnchors.data.length > 0 ? (
+          <div className="inset-block max-h-72 divide-y divide-white/[0.06] overflow-y-auto">
+            {retiredAnchors.data.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-3 px-3 py-2"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-mist-200">{t.title}</p>
+                  <p className="text-2xs text-mist-400">
+                    {t.mediaType === "tv" ? "Series" : "Film"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={unretire.isPending}
+                  onClick={() => unretire.mutate(t.id)}
+                  className="btn-ghost"
+                >
+                  Un-retire
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-mist-400">
+            No retired anchors. Use “Retire as anchor” on a poster to stop a
+            title from being over-cited as a comparison.
           </p>
         )}
       </div>

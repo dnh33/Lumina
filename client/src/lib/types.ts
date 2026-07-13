@@ -123,6 +123,13 @@ export interface IgnoredTitle {
   posterPath: string | null;
 }
 
+export interface RetiredAnchor {
+  id: number;
+  tmdbId: number;
+  mediaType: MediaType;
+  title: string;
+}
+
 export interface TagCount {
   name: string;
   count: number;

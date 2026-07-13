@@ -18,6 +18,7 @@ import {
   unignoreTitle,
   updateEntry,
   upsertTitle,
+  listRetiredAnchors,
   type LibraryStatus,
   type ListFilters,
 } from "../services/libraryService.js";
@@ -260,6 +261,13 @@ libraryRouter.get("/library/:id/retired", (req, res) => {
   const fatigue = fatigueScores(getDb());
   const fatigued = (fatigue.get(`${entry.mediaType}:${entry.tmdbId}`) ?? 0) >= 0.6;
   res.json({ retired, fatigued });
+});
+
+// Anti-fatigue: list all titles the user retired as comparison anchors,
+// so they can be reviewed / un-retired in one place (discoverability).
+libraryRouter.get("/library/retired-anchors", (_req, res) => {
+  const retired = listRetiredAnchors(getDb());
+  res.json(retired);
 });
 
 /* ── Episodes ────────────────────────────────────────────────────── */

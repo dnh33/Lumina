@@ -18,6 +18,7 @@ import type {
   TagCount,
   TitleDetails,
   TitleInsight,
+  RetiredAnchor,
   UpNextItem,
 } from "./types";
 
@@ -117,6 +118,7 @@ export const api = {
     ),
   anchorRetired: (libraryId: number) =>
     get<{ retired: boolean; fatigued: boolean }>(`/api/library/${libraryId}/retired`),
+  retiredAnchors: () => get<RetiredAnchor[]>("/api/library/retired-anchors"),
 
   enrichAll: () =>
     send<{

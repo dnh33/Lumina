@@ -495,6 +495,26 @@ export function ignoredTmdbIds(db: DB): Set<string> {
   return new Set(rows.map((r) => `${r.media_type}:${r.tmdb_id}`));
 }
 
+/* ── Retired anchors (anti-fatigue) ──────────────────────────────── */
+
+export interface RetiredAnchor {
+  id: number;
+  tmdbId: number;
+  mediaType: string;
+  title: string;
+}
+
+/** Titles the user retired as comparison anchors, for in-app management. */
+export function listRetiredAnchors(db: DB): RetiredAnchor[] {
+  return db
+    .prepare(
+      `SELECT l.id, t.tmdb_id AS tmdbId, t.media_type AS mediaType, t.title
+       FROM library l JOIN titles t ON t.id = l.title_id
+       WHERE l.anchor_retired = 1`,
+    )
+    .all() as RetiredAnchor[];
+}
+
 export function ignoreTitle(db: DB, tmdbId: number, mediaType: MediaType): void {
   db.prepare(
     "INSERT INTO ignored (tmdb_id, media_type) VALUES (?, ?) ON CONFLICT(tmdb_id, media_type) DO NOTHING",
