@@ -116,7 +116,7 @@ export const api = {
       },
     ),
   anchorRetired: (libraryId: number) =>
-    get<{ retired: boolean }>(`/api/library/${libraryId}/retired`),
+    get<{ retired: boolean; fatigued: boolean }>(`/api/library/${libraryId}/retired`),
 
   enrichAll: () =>
     send<{

@@ -22,7 +22,7 @@ import {
   type ListFilters,
 } from "../services/libraryService.js";
 import { ensureRatings } from "../services/ratingsService.js";
-import { setRetired, isRetired } from "../services/anchorService.js";
+import { setRetired, isRetired, fatigueScores } from "../services/anchorService.js";
 import { env } from "../env.js";
 import type { MediaType } from "../tmdb/types.js";
 
@@ -254,7 +254,12 @@ libraryRouter.get("/library/:id/retired", (req, res) => {
   if (!id) return void res.status(400).json({ error: "bad id" });
   const entry = getEntry(getDb(), id);
   if (!entry) return void res.status(404).json({ error: "Not found" });
-  res.json({ retired: isRetired(getDb(), entry.tmdbId, entry.mediaType) });
+  const retired = isRetired(getDb(), entry.tmdbId, entry.mediaType);
+  // Anti-fatigue: surface a passive, threshold-gated "over-used" hint so the
+  // user can retire a title they're tired of seeing used as a comparison.
+  const fatigue = fatigueScores(getDb());
+  const fatigued = (fatigue.get(`${entry.mediaType}:${entry.tmdbId}`) ?? 0) >= 0.6;
+  res.json({ retired, fatigued });
 });
 
 /* ── Episodes ────────────────────────────────────────────────────── */

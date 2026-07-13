@@ -249,6 +249,7 @@ export default function Library() {
             <PosterCard
               key={e.id}
               width="w-full"
+              libraryId={e.id}
               item={{
                 tmdbId: e.tmdbId,
                 mediaType: e.mediaType,
