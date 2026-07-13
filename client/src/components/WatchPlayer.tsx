@@ -62,6 +62,16 @@ export function WatchPlayer({
         )}
         Playing from <span className="font-medium text-mist-300">{host}</span>
         {!trusted && <span>· sandboxed</span>}
+        {!trusted && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="ml-1 underline decoration-dotted underline-offset-2 transition-colors hover:text-mist-200"
+          >
+            open in browser ↗
+          </a>
+        )}
       </p>
     </div>
   );
