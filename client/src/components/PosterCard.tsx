@@ -252,7 +252,7 @@ export const PosterCard = memo(function PosterCard({
                   )}
                   Ignore
                   <span className="ml-auto pl-2 text-2xs font-normal text-mist-500">
-                    Hide everywhere
+                    Hide everywhere, drop from taste
                   </span>
                   </button>
                   {libraryId != null && (
@@ -270,7 +270,7 @@ export const PosterCard = memo(function PosterCard({
                     )}
                     {retired ? "Retired as anchor" : "Retire as anchor"}
                     <span className="ml-auto pl-2 text-2xs font-normal text-mist-500">
-                      Stop comparisons
+                      Stop comparisons, keep in profile
                     </span>
                   </button>
                   )}

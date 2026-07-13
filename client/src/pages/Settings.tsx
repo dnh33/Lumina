@@ -141,6 +141,8 @@ function DiscoveryPrefs() {
     onSuccess: () => {
       playCue("success");
       qc.invalidateQueries({ queryKey: ["anchor-logging"] });
+      // Over-used ribbons read fatigueScores from anchor_usage — refresh them.
+      qc.invalidateQueries({ queryKey: ["anchorRetired"] });
     },
   });
 
@@ -204,9 +206,9 @@ function DiscoveryPrefs() {
           <button
             type="button"
             role="switch"
-            aria-checked={anchorLogging.data?.enabled ?? true}
-            disabled={setLogging.isPending}
-            onClick={() => setLogging.mutate(!(anchorLogging.data?.enabled ?? true))}
+            aria-checked={anchorLogging.data?.enabled ?? false}
+            disabled={setLogging.isPending || anchorLogging.isLoading}
+            onClick={() => setLogging.mutate(!(anchorLogging.data?.enabled ?? false))}
             className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
               anchorLogging.data?.enabled ? "bg-gold-400" : "bg-white/15"
             }`}
@@ -221,6 +223,8 @@ function DiscoveryPrefs() {
         <p className="mb-3 text-xs leading-relaxed text-mist-400">
           Lumina tallies which titles you revisit to vary its suggestions. This
           stays on your device — only a hint reaches the AI, never the raw list.
+          Turning it off stops new tracking; use Clear usage data to erase what's
+          already recorded.
         </p>
         <button
           type="button"
