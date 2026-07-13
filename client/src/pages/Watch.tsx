@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Play } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
-import { WatchPlayer } from "../components/WatchPlayer";
+import { WatchPlayer, WatchPlayerLoading } from "../components/WatchPlayer";
 import { EpisodeSidebar } from "../components/EpisodeSidebar";
 import { RecapCard } from "./TitleDetail";
 import type { MediaType } from "../lib/types";
@@ -22,7 +22,6 @@ export default function Watch() {
   const isTv = type === "tv";
 
   const [sourceName, setSourceName] = useState<string | null>(null);
-  const [started, setStarted] = useState(false);
 
   const title = useQuery({
     queryKey: ["title", type, id],
@@ -51,6 +50,8 @@ export default function Watch() {
     };
   }, [params, episodes.data]);
 
+  // Auto-resolve on mount — navigating to /watch is itself the play intent,
+  // so there's no second "Start playing" gate to click through.
   const resolved = useQuery({
     queryKey: ["resolve", sourceName, type, id, isTv ? resume.season : 0, isTv ? resume.episode : 0],
     queryFn: () =>
@@ -60,7 +61,7 @@ export default function Watch() {
         tmdbId: id,
         ...(isTv ? { season: resume.season, episode: resume.episode } : {}),
       }),
-    enabled: started && !!sourceName,
+    enabled: !!sourceName,
     staleTime: Infinity,
   });
 
@@ -105,51 +106,47 @@ export default function Watch() {
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.7fr)_340px]">
         <div className="min-w-0 space-y-6">
-          {/* Recap-first: "Previously on…" renders before the player mounts. */}
-          {showRecap && !started && <RecapCard entry={library} />}
+          {/* Recap-first: "Previously on…" sits above the player (no click gate). */}
+          {showRecap && <RecapCard entry={library} />}
 
-          {!started ? (
-            <div className="panel flex flex-col items-start gap-4 p-6">
+          {!source ? (
+            <div className="panel flex flex-col items-start gap-3 p-6">
               <p className="text-sm leading-relaxed text-mist-400">
-                {showRecap
-                  ? "Caught up? Start playback when you're ready."
-                  : "Start playback when you're ready."}
+                No sources configured. Copy{" "}
+                <code className="text-mist-300">data/sources.local.example.json</code> to{" "}
+                <code className="text-mist-300">data/sources.local.json</code> and point
+                it at your own media endpoints — that file stays on your machine.
               </p>
-              <button
-                type="button"
-                disabled={!source}
-                onClick={() => setStarted(true)}
-                className="btn-primary disabled:opacity-50"
-              >
-                <Play className="h-4 w-4" /> Start playing
-              </button>
-              {sources.isSuccess && !sources.data.length && (
-                <p className="text-sm leading-relaxed text-mist-400">
-                  No sources configured. Copy{" "}
-                  <code className="text-mist-300">data/sources.local.example.json</code> to{" "}
-                  <code className="text-mist-300">data/sources.local.json</code> and point
-                  it at your own media endpoints — that file stays on your machine.
-                </p>
-              )}
             </div>
           ) : resolved.isLoading ? (
-            <div className="panel flex aspect-video items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-gold-400" />
-            </div>
+            <WatchPlayerLoading title={details.title} />
           ) : resolved.isError ? (
-            <div className="panel flex items-center justify-between gap-3 p-5">
-              <p className="text-sm text-red-300/90">
+            <div className="panel flex flex-col items-start gap-3 p-5">
+              <p className="text-sm leading-relaxed text-red-300/90">
                 {(resolved.error as Error).message}
               </p>
-              <button type="button" className="btn-ghost" onClick={() => resolved.refetch()}>
-                Retry
-              </button>
+              <div className="flex gap-2">
+                <button type="button" className="btn-ghost" onClick={() => resolved.refetch()}>
+                  Retry
+                </button>
+                {resolved.data && (
+                  <a
+                    href={resolved.data.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-ghost"
+                  >
+                    Open externally
+                  </a>
+                )}
+              </div>
             </div>
           ) : resolved.data ? (
             <WatchPlayer
               url={resolved.data.url}
               trusted={resolved.data.trusted}
               title={details.title}
+              backdropPath={details.backdropPath}
             />
           ) : null}
         </div>
