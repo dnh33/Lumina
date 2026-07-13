@@ -1,6 +1,6 @@
 import type { DB } from "../db/connection.js";
 import type { LibraryEntry } from "../services/libraryService.js";
-import { getEntry } from "../services/libraryService.js";
+import { getEntry, ignoredTmdbIds } from "../services/libraryService.js";
 
 /**
  * RAG · Layer 2 — Library retrieval.
@@ -42,10 +42,12 @@ export function retrieveLibrary(db: DB, query: string, k = 10): ScoredEntry[] {
     return []; // malformed query — fail soft
   }
 
+  const hidden = ignoredTmdbIds(db);
   const scored: ScoredEntry[] = [];
   for (const r of rows) {
     const entry = getEntry(db, r.rowid);
     if (!entry) continue;
+    if (hidden.has(`${entry.mediaType}:${entry.tmdbId}`)) continue;
     // bm25 returns negative-is-better; invert, then scale by user signal so
     // ratings/favorites break ties without drowning out text relevance.
     const base = -r.score;

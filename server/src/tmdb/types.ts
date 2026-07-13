@@ -12,6 +12,8 @@ export interface CatalogItem {
   voteAverage: number | null;
   genreIds: number[];
   popularity: number | null;
+  /** false once the item has passed the ignore filter (filterCatalog) */
+  ignored?: boolean;
 }
 
 export interface PersonCredit {

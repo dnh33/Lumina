@@ -18,6 +18,7 @@ export function invalidateLibraryData(qc: QueryClient): void {
     "popular",
     "top-rated",
     "title",
+    "ignored",
   ]) {
     qc.invalidateQueries({ queryKey: [key] });
   }

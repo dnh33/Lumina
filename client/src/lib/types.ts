@@ -13,6 +13,8 @@ export interface CatalogItem {
   genreIds: number[];
   popularity: number | null;
   inLibrary?: boolean;
+  /** true when the user has hidden this title from discovery */
+  ignored?: boolean;
   /** Critics scores (lazy, from OMDb). Null until fetched. Your personal
    *  rating is `rating` on LibraryEntry / the hero number — kept separate. */
   imdbRating?: number | null;
@@ -106,6 +108,19 @@ export interface EpisodeRecap {
   watched: number;
   total: number;
   cached: boolean;
+}
+
+export interface Genre {
+  id: number;
+  name: string;
+}
+
+export interface IgnoredTitle {
+  tmdbId: number;
+  mediaType: MediaType;
+  title: string;
+  year: number | null;
+  posterPath: string | null;
 }
 
 export interface TagCount {

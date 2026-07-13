@@ -485,6 +485,98 @@ export function libraryTmdbIds(db: DB): Set<string> {
   return new Set(rows.map((r) => `${r.media_type}:${r.tmdb_id}`));
 }
 
+/* ── Ignored titles ──────────────────────────────────────────────── */
+
+/** Set of ignored tmdb ids, same shape as libraryTmdbIds. */
+export function ignoredTmdbIds(db: DB): Set<string> {
+  const rows = db
+    .prepare("SELECT tmdb_id, media_type FROM ignored")
+    .all() as { tmdb_id: number; media_type: string }[];
+  return new Set(rows.map((r) => `${r.media_type}:${r.tmdb_id}`));
+}
+
+export function ignoreTitle(db: DB, tmdbId: number, mediaType: MediaType): void {
+  db.prepare(
+    "INSERT INTO ignored (tmdb_id, media_type) VALUES (?, ?) ON CONFLICT(tmdb_id, media_type) DO NOTHING",
+  ).run(tmdbId, mediaType);
+}
+
+export function unignoreTitle(db: DB, tmdbId: number, mediaType: MediaType): void {
+  const remove = db.transaction(() => {
+    db.prepare("DELETE FROM ignored WHERE tmdb_id = ? AND media_type = ?").run(
+      tmdbId,
+      mediaType,
+    );
+    // Drop the metadata snapshot if it was only kept for the ignore list.
+    db.prepare(
+      `DELETE FROM titles WHERE tmdb_id = ? AND media_type = ?
+       AND id NOT IN (SELECT title_id FROM library)`,
+    ).run(tmdbId, mediaType);
+  });
+  remove();
+}
+
+export interface IgnoredTitle {
+  tmdbId: number;
+  mediaType: MediaType;
+  title: string;
+  year: number | null;
+  posterPath: string | null;
+}
+
+export function listIgnored(db: DB): IgnoredTitle[] {
+  const rows = db
+    .prepare(
+      `SELECT i.tmdb_id, i.media_type, t.title, t.year, t.poster_path
+       FROM ignored i
+       LEFT JOIN titles t ON t.tmdb_id = i.tmdb_id AND t.media_type = i.media_type
+       ORDER BY i.added_at DESC`,
+    )
+    .all() as {
+    tmdb_id: number;
+    media_type: MediaType;
+    title: string | null;
+    year: number | null;
+    poster_path: string | null;
+  }[];
+  return rows.map((r) => ({
+    tmdbId: r.tmdb_id,
+    mediaType: r.media_type,
+    title:
+      r.title ?? `${r.media_type === "tv" ? "Series" : "Film"} #${r.tmdb_id}`,
+    year: r.year,
+    posterPath: r.poster_path,
+  }));
+}
+
+/* ── Discovery preferences (settings) ────────────────────────────── */
+
+const EXCLUDED_GENRES_KEY = "excluded_genres";
+
+/** TMDB genre ids the user excludes from discovery. */
+export function getExcludedGenres(db: DB): number[] {
+  const row = db
+    .prepare("SELECT value FROM settings WHERE key = ?")
+    .get(EXCLUDED_GENRES_KEY) as { value: string } | undefined;
+  if (!row) return [];
+  try {
+    const parsed = JSON.parse(row.value) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((x): x is number => Number.isInteger(x))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function setExcludedGenres(db: DB, ids: number[]): void {
+  const clean = [...new Set(ids.filter((x) => Number.isInteger(x)))];
+  db.prepare(
+    `INSERT INTO settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  ).run(EXCLUDED_GENRES_KEY, JSON.stringify(clean));
+}
+
 /* ── Episodes ────────────────────────────────────────────────────── */
 
 export interface EpisodeRow {

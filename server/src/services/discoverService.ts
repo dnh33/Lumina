@@ -3,6 +3,8 @@ import { genreMap, tmdbGet } from "../tmdb/client.js";
 import { normalizeList } from "../tmdb/normalize.js";
 import type { CatalogItem, MediaType, RawTmdbItem } from "../tmdb/types.js";
 import {
+  getExcludedGenres,
+  ignoredTmdbIds,
   libraryTmdbIds,
   listEpisodes,
   listLibrary,
@@ -18,9 +20,30 @@ export interface CatalogItemWithFlags extends CatalogItem {
   inLibrary: boolean;
 }
 
-function flag(db: DB, items: CatalogItem[]): CatalogItemWithFlags[] {
+/**
+ * The single filtering chokepoint for everything discovery-shaped:
+ * drops ignored titles and excluded genres, marks survivors `ignored: false`.
+ */
+export function filterCatalog(
+  db: DB,
+  items: CatalogItem[],
+  opts: { excludedGenres?: number[] } = {},
+): CatalogItem[] {
+  const hidden = ignoredTmdbIds(db);
+  const excluded = new Set(opts.excludedGenres ?? []);
+  return items
+    .filter(
+      (i) =>
+        !hidden.has(`${i.mediaType}:${i.tmdbId}`) &&
+        !i.genreIds.some((g) => excluded.has(g)),
+    )
+    .map((i) => ({ ...i, ignored: false }));
+}
+
+export function flag(db: DB, items: CatalogItem[]): CatalogItemWithFlags[] {
   const owned = libraryTmdbIds(db);
-  return items.map((i) => ({
+  const kept = filterCatalog(db, items, { excludedGenres: getExcludedGenres(db) });
+  return kept.map((i) => ({
     ...i,
     inLibrary: owned.has(`${i.mediaType}:${i.tmdbId}`),
   }));
@@ -97,10 +120,10 @@ export async function forYou(db: DB): Promise<ForYouResult> {
     collected.push(...normalizeList(data.results, mediaType));
   }
 
-  // Interleave movies and shows, drop owned titles.
-  const fresh = collected.filter(
-    (i) => !owned.has(`${i.mediaType}:${i.tmdbId}`),
-  );
+  // Interleave movies and shows, drop owned + ignored titles pre-slice.
+  const fresh = filterCatalog(db, collected, {
+    excludedGenres: getExcludedGenres(db),
+  }).filter((i) => !owned.has(`${i.mediaType}:${i.tmdbId}`));
   fresh.sort((a, b) => (b.voteAverage ?? 0) - (a.voteAverage ?? 0));
 
   return {
@@ -129,7 +152,10 @@ export interface UpNextItem {
  * next episode and progress. Pure local data; never triggers a TMDB sync.
  */
 export function upNext(db: DB): UpNextItem[] {
-  const watching = listLibrary(db, { status: "watching", sort: "updated" });
+  const hidden = ignoredTmdbIds(db);
+  const watching = listLibrary(db, { status: "watching", sort: "updated" }).filter(
+    (e) => !hidden.has(`${e.mediaType}:${e.tmdbId}`),
+  );
   const items: UpNextItem[] = [];
 
   for (const entry of watching) {
@@ -217,9 +243,9 @@ export async function becauseYouLoved(db: DB): Promise<BecauseResult> {
     `/${seed.media_type}/${seed.tmdb_id}/recommendations`,
   );
   const owned = libraryTmdbIds(db);
-  const items = normalizeList(data.results, seed.media_type).filter(
-    (i) => !owned.has(`${i.mediaType}:${i.tmdbId}`),
-  );
+  const items = filterCatalog(db, normalizeList(data.results, seed.media_type), {
+    excludedGenres: getExcludedGenres(db),
+  }).filter((i) => !owned.has(`${i.mediaType}:${i.tmdbId}`));
 
   return {
     source: {
