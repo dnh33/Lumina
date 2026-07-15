@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api.js";
 import { getGenreWorld } from "../lib/genreWorld.js";
@@ -16,6 +16,18 @@ export default function GenreExperience() {
     queryKey: ["genre-experience", slug],
     queryFn: () => api.genreExperience([slug]),
   });
+
+  const navigate = useNavigate();
+  const openGuided = () => {
+    const hook = data?.intro?.hook;
+    navigate("/chat", {
+      state: {
+        prefill: hook
+          ? `${hook} Take me deeper into the ${slug} world — what should I watch next and why?`
+          : `Walk me into the ${slug} world. What should I watch next and why?`,
+      },
+    });
+  };
 
   if (isLoading) {
     return (
@@ -46,6 +58,15 @@ export default function GenreExperience() {
           <PosterCard key={`${it.mediaType}:${it.tmdbId}`} item={it} width="w-full" />
         ))}
       </Carousel>
+
+      {data.intro?.hook && (
+        <button
+          onClick={openGuided}
+          className="rounded-full bg-amber-400/90 px-5 py-2.5 text-sm font-medium text-ink-950 transition-colors hover:bg-amber-300"
+        >
+          Explore with the Companion
+        </button>
+      )}
     </div>
   );
 }
