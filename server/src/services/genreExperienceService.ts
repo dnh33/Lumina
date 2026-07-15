@@ -146,7 +146,7 @@ async function enrichGenreItems(
       }
 
       if (needArgument) {
-        const insight = await titleInsight(db, it.tmdbId, it.mediaType);
+        const insight = await titleInsight(db, it.tmdbId, it.mediaType, false, true);
         const counter = insight.comparisons?.[0];
         enrichment.argument = {
           thesis: insight.hook ?? insight.text,
