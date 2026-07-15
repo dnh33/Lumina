@@ -10,7 +10,7 @@ function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
-export function GenrePicker() {
+export default function GenrePicker() {
   const { data: genres } = useQuery({
     queryKey: ["genres"],
     queryFn: () => api.genres(),
