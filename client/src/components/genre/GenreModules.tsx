@@ -2,10 +2,13 @@ import type { GenreWorld } from "../../lib/genreWorld.js";
 import type { CatalogItem } from "../../lib/types.js";
 import { TimelineScrubber } from "./TimelineScrubber.js";
 import { TopicCluster, type TopicSpine } from "./TopicCluster.js";
+import { CredibilityStrip, type Credibility } from "./CredibilityStrip.js";
 
 interface Props {
   modules: GenreWorld["modules"];
   items: CatalogItem[];
+  /** optional per-title provenance (F4); keyed by tmdbId */
+  credibility?: Record<number, Credibility>;
 }
 
 /** Group items into topic spines by shared primary genre id. */
@@ -28,11 +31,16 @@ function buildTopics(items: CatalogItem[]): TopicSpine[] {
  * (per genreWorld.modules) over the experience's items. One component,
  * N configs — NOT N page variants (design §13.8).
  */
-export function GenreModules({ modules, items }: Props) {
+export function GenreModules({ modules, items, credibility }: Props) {
   return (
     <>
       {modules.includes("timeline") && <TimelineScrubber items={items} />}
       {modules.includes("topic") && <TopicCluster topics={buildTopics(items)} />}
+      {modules.includes("critic") &&
+        credibility &&
+        items.map((it) => (
+          <CredibilityStrip key={`cred-${it.mediaType}:${it.tmdbId}`} cred={credibility[it.tmdbId] ?? {}} />
+        ))}
     </>
   );
 }

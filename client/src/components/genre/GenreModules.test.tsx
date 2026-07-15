@@ -6,11 +6,11 @@ import { GenreModules } from "./GenreModules.js";
 import type { CatalogItem } from "../../lib/types.js";
 
 const qc = new QueryClient();
-const renderMods = (modules: any, items: CatalogItem[]) =>
+const renderMods = (modules: any, items: CatalogItem[], credibility?: Record<number, any>) =>
   render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
-        <GenreModules modules={modules} items={items} />
+        <GenreModules modules={modules} items={items} credibility={credibility} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -37,6 +37,17 @@ describe("GenreModules", () => {
     // two genre spines (99 and 878) -> two topic headings
     expect(screen.getAllByText(/Genre \d+/).length).toBe(2);
     expect(screen.getAllByText("Doc A").length).toBeGreaterThan(0);
+  });
+
+  it("renders CredibilityStrip per title when 'critic' module + credibility map present", () => {
+    const credItems: CatalogItem[] = [
+      { tmdbId: 1, mediaType: "movie", title: "Doc A", year: 2010, overview: "", posterPath: null, backdropPath: null, voteAverage: 7, genreIds: [99], popularity: 1, inLibrary: false },
+    ];
+    const credibility: Record<number, any> = { 1: { distributor: "Netflix", streaming: true, consensus: "RT 94%", stance: "advocacy" } };
+    renderMods(["critic"], credItems, credibility);
+    expect(screen.getByText(/Distributor: Netflix/)).toBeDefined();
+    expect(screen.getByText(/RT 94%/)).toBeDefined();
+    expect(screen.getByText(/Stance: advocacy/)).toBeDefined();
   });
 
   it("renders nothing extra when modules is empty", () => {
