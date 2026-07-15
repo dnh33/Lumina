@@ -169,11 +169,10 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
     1.5 (ArgumentPanel counterpoint link, defensive — 1.4 not done yet).
     * 1.5 DONE + REVIEWED (13c26fd): ArgumentPanel counterpoint → <Link> when tmdbId present,
       else <span>. Orchestrator re-ran client: 94 tests pass. PASS.
-    * 1.2 IN FLIGHT, PRE-SCREENED OK: genreExperienceService.ts enrichGenreItems call now
-      `titleInsight(db, it.tmdbId, it.mediaType, false, true)` — passes skipAnchorLog=true.
-      Exactly the G3 fix. Not yet committed (subagent running).
-    * 1.4 (counterpoint.tmdbId) HELD — same file genreExperienceService.ts; dispatch only after
-      1.2 commits.
+    * 1.2 DONE + REVIEWED (7a9daa0): enrichGenreItems calls titleInsight(...,false,true).
+      Orchestrator re-ran server: 101 tests pass. PASS.
+    * 1.4 DISPATCHED (deleg_c7ea54f0): server carries counterpoint.tmdbId/mediaType
+      (genreExperienceService.ts:31 type + :153 map; InsightComparison already has them).
   - Wave 3: 1.7 (cueBeatMap wire), 1.8 (register.accent), 1.9 (Generic husk fix).
   - VERIFIED GATE: run `npm run test` (server+client) + typecheck + build after each wave.
   - BLOCKER: do NOT dispatch 1.4 until 1.2 commits (shared file genreExperienceService.ts).
