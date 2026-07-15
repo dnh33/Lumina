@@ -102,14 +102,36 @@ From `worlds-broader-council.md` (B-section). Highest-impact:
 - **D7 Topic as navigational axis** (click spine filters; LLM themes optional).
 - **D8 WatchOrder sequence** (cross-title order + progress; feeds C7 marathon).
 
-## 3. Proposed build order (phases, TBD at plan step)
+## 3. Build order (RESOLVED: full merge / option B, cheap-wins-first)
 
-1. **Foundations + must-fix bugs** (§4) — unblock everything else; fix correctness/premise.
-2. **Layer A complaint fixes** (P1–P6) — makes the page interactive + composed.
-3. **Layer B must-haves** (B1–B4, B6) — the differentiation engine.
-4. **Layer C top picks** (C1 cross-world warp, C2 mood entry, C3 world-origin) — structural.
-5. **Deepenings D1–D8** — per-module depth.
-6. **Layer B nice-to-have + remaining C** (B5 sound, B7, B8, C4–C10) — delight layer.
+Daniel's call (2026-07-15): **option B — merge ALL features, kitchen-sink, but build
+cheap-wins-first** so the World proves itself alive before the expensive nav layers land.
+This manages the grill's "4 concurrent interaction models" risk (B1 + C1 + D1 + B2) by
+sequencing, not by cutting. Everything ships in v2.
+
+1. **Foundations + must-fix bugs (§4)** — K3 `skipAnchorLog` (net-new, 2 sites), K2 dead-end
+   links (AnchorFrame safe; ArgumentPanel needs server shape change), K4 Generic husks,
+   K5 cueBeatMap wire, K6 label/name bugs. Unblock everything.
+2. **Layer A complaint fixes (P1–P6)** — AI-decouple + lazy enrichment, timeline arrows +
+   page-scope + clickable, search/sort/tags, TitleCard composition + tabs + label fixes, deep-steer
+   plumbing, metaphor accent + polish. Page becomes interactive + composed.
+3. **Cheap value-provers (lead, prove alive):** B3 provenance (counterpoint+director+topic),
+   B5 sound (wire dead cueBeatMap), C3 world-origin (anchorsUsed+profileState), C2 mood entry
+   (register.moods[] + GenrePicker resolver), C9 taste-overlay (anchors/watchlist on decade),
+   C8 steering presets, C5 whisper strip (deterministic template), C10 cold-start bootstrap.
+4. **Differentiation engine:** B1 metaphor grammar (1–2 flagship bespoke + themed variants),
+   W4 accent token (register.accent), B6 spatial spine (fold into B1/P4), B2 ambient Companion
+   (distinct GENRE_DOCK_CONVERSATION_KEY, no remount-across-slug), B4 persistence (GENRE_STATE_KEY
+   + useGenreState + libraryVersion reconcile).
+5. **Structural nav (expensive, sequenced LAST):** C1 cross-world warp (adjacency + neighbor
+   rail), D1 timeline becomes World's spine + decade zoom + taste overlay, B8 density-as-place.
+6. **Deepenings D2–D8:** Argument dialogue (server counterpoint.tmdbId), Geo fix + Frontier
+   spine, Critic deepen (IMDb≠RT, provider link), Maker index, Topic axis, WatchOrder sequence,
+   D4–D7. C4 compare mode, C6 export-as-note, C7 marathon (feeds D8) land here.
+7. **TV (K1):** ship TV (client mediaType param — path real); **drop `guided` fiction** (either
+   build genuine guided branching in a v2.x or remove the claim — NOT shipped as a no-op).
+8. **Polish + a11y pass per metaphor (C3/C6):** parameterized GenreEmptyState by metaphor;
+   audit each bespoke layout's keyboard/focus/screen-reader semantics.
 
 ## 4. MUST-FIX bugs in SHIPPED code (fix before merging Layer B — they'd inherit/amplify)
 
@@ -158,13 +180,17 @@ From `worlds-broader-council.md` (B-section). Highest-impact:
 - **W8 (proposed)** Single state authority for all filter/persist state (URL + one localStorage
   blob, serialized once).
 
-## 7. Open questions for design approval (ask ONE at a time)
+## 7. Open questions (RESOLVED — 2026-07-15, full merge / option B)
 
-1. **Layer C scope:** build all 10 new-council features, or a prioritized subset (C1/C2/C3 first)?
-2. **B1 metaphor count:** ship Constellation + Frontier as bespoke, rest themed? Or fewer/more?
-3. **TV/`guided` (K1):** enable TV + guided mode now (real work — UI toggle + server path
-   already exists), or defer?
-4. **C4 compare-mode / C7 marathon:** in this build or later?
+1. **Layer C scope:** **RESOLVED → option B (merge all 10).** All C1–C10 ship in v2,
+   cheap-wins-first (see §3). No deferral of new features (except `guided` fiction, which is
+   dropped/deferred as a no-op, not a feature).
+2. **B1 metaphor count:** **RESOLVED → 1–2 flagship bespoke (Constellation node-backdrop +
+   Frontier geo-spine), rest themed TitleCard variants** (W7). Constellation scoped as node
+   backdrop + themed cards, not a full graph engine (grill B1 correction).
+3. **TV/`guided` (K1):** **RESOLVED → ship TV** (client mediaType param; path real). **Drop
+   `guided` fiction** — not shipped as a no-op; genuine guided branching is a v2.x if wanted.
+4. **C4 compare-mode / C7 marathon:** **RESOLVED → in v2** (phase 6, deepenings).
 
 ## 8. Verification philosophy (all phases)
 - TDD per task (write failing test → implement → pass → commit).
@@ -203,6 +229,7 @@ cache-key vs moods/adjacency, AnchorFrame link.
 7. **C5 whisper strip must be a deterministic filter→string template**, NOT routed through the
    Companion persona (avoids double-narration with B2).
 
-### Open items the grill could not close (need Daniel's call — see §7)
-- Layer C scope (all 10 vs subset), B1 metaphor count, TV/guided now vs defer, compare/marathon
-  now vs later. These are scope/effort forks, not correctness blockers.
+### Grill gate verdict
+All four lenses run. Design is structurally SAFE after corrections. The scope fork (§7 Q1) is
+RESOLVED — option B (merge all features, cheap-wins-first). Remaining work is execution, not
+design. Proceed to writing-plans.
