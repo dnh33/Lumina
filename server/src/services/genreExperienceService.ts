@@ -6,7 +6,7 @@ import { flag, type CatalogItemWithFlags } from "./discoverService.js";
 import { fatigueScores, isRetired } from "./anchorService.js";
 import { retrieveLibrary } from "../rag/retrieval.js";
 import { computeTasteProfile } from "../rag/tasteProfile.js";
-import { profileStateOf, type ProfileState, titleInsight } from "../llm/insightService.js";
+import { profileStateOf, type ProfileState } from "../llm/insightService.js";
 import { currentModel, getLlm, getSetting, setSetting } from "../llm/openrouter.js";
 import { genreCuratorPrompt } from "../llm/prompts.js";
 import { ensureRatings } from "./ratingsService.js";
@@ -117,8 +117,12 @@ async function enrichGenreItems(
 ): Promise<GenreItem[]> {
   const needDetails = modules.has("maker") || modules.has("watchorder") || modules.has("critic") || modules.has("geo");
   const needRatings = modules.has("critic");
-  const needArgument = modules.has("argument");
-  if (!needDetails && !needRatings && !needArgument) return items;
+  // NOTE (P2.2): the "argument" module is intentionally NOT enriched here.
+  // It runs an LLM call (titleInsight) per title, which blocked the rails from
+  // painting. The client fetches `argument` per-title AFTER paint via
+  // GET /insight/:type/:tmdbId, so buildGenreExperience stays LLM-free for the
+  // items payload. Keep the guard free of needArgument.
+  if (!needDetails && !needRatings) return items;
 
   return Promise.all(
     items.map(async (it) => {
@@ -148,22 +152,6 @@ async function enrichGenreItems(
         const scores = await ensureRatings(db, it.tmdbId, it.mediaType);
         enrichment.imdbRating = scores.imdb;
         enrichment.rtRating = scores.rt;
-      }
-
-      if (needArgument) {
-        const insight = await titleInsight(db, it.tmdbId, it.mediaType, false, true);
-        const counter = insight.comparisons?.[0];
-        enrichment.argument = {
-          thesis: insight.hook ?? insight.text,
-          counterpoint: counter
-            ? {
-                title: counter.title,
-                relation: counter.relation,
-                tmdbId: counter.tmdbId,
-                mediaType: counter.mediaType,
-              }
-            : null,
-        };
       }
 
       return { ...it, enrichment };

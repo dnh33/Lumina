@@ -130,7 +130,7 @@ function anchorCount(db: any): number {
 }
 
 describe("enrichGenreItems anchor logging (K3)", () => {
-  it("logs ZERO anchors when enrichment (.argument) runs via buildGenreExperience", async () => {
+  it("logs ZERO anchors and defers the LLM `argument` to the client (P2.2)", async () => {
     const db = memoryDb();
     const before = anchorCount(db);
     const res = await buildGenreExperience(db, {
@@ -141,11 +141,13 @@ describe("enrichGenreItems anchor logging (K3)", () => {
     });
     const after = anchorCount(db);
 
-    // Enrichment must have actually run (otherwise the test is vacuous).
+    // Enrichment must have actually run (otherwise the test is vacuous) — but
+    // the `argument` module is now deferred, so no per-title insight is
+    // computed server-side.
     expect(res.items.length).toBeGreaterThan(0);
-    expect(res.items[0].enrichment?.argument?.thesis).toMatch(/sharp/i);
+    expect(res.items[0].enrichment?.argument).toBeUndefined();
 
-    // No anchors written during the build.
+    // No anchors written during the build (skipAnchorLog guard preserved).
     expect(after).toBe(before);
     expect(after).toBe(0);
   });

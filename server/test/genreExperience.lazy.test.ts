@@ -1,11 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 
-// P2.2: the server must NOT compute the LLM `argument` (thesis + counterpoint)
-// during buildGenreExperience — that used to block the rails. The `argument`
-// module is now deferred to the client (GET /insight per title). This test
-// verifies the server returns items WITHOUT enrichment.argument for an
-// `argument`-module world, while the non-LLM enrichment (details/ratings)
-// still resolves.
+// P2.2: the `argument` module must NOT run its LLM (titleInsight) during
+// buildGenreExperience. The rails must paint from details/ratings only; the
+// argument is fetched per-title by the client AFTER paint via
+// GET /insight/:type/:tmdbId. This test spies on the REAL titleInsight import
+// and asserts it is never invoked for an `argument` world.
 
 vi.mock("../src/tmdb/client.js", () => ({
   genreMap: async () =>
@@ -37,7 +36,9 @@ vi.mock("../src/tmdb/client.js", () => ({
   },
 }));
 
-// LLM seam — would only be exercised if titleInsight were still invoked.
+// Mock the LLM seam; if titleInsight were really invoked it would hit this.
+// We assert it is NOT invoked, so the shape here is irrelevant — only that we
+// can detect the call.
 vi.mock("../src/llm/openrouter.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/llm/openrouter.js")>();
   return {
@@ -88,9 +89,15 @@ vi.mock("../src/rag/retrieval.js", () => ({
 
 import { memoryDb } from "./helpers.js";
 import { buildGenreExperience } from "../src/services/genreExperienceService.js";
+import { titleInsight } from "../src/llm/insightService.js";
 
-describe("enrichGenreItems counterpoint deferred to client (P2.2)", () => {
-  it("defers the LLM `argument` for an `argument` module world", async () => {
+describe("genreExperience lazy argument enrichment (P2.2)", () => {
+  it("does NOT call titleInsight for an `argument` world; details/ratings still resolve", async () => {
+    const spy = vi.spyOn(
+      await import("../src/llm/insightService.js"),
+      "titleInsight",
+    );
+
     const db = memoryDb();
     const res = await buildGenreExperience(db, {
       mode: "self",
@@ -99,14 +106,32 @@ describe("enrichGenreItems counterpoint deferred to client (P2.2)", () => {
       modules: ["argument", "maker", "critic"],
     });
 
+    // Non-LLM enrichment (details + ratings) MUST still run.
     expect(res.items.length).toBeGreaterThan(0);
-    const it = res.items[0];
+    expect(res.items[0].enrichment?.director).toBe("Test Director");
+    expect(res.items[0].enrichment?.imdbRating).toBe(8.2);
 
-    // Non-LLM enrichment still resolves.
-    expect(it.enrichment?.director).toBe("Test Director");
-    expect(it.enrichment?.imdbRating).toBe(8.2);
+    // The LLM argument branch must be deferred — no titleInsight per title.
+    expect(res.items[0].enrichment?.argument).toBeUndefined();
+    expect(titleInsight).not.toHaveBeenCalled();
 
-    // The LLM `argument` (thesis + counterpoint) is NOT computed server-side.
-    expect(it.enrichment?.argument).toBeUndefined();
+    spy.mockRestore();
+  });
+
+  it("resolves quickly even with many items (no per-title LLM fan-out)", async () => {
+    const db = memoryDb();
+    const start = Date.now();
+    const res = await buildGenreExperience(db, {
+      mode: "self",
+      mediaType: "movie",
+      genres: ["documentary"],
+      // Only `argument` enabled — before P2.2 this would fan out N LLM calls.
+      modules: ["argument"],
+    });
+    const elapsed = Date.now() - start;
+    expect(res.items.length).toBeGreaterThan(0);
+    expect(res.items[0].enrichment?.argument).toBeUndefined();
+    // No LLM: should finish well under any LLM-call budget.
+    expect(elapsed).toBeLessThan(2000);
   });
 });

@@ -149,8 +149,9 @@ describe("buildGenreExperience enrichment (v1.5 modules)", () => {
     const it = res.items[0];
     expect(it.enrichment?.director).toBe("Test Director");
     expect(it.enrichment?.originCountry).toEqual(["US", "GB"]);
-    expect(it.enrichment?.argument?.thesis).toMatch(/sharp/i);
-    expect(it.enrichment?.argument?.counterpoint?.title).toBe("Counter Title");
+    // P2.2: the LLM `argument` is DEFERRED to the client (GET /insight), so it
+    // is undefined server-side even though the module is enabled.
+    expect(it.enrichment?.argument).toBeUndefined();
     expect(it.enrichment?.imdbRating).toBe(8.2);
     expect(it.enrichment?.seasons?.[0]?.episodeCount).toBe(10);
   });
