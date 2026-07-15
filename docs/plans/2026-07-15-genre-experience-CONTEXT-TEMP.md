@@ -186,10 +186,12 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
     - Batch 2 DONE + REVIEWED: 3.2 (888cf68 world-origin), 3.5 (presets), 3.6 (whisper strip),
       3.7 (10066e5 bootstrap). Orchestrator: client 152 tests. PHASE 3 COMPLETE (3.1-3.7).
   * PHASE 4 (differentiation engine) STARTED — expensive, sequenced per option B.
-    - Wave 4a DISPATCHED (deleg_6d6f63d0): 4.4 persistence (B4) — useGenreState + GENRE_STATE_KEY
-      + server libraryVersion. Single state authority (W8). Touches page state wiring.
-    - Wave 4b (after 4.4): 4.1 metaphor grammar (B1) — 1-2 flagship bespoke (Constellation
-      node-backdrop, Frontier geo-spine) + themed TitleCard variants (NOT full graph engine).
+    - Wave 4a DONE (orchestrator committed bcc3f7b; subagent's self-commit didn't land — per
+      Daniel, subagents MUST NOT use git; orchestrator owns all commits). Orchestrator: server 111,
+      client 158 tests. useGenreState + GENRE_STATE_KEY + libraryVersion (B4/W8). PASS.
+  * PHASE 4 wave 4b DISPATCHED (deleg pending): 4.1 metaphor grammar (B1) — 1-2 flagship bespoke
+    (Constellation node-backdrop, Frontier geo-spine) + themed TitleCard variants (NOT full graph
+    engine). EXTEND metaphor.ts metaphorLayout(world); pass world into GenreModules/TitleCard.
     - Wave 4c (after 4.1): 4.3 ambient Companion (B2) — ChatThread on /genre, distinct
       GENRE_DOCK_CONVERSATION_KEY, no remount-across-slug (fix App.tsx pathname key).
   * PHASE 5 (structural nav, LAST): 5.1 cross-world warp (C1), 5.2 decade zoom (D1), 5.3 density
