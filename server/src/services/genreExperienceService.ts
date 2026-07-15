@@ -28,7 +28,10 @@ export interface GenreItemEnrichment {
   imdbRating?: number | null;
   rtRating?: number | null;
   /** F3 "The Argument": thesis + pointer to a divergent neighbor */
-  argument?: { thesis: string; counterpoint?: { title: string; relation: string } | null } | null;
+  argument?: {
+    thesis: string;
+    counterpoint?: { title: string; relation: string; tmdbId?: number; mediaType?: MediaType } | null;
+  } | null;
 }
 
 // extend GenreItem with optional enrichment so existing consumers are unaffected
@@ -150,7 +153,14 @@ async function enrichGenreItems(
         const counter = insight.comparisons?.[0];
         enrichment.argument = {
           thesis: insight.hook ?? insight.text,
-          counterpoint: counter ? { title: counter.title, relation: counter.relation } : null,
+          counterpoint: counter
+            ? {
+                title: counter.title,
+                relation: counter.relation,
+                tmdbId: counter.tmdbId,
+                mediaType: counter.mediaType,
+              }
+            : null,
         };
       }
 
