@@ -160,26 +160,27 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
    → Phase 1 (Tasks 1.1-1.9, must-fix bugs) dispatched first.
 
 ## BUILD STATE (update as phases complete)
-- Phase 1 (foundations+bugs): IN PROGRESS.
-  - Wave 1 DONE + verified (orchestrator re-ran: server 100 tests, client 92 tests, typecheck clean):
-    * 1.1 `6c8be40` (skipAnchorLog, 2 sites) — REVIEWED PASS.
-    * 1.3 `ef4a162` (AnchorFrame links) — REVIEWED PASS.
-    * 1.6 `4906880` (label bugs K6) — REVIEWED PASS.
-  - Wave 2a DISPATCHED (deleg_d71aa891): 1.2 (thread skipAnchorLog via enrichGenreItems),
-    1.5 (ArgumentPanel counterpoint link, defensive — 1.4 not done yet).
-    * 1.5 DONE + REVIEWED (13c26fd): ArgumentPanel counterpoint → <Link> when tmdbId present,
-      else <span>. Orchestrator re-ran client: 94 tests pass. PASS.
-    * 1.4 DONE + REVIEWED (eba0ff4): server carries counterpoint tmdbId/mediaType. Orchestrator
-      re-ran server: 102 tests pass. K2 chain COMPLETE (AnchorFrame + ArgumentPanel + server).
-    * 1.7 DONE + REVIEWED (3cd85de): worldCue.ts + open beat on mount. Orchestrator: client
-      106 tests. PASS. (Parallel cross-edit with 1.8 on GenreExperience.tsx verified safe.)
-    * 1.8 DONE + REVIEWED (a96e7ca): register.accent + --world-accent consume in 4 components.
-      Orchestrator: client 106 tests. W4 hollow→real token. PASS.
-  - Wave 3b DISPATCHED (deleg_f4f3aa2a): 1.9 (non-proof genres get real modules, K4).
-  - PHASE 1 ENDS after 1.9. Then Phase 2 (Layer A complaint fixes P1-P6) begins.
-- Phases 2-7: pending.
-- Each task: TDD (failing test → implement → pass → commit). Orchestrator re-verifies `npm run
-  test` + `npm run build` after each batch. No code in main session — subagents own it.
+- **PHASE 1 COMPLETE + VERIFIED** (orchestrator: server 102 tests, client 110 tests, both
+  typechecks clean). All 9 must-fix bugs shipped:
+  * 1.1 `6c8be40` skipAnchorLog (2 sites) · 1.2 `7a9daa0` thread via enrichGenreItems
+  * 1.3 `ef4a162` AnchorFrame links · 1.4 `eba0ff4` server counterpoint tmdbId (K2 complete)
+  * 1.5 `13c26fd` ArgumentPanel link · 1.6 `4906880` label bugs (K6)
+  * 1.7 `3cd85de` cueBeatMap→playCue · 1.8 `a96e7ca` register.accent (W4)
+  * 1.9 `17d2136` non-proof genres real modules (K4)
+- **PHASE 2 (Layer A complaint fixes P1-P6) STARTED.**
+  * Wave 2.1 DISPATCHED (deleg_3f892e88): Tasks 2.1 (split intro → /discover/genre-intro +
+    buildGenreIntro, own cache key) + 2.3 (rewire openGuided to new intro query). Combined in
+    ONE subagent (tightly coupled server+client). Keeps enrichment in buildGenreExperience for now.
+  * Wave 2.2 (after 2.1/2.3): 2.2 lazy enrichment (the BIG grill catch — items return before
+    per-title titleInsight for argument worlds). Server returns un-enriched items; client enriches
+    per-title after paint.
+  * Wave 2.3: 2.4 timeline arrows + page-scope filter, 2.5 clickable PosterCard (parallel-safe).
+  * Wave 2.4: 2.6 client search/sort/tags. 2.7 TitleCard composition + tabs. 2.8 steer opts.
+    2.9 polish (accent, depends on 1.8).
+- PHASES 3-7: pending (cheap value-provers, differentiation engine, structural nav, deepenings,
+  TV+a11y).
+- VERIFIED GATE: re-run `npm run test` (server+client) + typecheck + build after each wave.
+- RESILIENCE: at ~62% context — CONTEXT-TEMP is the compaction-survival doc; commit it often.
 - COMMITS so far (this workstream): `b2873b2` broader council, `1122d6e` design, `09ac32f` grill
   fold, `6ae2b78` scope resolve, `f51e110` plan. (Feature code commits land as subagents finish.)
 
