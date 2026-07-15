@@ -1,6 +1,11 @@
+import { Link } from "react-router-dom";
+
 export interface Counterpoint {
   title: string;
   relation: string;
+  /** Optional until Task 1.4 lands; defense-in-depth link target. */
+  tmdbId?: number;
+  mediaType?: "movie" | "tv";
 }
 
 interface Props {
@@ -21,7 +26,15 @@ export function ArgumentPanel({ thesis, counterpoint }: Props) {
       <p className="text-sm leading-relaxed text-white/80">{thesis}</p>
       {counterpoint && (
         <p className="mt-3 border-t border-white/10 pt-3 text-xs text-white/50">
-          Counterpoint — <span className="text-white/70">{counterpoint.title}</span>: {counterpoint.relation}
+          Counterpoint —{" "}
+          {counterpoint.tmdbId != null && counterpoint.mediaType ? (
+            <Link to={`/title/${counterpoint.mediaType}/${counterpoint.tmdbId}`} className="text-white/70 hover:text-white/90">
+              {counterpoint.title}
+            </Link>
+          ) : (
+            <span className="text-white/70">{counterpoint.title}</span>
+          )}
+          : {counterpoint.relation}
         </p>
       )}
     </section>
