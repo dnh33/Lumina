@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api.js";
 import { getGenreWorld } from "../lib/genreWorld.js";
 import { accentVar } from "../lib/metaphor.js";
 import { playWorldCue } from "../lib/worldCue.js";
-import { countryName, watchProviderNames } from "../lib/genreNames.js";
+import { countryName, genreName, watchProviderNames } from "../lib/genreNames.js";
 import type { WatchProviders } from "../lib/types.js";
 import { Carousel } from "../components/Carousel.js";
 import { PosterCard } from "../components/PosterCard.js";
@@ -30,16 +30,23 @@ export default function GenreExperience() {
     playWorldCue(world, "open");
   }, [world?.slug]);
 
+  // P2.8: mode (self|guided) + mediaType (movie|tv) are page-scope steer
+  // knobs. They live in the queryKey so React Query refetches the server
+  // experience whenever the user flips either — real server steering, no
+  // URL change required. Defaults preserve the legacy self/movie behavior.
+  const [mode, setMode] = useState<"self" | "guided">("self");
+  const [mediaType, setMediaType] = useState<"movie" | "tv">("movie");
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["genre-experience", slug],
-    queryFn: () => api.genreExperience([slug], "self", "movie", world.modules),
+    queryKey: ["genre-experience", slug, mode, mediaType],
+    queryFn: () => api.genreExperience([slug], mode, mediaType, world.modules),
   });
 
   // P1.1/2.3: the curator intro is fetched separately so the rails paint
   // without waiting on the LLM. This query is non-blocking for the items.
   const { data: introData } = useQuery({
-    queryKey: ["genre-intro", slug],
-    queryFn: () => api.genreIntro([slug], "self", "movie", world.modules),
+    queryKey: ["genre-intro", slug, mode, mediaType],
+    queryFn: () => api.genreIntro([slug], mode, mediaType, world.modules),
   });
 
   const navigate = useNavigate();
@@ -61,6 +68,54 @@ export default function GenreExperience() {
   const visibleItems = decade == null ? (data?.items ?? []) : (data?.items ?? []).filter(
     (it) => decadeOf(it.year) === decade,
   );
+
+  // P2.6: client-side discovery controls. `decade` narrows first (above via
+  // visibleItems); then search / tag-filter / sort compose on top. None of
+  // this touches the server — it purely re-orders/filters what we already
+  // have from the genre experience query.
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<"default" | "year" | "rating">("default");
+  const [activeTags, setActiveTags] = useState<string[]>([]);
+
+  // Derive the toggleable genre tags from the items' distinct genre ids,
+  // resolved to human names. (CatalogItem has no `tags` field, so genre ids
+  // are the only per-title facet we can reliably chip on client-side.)
+  const availableTags = useMemo(() => {
+    const names = new Set<string>();
+    for (const it of visibleItems) {
+      for (const gid of it.genreIds ?? []) {
+        const name = genreName(gid);
+        names.add(name);
+      }
+    }
+    return [...names].sort();
+  }, [visibleItems]);
+
+  const filtered = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    const base = visibleItems.filter((it) => {
+      if (needle && !it.title.toLowerCase().includes(needle)) return false;
+      if (
+        activeTags.length &&
+        !activeTags.some((t) => (it.genreIds ?? []).some((gid) => genreName(gid) === t))
+      ) {
+        return false;
+      }
+      return true;
+    });
+    if (sort === "year") {
+      return [...base].sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
+    }
+    if (sort === "rating") {
+      return [...base].sort((a, b) => (b.voteAverage ?? 0) - (a.voteAverage ?? 0));
+    }
+    return base;
+  }, [visibleItems, search, sort, activeTags]);
+
+  const toggleTag = (tag: string) =>
+    setActiveTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
 
   // P2.2: the `argument` module (LLM thesis + counterpoint) is deferred to
   // AFTER paint. The server no longer runs titleInsight per title (it used to
@@ -171,9 +226,108 @@ export default function GenreExperience() {
         <>
           <AnchorFrame anchors={data.anchorsUsed} world={world} />
 
+          {/* P2.6 + P2.8: discovery + steer control bar.
+              - Search / sort / tag-chips are client-side (re-filter `visibleItems`).
+              - Mode + mediaType flip the server queries via the queryKey. */}
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-white/[0.03] p-3 ring-1 ring-white/10">
+            <label className="flex items-center gap-2 text-sm text-mist-300">
+              <span className="sr-only">Search titles</span>
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search titles…"
+                className="w-44 rounded-lg bg-ink-800 px-3 py-1.5 text-sm text-mist-100 outline-none ring-1 ring-white/10 placeholder:text-mist-500 focus:ring-gold-400/60"
+              />
+            </label>
+
+            <label className="flex items-center gap-2 text-sm text-mist-300">
+              <span className="text-2xs uppercase tracking-wider text-mist-500">Sort</span>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as "default" | "year" | "rating")}
+                className="rounded-lg bg-ink-800 px-2 py-1.5 text-sm text-mist-100 outline-none ring-1 ring-white/10 focus:ring-gold-400/60"
+              >
+                <option value="default">Curated</option>
+                <option value="year">Newest</option>
+                <option value="rating">Top rated</option>
+              </select>
+            </label>
+
+            <div
+              role="group"
+              aria-label="Filter by genre"
+              className="flex flex-wrap items-center gap-1.5"
+            >
+              {availableTags.map((tag) => {
+                const on = activeTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => toggleTag(tag)}
+                    className={`rounded-full px-3 py-1 text-2xs font-medium ring-1 transition-colors ${
+                      on
+                        ? "bg-gold-400/90 text-ink-950 ring-gold-400/60"
+                        : "bg-white/[0.04] text-mist-300 ring-white/10 hover:bg-white/[0.08]"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="ml-auto flex flex-wrap items-center gap-3">
+              <div
+                role="group"
+                aria-label="Experience mode"
+                className="flex items-center gap-1 rounded-lg bg-ink-800 p-0.5 ring-1 ring-white/10"
+              >
+                {(["self", "guided"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    aria-pressed={mode === m}
+                    onClick={() => setMode(m)}
+                    className={`rounded-md px-2.5 py-1 text-2xs font-medium capitalize transition-colors ${
+                      mode === m
+                        ? "bg-gold-400/90 text-ink-950"
+                        : "text-mist-300 hover:text-mist-100"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <div
+                role="group"
+                aria-label="Media type"
+                className="flex items-center gap-1 rounded-lg bg-ink-800 p-0.5 ring-1 ring-white/10"
+              >
+                {(["movie", "tv"] as const).map((mt) => (
+                  <button
+                    key={mt}
+                    type="button"
+                    aria-pressed={mediaType === mt}
+                    onClick={() => setMediaType(mt)}
+                    className={`rounded-md px-2.5 py-1 text-2xs font-medium capitalize transition-colors ${
+                      mediaType === mt
+                        ? "bg-gold-400/90 text-ink-950"
+                        : "text-mist-300 hover:text-mist-100"
+                    }`}
+                  >
+                    {mt === "movie" ? "Movies" : "TV"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <GenreModules
             modules={world.modules}
-            items={data.items}
+            items={filtered}
             credibility={maps.credibility}
             watchOrder={maps.watchOrder}
             arguments={argumentsMap}
@@ -184,7 +338,7 @@ export default function GenreExperience() {
           />
 
           <Carousel title="For You in this World" eyebrow="Seeded by the genre you chose">
-            {visibleItems.map((it) => (
+            {filtered.map((it) => (
               <PosterCard key={`${it.mediaType}:${it.tmdbId}`} item={it} width="w-full" />
             ))}
           </Carousel>
