@@ -13,6 +13,7 @@ import { ExperienceHero } from "../components/genre/ExperienceHero.js";
 import { AnchorFrame } from "../components/genre/AnchorFrame.js";
 import { GenreModules } from "../components/genre/GenreModules.js";
 import { GenreEmptyState } from "../components/genre/GenreEmptyState.js";
+import { decadeOf } from "../components/genre/TimelineScrubber.js";
 
 /** Niche-genre gate (design R6 / metric 9): below this many titles, show a
  *  tailored empty state instead of a thin rail. */
@@ -52,6 +53,14 @@ export default function GenreExperience() {
       },
     });
   };
+
+  // P2.4: page-scope decade filter. `decade` is the single source of truth —
+  // null means "all eras"; a number narrows the whole page (rail + scrubber).
+  // The TimelineScrubber is a controlled child: it reports picks back here.
+  const [decade, setDecade] = useState<number | null>(null);
+  const visibleItems = decade == null ? (data?.items ?? []) : (data?.items ?? []).filter(
+    (it) => decadeOf(it.year) === decade,
+  );
 
   // P2.2: the `argument` module (LLM thesis + counterpoint) is deferred to
   // AFTER paint. The server no longer runs titleInsight per title (it used to
@@ -170,10 +179,12 @@ export default function GenreExperience() {
             arguments={argumentsMap}
             geo={maps.geo}
             makers={maps.makers}
+            selectedDecade={decade}
+            onDecade={setDecade}
           />
 
           <Carousel title="For You in this World" eyebrow="Seeded by the genre you chose">
-            {data.items.map((it) => (
+            {visibleItems.map((it) => (
               <PosterCard key={`${it.mediaType}:${it.tmdbId}`} item={it} width="w-full" />
             ))}
           </Carousel>

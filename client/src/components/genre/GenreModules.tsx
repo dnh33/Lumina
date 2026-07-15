@@ -22,6 +22,10 @@ interface Props {
   geo?: Record<number, GeoRegion[]>;
   /** optional filmmaker spotlight (maker); keyed by tmdbId */
   makers?: Record<number, { director: string | null; directorId: number | null; title: string }>;
+  /** Page-scope decade filter: when set, the TimelineScrubber becomes a
+   *  controlled scrubber and the page filters its rails to this decade. */
+  selectedDecade?: number | null;
+  onDecade?: (decade: number | null) => void;
 }
 
 /** Group items into topic spines by shared primary genre id. */
@@ -44,10 +48,12 @@ function buildTopics(items: CatalogItem[]): TopicSpine[] {
  * (per genreWorld.modules) over the experience's items. One component,
  * N configs — NOT N page variants (design §13.8).
  */
-export function GenreModules({ modules, items, credibility, watchOrder, arguments: args, geo, makers }: Props) {
+export function GenreModules({ modules, items, credibility, watchOrder, arguments: args, geo, makers, selectedDecade, onDecade }: Props) {
   return (
     <>
-      {modules.includes("timeline") && <TimelineScrubber items={items} />}
+      {modules.includes("timeline") && (
+        <TimelineScrubber items={items} selectedDecade={selectedDecade} onDecade={onDecade} />
+      )}
       {modules.includes("topic") && <TopicCluster topics={buildTopics(items)} />}
       {modules.includes("critic") &&
         credibility &&
