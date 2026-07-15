@@ -161,18 +161,16 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
 
 ## BUILD STATE (update as phases complete)
 - Phase 1 (foundations+bugs): IN PROGRESS.
-  - Wave 1 DISPATCHED (deleg_54d2490a): Tasks 1.1 (skipAnchorLog), 1.3 (AnchorFrame links),
-    1.6 (label bugs).
-    * 1.3 DONE + REVIEWED (ef4a162): AnchorFrame now <Link to="/title/..."> — spec+quality PASS.
-    * 1.1 IN FLIGHT: insightService.ts modified + test untracked, NOT yet committed (subagent
-      still running). DO NOT touch insightService.ts from another subagent until 1.1 commits.
-    * 1.6 IN FLIGHT.
-  - Wave 2 (after wave 1 lands): 1.2 (thread skipAnchorLog via enrichGenreItems — depends on 1.1
-    param), 1.4 (counterpoint.tmdbId server-side — SAME file as 1.1, must wait), 1.5 (ArgumentPanel
-    link).
+  - Wave 1 DONE + verified (orchestrator re-ran: server 100 tests, client 92 tests, typecheck clean):
+    * 1.1 `6c8be40` (skipAnchorLog, 2 sites) — REVIEWED PASS.
+    * 1.3 `ef4a162` (AnchorFrame links) — REVIEWED PASS.
+    * 1.6 `4906880` (label bugs K6) — REVIEWED PASS.
+  - Wave 2a DISPATCHED (deleg_d71aa891): 1.2 (thread skipAnchorLog via enrichGenreItems),
+    1.5 (ArgumentPanel counterpoint link, defensive — 1.4 not done yet).
+  - Wave 2b (after 1.2 commits): 1.4 (counterpoint.tmdbId server-side — SAME file as 1.2,
+    genreExperienceService.ts; held to avoid conflict).
   - Wave 3: 1.7 (cueBeatMap wire), 1.8 (register.accent), 1.9 (Generic husk fix).
-  - BLOCKER: cannot dispatch wave 2 until 1.1 commits (file conflict on insightService.ts). Wait
-    for deleg_54d2490a consolidated result to re-enter.
+  - VERIFIED GATE: run `npm run test` (server+client) + typecheck + build after each wave.
 - Phases 2-7: pending.
 - Each task: TDD (failing test → implement → pass → commit). Orchestrator re-verifies `npm run
   test` + `npm run build` after each batch. No code in main session — subagents own it.
