@@ -16,6 +16,7 @@ import GenrePicker from "./pages/GenrePicker";
 export default function App() {
   const location = useLocation();
   const onChatPage = location.pathname.startsWith("/chat");
+  const onGenrePage = location.pathname.startsWith("/genre");
 
   useEffect(() => {
     initSound();
@@ -52,7 +53,7 @@ export default function App() {
           </Routes>
         </motion.div>
       </AnimatePresence>
-      {!onChatPage && <ChatDock />}
+      {!onChatPage && !onGenrePage && <ChatDock />}
     </Shell>
     </MotionConfig>
   );
