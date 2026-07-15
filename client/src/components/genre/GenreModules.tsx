@@ -4,6 +4,7 @@ import { TimelineScrubber } from "./TimelineScrubber.js";
 import { TopicCluster, type TopicSpine } from "./TopicCluster.js";
 import { CredibilityStrip, type Credibility } from "./CredibilityStrip.js";
 import { WatchOrderSequencer, type WatchChapter } from "./WatchOrderSequencer.js";
+import { ArgumentPanel, type Counterpoint } from "./ArgumentPanel.js";
 
 interface Props {
   modules: GenreWorld["modules"];
@@ -12,6 +13,8 @@ interface Props {
   credibility?: Record<number, Credibility>;
   /** optional docu-series chapters (F5); keyed by tmdbId */
   watchOrder?: Record<number, { seasons: WatchChapter[]; recommendedStart?: number | null }>;
+  /** optional per-title thesis + counterpoint (F3); keyed by tmdbId */
+  arguments?: Record<number, { thesis: string; counterpoint?: Counterpoint | null }>;
 }
 
 /** Group items into topic spines by shared primary genre id. */
@@ -34,7 +37,7 @@ function buildTopics(items: CatalogItem[]): TopicSpine[] {
  * (per genreWorld.modules) over the experience's items. One component,
  * N configs — NOT N page variants (design §13.8).
  */
-export function GenreModules({ modules, items, credibility, watchOrder }: Props) {
+export function GenreModules({ modules, items, credibility, watchOrder, arguments: args }: Props) {
   return (
     <>
       {modules.includes("timeline") && <TimelineScrubber items={items} />}
@@ -50,6 +53,14 @@ export function GenreModules({ modules, items, credibility, watchOrder }: Props)
           const wo = watchOrder[it.tmdbId];
           return wo ? (
             <WatchOrderSequencer key={`wo-${it.mediaType}:${it.tmdbId}`} seasons={wo.seasons} recommendedStart={wo.recommendedStart} />
+          ) : null;
+        })}
+      {modules.includes("argument") &&
+        args &&
+        items.map((it) => {
+          const a = args[it.tmdbId];
+          return a ? (
+            <ArgumentPanel key={`arg-${it.mediaType}:${it.tmdbId}`} thesis={a.thesis} counterpoint={a.counterpoint} />
           ) : null;
         })}
     </>

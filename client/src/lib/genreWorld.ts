@@ -8,7 +8,7 @@ export interface GenreWorld {
   slug: string;
   metaphor: "Constellation" | "Threshold" | "Reading Room" | "Warm Interior" | "Frontier" | "Panel" | "Generic";
   register: GenreRegister;
-  modules: Array<"timeline" | "maker" | "topic" | "geo" | "watchorder" | "critic">;
+  modules: Array<"timeline" | "maker" | "topic" | "geo" | "watchorder" | "critic" | "argument">;
 }
 
 export const GENRE_WORLDS: Record<string, GenreWorld> = {
@@ -20,7 +20,7 @@ export const GENRE_WORLDS: Record<string, GenreWorld> = {
       tonePrompt: "Curious, credible, analytical.",
       cueBeatMap: ["open"],
     },
-    modules: ["timeline", "maker", "critic", "topic"],
+    modules: ["timeline", "maker", "critic", "topic", "argument"],
   },
   "sci-fi": {
     slug: "sci-fi",

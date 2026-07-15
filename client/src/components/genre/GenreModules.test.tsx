@@ -11,11 +11,12 @@ const renderMods = (
   items: CatalogItem[],
   credibility?: Record<number, any>,
   watchOrder?: Record<number, any>,
+  args?: Record<number, any>,
 ) =>
   render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
-        <GenreModules modules={modules} items={items} credibility={credibility} watchOrder={watchOrder} />
+        <GenreModules modules={modules} items={items} credibility={credibility} watchOrder={watchOrder} arguments={args} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -55,6 +56,18 @@ describe("GenreModules", () => {
     expect(screen.getByText(/Stance: advocacy/)).toBeDefined();
   });
 
+  it("renders ArgumentPanel when 'argument' module + data present", () => {
+    const argItems: CatalogItem[] = [
+      { tmdbId: 1, mediaType: "movie", title: "Doc A", year: 2010, overview: "", posterPath: null, backdropPath: null, voteAverage: 7, genreIds: [99], popularity: 1, inLibrary: false },
+    ];
+    const args: Record<number, any> = {
+      1: { thesis: "Climate change is solvable", counterpoint: { title: "Skeptic", relation: "disagrees on cause" } },
+    };
+    renderMods(["argument"], argItems, undefined, undefined, args);
+    expect(screen.getByText(/The argument/)).toBeDefined();
+    expect(screen.getByText(/Climate change is solvable/)).toBeDefined();
+    expect(screen.getByText(/Counterpoint/)).toBeDefined();
+  });
   it("renders WatchOrderSequencer when 'watchorder' module + data present", () => {
     const woItems: CatalogItem[] = [
       { tmdbId: 1, mediaType: "tv", title: "Doc Series", year: 2018, overview: "", posterPath: null, backdropPath: null, voteAverage: 8, genreIds: [99], popularity: 1, inLibrary: false },
