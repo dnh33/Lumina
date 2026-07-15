@@ -124,11 +124,17 @@ export const GENRE_WORLDS: Record<string, GenreWorld> = {
   },
 };
 
+// K4: non-proof genres (any slug not in GENRE_WORLDS, e.g. 'action', 'drama')
+// fell back to a husk with only ['timeline']. Now the fallback ships the
+// server-supported, client-rendered modules so a non-proof genre still gets a
+// real (if minimal) World: critic (CredibilityStrip) + argument + maker — all
+// computed by genreExperienceService for any genre, and rendered by
+// GenreModules. metaphor stays "Generic" (honest: not a bespoke metaphor).
 const GENERIC: GenreWorld = {
   slug: "*",
   metaphor: "Generic",
   register: { lexicon: ["discover"], tonePrompt: "Curious, warm.", cueBeatMap: ["open"], accent: "#71717a" },
-  modules: ["timeline"],
+  modules: ["timeline", "critic", "argument", "maker"],
 };
 
 export function getGenreWorld(slug: string): GenreWorld {

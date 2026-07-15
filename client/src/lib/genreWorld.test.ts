@@ -23,6 +23,39 @@ describe("genreWorld v1.5 matrix", () => {
   it("falls back to Generic for an unknown slug", () => {
     const w = getGenreWorld("kung-fu");
     expect(w.metaphor).toBe("Generic");
-    expect(w.modules).toEqual(["timeline"]);
+    // K4: non-proof genres get a real (minimal) world, not a husk.
+    // The fallback now ships the server-supported, client-rendered modules
+    // instead of a bare ['timeline'].
+    expect(w.modules).toEqual(["timeline", "critic", "argument", "maker"]);
+  });
+});
+
+describe("genreWorld K4: non-proof genres get a real world (not a husk)", () => {
+  it("a non-proof slug returns more than one module", () => {
+    const w = getGenreWorld("action");
+    expect(w.modules.length).toBeGreaterThan(1);
+  });
+
+  it("a non-proof slug still carries real, server-supported modules", () => {
+    const w = getGenreWorld("action");
+    // `critic` (CredibilityStrip) + `argument` + `maker` render real data;
+    // they are NOT the bare ['timeline'] husk from before K4.
+    expect(w.modules).toContain("critic");
+    expect(w.modules).toContain("argument");
+    expect(w.modules).toContain("maker");
+  });
+
+  it("the fallback keeps an accent (regression guard for 1.8)", () => {
+    const w = getGenreWorld("drama");
+    expect(w.register.accent).toBeTruthy();
+  });
+
+  it("a proof slug still returns its own world unchanged", () => {
+    const w = getGenreWorld("documentary");
+    expect(w).toBe(GENRE_WORLDS.documentary);
+    expect(w.metaphor).toBe("Reading Room");
+    expect(w.modules).toEqual([
+      "timeline", "maker", "critic", "topic", "argument", "watchorder",
+    ]);
   });
 });
