@@ -160,7 +160,19 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
    → Phase 1 (Tasks 1.1-1.9, must-fix bugs) dispatched first.
 
 ## BUILD STATE (update as phases complete)
-- Phase 1 (foundations+bugs): IN PROGRESS (Tasks 1.1-1.9).
+- Phase 1 (foundations+bugs): IN PROGRESS.
+  - Wave 1 DISPATCHED (deleg_54d2490a): Tasks 1.1 (skipAnchorLog), 1.3 (AnchorFrame links),
+    1.6 (label bugs).
+    * 1.3 DONE + REVIEWED (ef4a162): AnchorFrame now <Link to="/title/..."> — spec+quality PASS.
+    * 1.1 IN FLIGHT: insightService.ts modified + test untracked, NOT yet committed (subagent
+      still running). DO NOT touch insightService.ts from another subagent until 1.1 commits.
+    * 1.6 IN FLIGHT.
+  - Wave 2 (after wave 1 lands): 1.2 (thread skipAnchorLog via enrichGenreItems — depends on 1.1
+    param), 1.4 (counterpoint.tmdbId server-side — SAME file as 1.1, must wait), 1.5 (ArgumentPanel
+    link).
+  - Wave 3: 1.7 (cueBeatMap wire), 1.8 (register.accent), 1.9 (Generic husk fix).
+  - BLOCKER: cannot dispatch wave 2 until 1.1 commits (file conflict on insightService.ts). Wait
+    for deleg_54d2490a consolidated result to re-enter.
 - Phases 2-7: pending.
 - Each task: TDD (failing test → implement → pass → commit). Orchestrator re-verifies `npm run
   test` + `npm run build` after each batch. No code in main session — subagents own it.
