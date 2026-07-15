@@ -167,10 +167,16 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
     * 1.6 `4906880` (label bugs K6) — REVIEWED PASS.
   - Wave 2a DISPATCHED (deleg_d71aa891): 1.2 (thread skipAnchorLog via enrichGenreItems),
     1.5 (ArgumentPanel counterpoint link, defensive — 1.4 not done yet).
+    * 1.5 IN FLIGHT, PRE-SCREENED OK: ArgumentPanel.tsx extends Counterpoint type with optional
+      tmdbId/mediaType, wraps title in <Link> only when present, else <span>. Will PASS review.
+      Not yet committed (subagent running).
+    * 1.2 IN FLIGHT (enrichGenreItems call site — genreExperienceService.ts).
   - Wave 2b (after 1.2 commits): 1.4 (counterpoint.tmdbId server-side — SAME file as 1.2,
-    genreExperienceService.ts; held to avoid conflict).
+    genreExperienceService.ts; HELD to avoid conflict). 1.4 also extends the enrichment
+    counterpoint TYPE (server) + maps tmdbId/mediaType at genreExperienceService.ts:153.
   - Wave 3: 1.7 (cueBeatMap wire), 1.8 (register.accent), 1.9 (Generic husk fix).
   - VERIFIED GATE: run `npm run test` (server+client) + typecheck + build after each wave.
+  - BLOCKER: do NOT dispatch 1.4 until 1.2 commits (shared file genreExperienceService.ts).
 - Phases 2-7: pending.
 - Each task: TDD (failing test → implement → pass → commit). Orchestrator re-verifies `npm run
   test` + `npm run build` after each batch. No code in main session — subagents own it.
