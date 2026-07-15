@@ -180,11 +180,13 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
   * Wave 2.4b/2.4c DONE + REVIEWED (b29d18f): 2.7 composed TitleCard + 2.9 world-accent CTA.
     Orchestrator: client 129 tests. PHASE 2 COMPLETE (P1-P6 complaints all fixed + verified).
   * PHASE 3 (cheap value-provers, plan tasks 3.1-3.7) STARTED.
-    - Batch 1 DISPATCHED (parallel, independent files): 3.1 TitleCard provenance (TitleCard.tsx),
-      3.3 mood entry (genreWorld.ts + GenrePicker.tsx), 3.4 timeline overlay (TimelineScrubber.tsx,
-      reads anchorsUsed/profileState still on server response).
-    - Batch 2 (after batch 1): 3.7 bootstrap (GenreEmptyState.tsx) + page-combined 3.2 world-origin
-      hero + 3.5 steering presets + 3.6 whisper strip (all edit GenreExperience.tsx).
+    - Batch 1 DONE + REVIEWED: 3.1 (7af24ee provenance), 3.3 (b5d25e5 mood
+      entry), 3.4 (timeline overlay C9). Orchestrator: client 140 tests. All additive, parallel
+      cross-edits on shared files verified safe.
+    - Batch 2 DISPATCHED (deleg_89cad27d): 3.2 world-origin hero + 3.5 steering presets +
+      3.6 whisper strip (combined, edit GenreExperience.tsx) + 3.7 bootstrap (GenreEmptyState).
+  * PHASE 3 ENDS after batch 2. Then Phase 4 (differentiation engine: 4.1 metaphor grammar B1,
+    4.3 ambient Companion B2, 4.4 persistence B4) begins.
 - PHASES 3-7: pending (cheap value-provers, differentiation engine, structural nav, deepenings,
   TV+a11y).
 - VERIFIED GATE: re-run `npm run test` (server+client) + typecheck + build after each wave.
