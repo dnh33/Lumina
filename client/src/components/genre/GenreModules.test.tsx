@@ -12,11 +12,12 @@ const renderMods = (
   credibility?: Record<number, any>,
   watchOrder?: Record<number, any>,
   args?: Record<number, any>,
+  geo?: Record<number, any>,
 ) =>
   render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
-        <GenreModules modules={modules} items={items} credibility={credibility} watchOrder={watchOrder} arguments={args} />
+        <GenreModules modules={modules} items={items} credibility={credibility} watchOrder={watchOrder} arguments={args} geo={geo} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -79,6 +80,21 @@ describe("GenreModules", () => {
     expect(screen.getByText(/Watch order/)).toBeDefined();
     expect(screen.getByText(/Start here/)).toBeDefined();
     expect(screen.getByText("Season 1")).toBeDefined();
+  });
+  it("renders GeoMap when 'geo' module + data present", () => {
+    const geoItems: CatalogItem[] = [
+      { tmdbId: 1, mediaType: "movie", title: "Doc A", year: 2010, overview: "", posterPath: null, backdropPath: null, voteAverage: 7, genreIds: [99], popularity: 1, inLibrary: false },
+    ];
+    const geo: Record<number, any> = {
+      1: [
+        { code: "US", name: "USA", count: 3 },
+        { code: "GB", name: "UK", count: 1 },
+      ],
+    };
+    renderMods(["geo"], geoItems, undefined, undefined, undefined, geo);
+    expect(screen.getByText(/Where it/)).toBeDefined();
+    expect(screen.getByText("USA")).toBeDefined();
+    expect(screen.getByText("UK")).toBeDefined();
   });
   it("renders nothing extra when modules is empty", () => {
     const { container } = renderMods([], items);
