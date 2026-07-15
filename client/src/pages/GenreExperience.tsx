@@ -1,7 +1,9 @@
+import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api.js";
 import { getGenreWorld } from "../lib/genreWorld.js";
+import { playWorldCue } from "../lib/worldCue.js";
 import { countryName, watchProviderNames } from "../lib/genreNames.js";
 import type { WatchProviders } from "../lib/types.js";
 import { Carousel } from "../components/Carousel.js";
@@ -18,6 +20,13 @@ const NICHE_THRESHOLD = 6;
 export default function GenreExperience() {
   const { slug = "documentary" } = useParams<{ slug: string }>();
   const world = getGenreWorld(slug);
+
+  // Fire the world's "open" beat once per world entry (K5/B5 foundation:
+  // consume register.cueBeatMap). Filter-driven "discover" beats are wired
+  // in Phase 2 when the page owns the filter state.
+  useEffect(() => {
+    playWorldCue(world, "open");
+  }, [world?.slug]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["genre-experience", slug],
