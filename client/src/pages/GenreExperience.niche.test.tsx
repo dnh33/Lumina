@@ -19,7 +19,10 @@ const nicheExperience = {
 };
 
 vi.mock("../lib/api.js", () => ({
-  api: { genreExperience: vi.fn(async () => nicheExperience) },
+  api: {
+    genreExperience: vi.fn(async () => nicheExperience),
+    genreIntro: vi.fn(async () => nicheExperience.intro),
+  },
 }));
 
 function renderNiche() {

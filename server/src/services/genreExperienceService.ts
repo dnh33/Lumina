@@ -60,7 +60,9 @@ export interface GenreExperience {
   key: string;
   genres: string[];
   mode: ExperienceMode;
-  intro: GenreExperienceIntro | null;
+  /** Optional: the curator intro has been split into buildGenreIntro
+   *  (GET /discover/genre-intro) so the rails don't wait on the LLM. */
+  intro?: GenreExperienceIntro | null;
   items: GenreItem[];
   anchorsUsed: GenreAnchor[];
   profileState: ProfileState;
@@ -286,13 +288,15 @@ export async function buildGenreExperience(
   const profile = computeTasteProfile(db);
   const profileState = profileStateOf(profile);
   const anchorsUsed = selectAnchors(db, opts.genres.join(" "));
-  const intro = await curatorIntro(db, opts.genres, anchorsUsed, profileState);
 
+  // NOTE (P1.1/2.3): the curator intro is split into its own call
+  // (buildGenreIntro + GET /discover/genre-intro) so the rails can paint
+  // without waiting on the LLM. Enrichment stays here for now (Task 2.2
+  // will make it lazy).
   const res: GenreExperience = {
     key,
     genres: opts.genres,
     mode,
-    intro,
     items,
     anchorsUsed,
     profileState,
@@ -304,4 +308,48 @@ export async function buildGenreExperience(
     JSON.stringify({ fetchedAt: Date.now(), exp: res }),
   );
   return res;
+}
+
+/**
+ * Standalone curator intro. Computes the taste profile / anchors it needs
+ * internally so callers don't have to thread them through. Cached separately
+ * (12h) under `genre-exp-intro:${key}` so the rails can render from
+ * buildGenreExperience while this warms independently.
+ */
+export async function buildGenreIntro(
+  db: DB,
+  opts: GenreExperienceOpts,
+): Promise<GenreExperienceIntro | null> {
+  const mode: ExperienceMode = opts.mode ?? "self";
+  const key = `${opts.mediaType}:${mode}:${opts.genres.join("+")}:${(opts.modules ?? []).sort().join(",")}`;
+
+  const cachedRaw = getSetting(db, `genre-exp-intro:${key}`);
+  if (cachedRaw) {
+    try {
+      const cached = JSON.parse(cachedRaw) as {
+        fetchedAt: number;
+        intro: GenreExperienceIntro | null;
+      };
+      if (Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+        return cached.intro;
+      }
+    } catch {
+      // Corrupt cache entry: fall through and rebuild.
+    }
+  }
+
+  try {
+    const profile = computeTasteProfile(db);
+    const profileState = profileStateOf(profile);
+    const anchorsUsed = selectAnchors(db, opts.genres.join(" "));
+    const intro = await curatorIntro(db, opts.genres, anchorsUsed, profileState);
+    setSetting(
+      db,
+      `genre-exp-intro:${key}`,
+      JSON.stringify({ fetchedAt: Date.now(), intro }),
+    );
+    return intro;
+  } catch {
+    return null;
+  }
 }

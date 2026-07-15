@@ -10,7 +10,7 @@ import {
   trending,
   upNext,
 } from "../services/discoverService.js";
-import { buildGenreExperience } from "../services/genreExperienceService.js";
+import { buildGenreExperience, buildGenreIntro } from "../services/genreExperienceService.js";
 import {
   fetchDetailsFromTmdb,
   getEntryByTmdb,
@@ -133,6 +133,18 @@ catalogRouter.get("/discover/genre-experience", async (req, res) => {
     ? String(req.query.modules).split(",").map((s) => s.trim()).filter(Boolean)
     : [];
   const result = await buildGenreExperience(getDb(), { genres, mediaType, mode, modules });
+  res.json(result);
+});
+
+// P1.1/2.3: standalone curator intro so the rails don't block on the LLM.
+catalogRouter.get("/discover/genre-intro", async (req, res) => {
+  const genres = String(req.query.genres ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const mode = req.query.mode === "guided" ? "guided" : "self";
+  const mediaType = req.query.mediaType === "tv" ? "tv" : "movie";
+  const modules = req.query.modules
+    ? String(req.query.modules).split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+  const result = await buildGenreIntro(getDb(), { genres, mediaType, mode, modules });
   res.json(result);
 });
 

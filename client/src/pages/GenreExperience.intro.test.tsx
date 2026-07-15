@@ -9,11 +9,12 @@ vi.mock("react-router-dom", async (importOriginal) => {
   return { ...actual, useNavigate: () => navigate };
 });
 
+// Items query: NO intro (intro is now split into its own query).
 const experience = {
   key: "movie:self:documentary",
   genres: ["documentary"],
   mode: "self",
-  intro: { hook: "Step into the evidence.", tone: "hushed, forensic", basedOn: ["The Act of Killing"] },
+  // intro intentionally absent after the split
   items: [
     { tmdbId: 1, mediaType: "movie", title: "Doc One", year: 2015, overview: "", posterPath: null, backdropPath: null, voteAverage: 8.1, genreIds: [99], popularity: 10, inLibrary: false },
     { tmdbId: 2, mediaType: "movie", title: "Doc Two", year: 2018, overview: "", posterPath: null, backdropPath: null, voteAverage: 7.4, genreIds: [99], popularity: 9, inLibrary: false },
@@ -26,14 +27,21 @@ const experience = {
   profileState: "rich",
 };
 
+// Intro query: the curated hook now lives here.
+const intro = {
+  hook: "Step into the evidence.",
+  tone: "hushed, forensic",
+  basedOn: ["The Act of Killing"],
+};
+
 vi.mock("../lib/api.js", () => ({
   api: {
     genreExperience: vi.fn(async () => experience),
-    genreIntro: vi.fn(async () => experience.intro),
+    genreIntro: vi.fn(async () => intro),
   },
 }));
 
-async function renderGuided() {
+async function renderIntro() {
   const qc = new QueryClient();
   const mod = await import("./GenreExperience.js");
   return render(
@@ -47,19 +55,23 @@ async function renderGuided() {
   );
 }
 
-describe("GenreExperience AI-guided CTA", () => {
+describe("GenreExperience openGuided reads from the split intro query (P1.3)", () => {
   beforeEach(() => {
     navigate.mockClear();
   });
 
-  it("navigates to /chat with a prefilled narrative hook from the world", async () => {
-    await renderGuided();
-    await waitFor(() => expect(screen.getByText(/Explore with the Companion/i)).toBeDefined());
+  it("navigates to /chat with a prefill sourced from the intro query", async () => {
+    await renderIntro();
+    await waitFor(() =>
+      expect(screen.getByText(/Explore with the Companion/i)).toBeDefined(),
+    );
     fireEvent.click(screen.getByText(/Explore with the Companion/i));
     expect(navigate).toHaveBeenCalledWith(
       "/chat",
       expect.objectContaining({
-        state: expect.objectContaining({ prefill: expect.stringContaining("Step into the evidence.") }),
+        state: expect.objectContaining({
+          prefill: expect.stringContaining("Step into the evidence."),
+        }),
       }),
     );
   });

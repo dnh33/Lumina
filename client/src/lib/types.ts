@@ -332,8 +332,15 @@ export interface GenreExperience {
   key: string;
   genres: string[];
   mode: "self" | "guided";
-  intro: { hook: string; tone: string; basedOn: string[] } | null;
+  /** Optional: intro is now fetched separately via genreIntro(). */
+  intro?: { hook: string; tone: string; basedOn: string[] } | null;
   items: GenreItem[];
   anchorsUsed: GenreAnchor[];
   profileState: ProfileState;
+}
+
+export interface GenreExperienceIntro {
+  hook: string;
+  tone: string;
+  basedOn: string[];
 }

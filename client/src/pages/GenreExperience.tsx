@@ -34,9 +34,16 @@ export default function GenreExperience() {
     queryFn: () => api.genreExperience([slug], "self", "movie", world.modules),
   });
 
+  // P1.1/2.3: the curator intro is fetched separately so the rails paint
+  // without waiting on the LLM. This query is non-blocking for the items.
+  const { data: introData } = useQuery({
+    queryKey: ["genre-intro", slug],
+    queryFn: () => api.genreIntro([slug], "self", "movie", world.modules),
+  });
+
   const navigate = useNavigate();
   const openGuided = () => {
-    const hook = data?.intro?.hook;
+    const hook = introData?.hook;
     navigate("/chat", {
       state: {
         prefill: hook
@@ -126,7 +133,7 @@ export default function GenreExperience() {
             ))}
           </Carousel>
 
-          {data.intro?.hook && (
+          {introData?.hook && (
             <button
               onClick={openGuided}
               className="rounded-full bg-amber-400/90 px-5 py-2.5 text-sm font-medium text-ink-950 transition-colors hover:bg-amber-300"

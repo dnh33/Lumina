@@ -8,6 +8,7 @@ import type {
   EpisodeRow,
   ForYou,
   GenreExperience,
+  GenreExperienceIntro,
   Genre,
   Health,
   IgnoredTitle,
@@ -61,6 +62,10 @@ export const api = {
   forYou: () => get<ForYou>("/api/discover/for-you"),
   genreExperience: (genres: string[], mode: "self" | "guided" = "self", mediaType: "movie" | "tv" = "movie", modules: string[] = []) =>
     get<GenreExperience>(`/api/discover/genre-experience?genres=${encodeURIComponent(genres.join(","))}&mode=${mode}&mediaType=${mediaType}${modules.length ? `&modules=${encodeURIComponent(modules.join(","))}` : ""}`),
+  // P1.1/2.3: the curator intro is split into its own endpoint so the rails
+  // don't block on the LLM. openGuided reads from this.
+  genreIntro: (genres: string[], mode: "self" | "guided" = "self", mediaType: "movie" | "tv" = "movie", modules: string[] = []) =>
+    get<GenreExperienceIntro | null>(`/api/discover/genre-intro?genres=${encodeURIComponent(genres.join(","))}&mode=${mode}&mediaType=${mediaType}${modules.length ? `&modules=${encodeURIComponent(modules.join(","))}` : ""}`),
   because: () => get<Because>("/api/discover/because"),
   upNext: () => get<UpNextItem[]>("/api/discover/up-next"),
   encore: () => get<LibraryEntry[]>("/api/discover/encore"),

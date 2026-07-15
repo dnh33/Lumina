@@ -22,7 +22,10 @@ const experience = {
 };
 
 vi.mock("../lib/api.js", () => ({
-  api: { genreExperience: vi.fn(async () => experience) },
+  api: {
+    genreExperience: vi.fn(async () => experience),
+    genreIntro: vi.fn(async () => experience.intro),
+  },
 }));
 
 function renderAt(slug: string) {
