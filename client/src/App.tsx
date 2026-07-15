@@ -10,6 +10,7 @@ import TitleDetail from "./pages/TitleDetail";
 import PersonPage from "./pages/PersonPage";
 import ChatPage from "./pages/ChatPage";
 import Settings from "./pages/Settings";
+import GenreExperience from "./pages/GenreExperience";
 
 export default function App() {
   const location = useLocation();
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/library" element={<Library />} />
             <Route path="/title/:type/:tmdbId" element={<TitleDetail />} />
             <Route path="/person/:id" element={<PersonPage />} />
+            <Route path="/genre/:slug" element={<GenreExperience />} />
             {/* Single splat route: navigating /chat → /chat/:id only changes the
                 param (re-render), never remounts ChatPage. Prevents the
                 first-send race where the remount aborted the in-flight stream. */}
