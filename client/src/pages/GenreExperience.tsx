@@ -4,9 +4,9 @@ import { api } from "../lib/api.js";
 import { getGenreWorld } from "../lib/genreWorld.js";
 import { Carousel } from "../components/Carousel.js";
 import { PosterCard } from "../components/PosterCard.js";
-import { TimelineScrubber } from "../components/genre/TimelineScrubber.js";
 import { ExperienceHero } from "../components/genre/ExperienceHero.js";
 import { AnchorFrame } from "../components/genre/AnchorFrame.js";
+import { GenreModules } from "../components/genre/GenreModules.js";
 
 export default function GenreExperience() {
   const { slug = "documentary" } = useParams<{ slug: string }>();
@@ -51,7 +51,7 @@ export default function GenreExperience() {
 
       <AnchorFrame anchors={data.anchorsUsed} world={world} />
 
-      <TimelineScrubber items={data.items} />
+      <GenreModules modules={world.modules} items={data.items} />
 
       <Carousel title="For You in this World" eyebrow="Seeded by the genre you chose">
         {data.items.map((it) => (
