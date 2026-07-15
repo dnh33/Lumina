@@ -173,16 +173,12 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
     client 111 tests. PASS — rails no longer block on LLM intro.
   * Wave 2.2 DONE + REVIEWED (5d1f0b1): lazy per-title argument enrichment. Orchestrator:
     server 109, client 114 tests. Rails paint instantly (no LLM in items endpoint). PASS.
-  * Wave 2.3: 2.4 (page-scope decade filter + arrows) + 2.5 (K2 clickable posters).
-    - DISCOVERY: PosterCard.tsx ALREADY links every card to /title (line 157-161, stretched
-      Link) — K2 was complete BEFORE this task (stale brief). Subagent locked it with a test
-      instead of regressing. 2.4 decade-filter code implemented but subagent hit tool limit
-      UNCOMMITTED + left 1 failing test (posterlink.test.tsx: getByText ambiguous — 'Doc One'
-      appears in BOTH rail + TimelineScrubber list when decade=null).
-    - FIX REDISPATCHED (deleg_363a14b0): fix the test ambiguity (scope to carousel before
-      asserting link), confirm all green, commit the uncommitted 2.4 code + fix as ONE commit.
-  * Wave 2.4 (after 2.3 committed): 2.6 search/sort/tags, 2.7 TitleCard composition,
-    2.8 steer opts, 2.9 polish.
+  * Wave 2.3 DONE + REVIEWED (3a9dbf6): page-scope decade filter + arrows; K2 locked.
+    Orchestrator: client 123 tests. (2.5 was no-op — K2 already done; locked with test.)
+  * Wave 2.4a DISPATCHED (deleg_84404da6): 2.6 (search/sort/tags, client-side) + 2.8
+    (mode self|guided + mediaType movie|tv steer, re-query). Both edit GenreExperience.tsx.
+  * Wave 2.4b (after 2.4a): 2.7 TitleCard composition (new component, wire into GenreModules).
+  * Wave 2.4c (after 2.4a): 2.9 polish — CTA + accents use var(--world-accent) (depends on 1.8).
 - PHASES 3-7: pending (cheap value-provers, differentiation engine, structural nav, deepenings,
   TV+a11y).
 - VERIFIED GATE: re-run `npm run test` (server+client) + typecheck + build after each wave.
