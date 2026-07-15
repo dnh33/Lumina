@@ -485,6 +485,31 @@ export function libraryTmdbIds(db: DB): Set<string> {
   return new Set(rows.map((r) => `${r.media_type}:${r.tmdb_id}`));
 }
 
+/* ── Library version (world reconcile / ADR-W8) ──────────────────── */
+
+export interface LibraryVersion {
+  /** MAX(updated_at) across the library — an ISO string representing the
+   *  latest mutation, or null when the library is empty. Used as a cheap,
+   *  monotonic signature for client/server reconcile. */
+  version: string | null;
+  /** Row count of the library table — a coarse size signal. */
+  count: number;
+}
+
+/**
+ * Cheap signature of the current library state for client reconcile (B4).
+ * A single query returns both the latest mutation time (MAX(updated_at)) and
+ * the row count, so callers can detect drift without paginating the table.
+ */
+export function libraryVersion(db: DB): LibraryVersion {
+  const row = db
+    .prepare(
+      `SELECT MAX(updated_at) AS version, COUNT(*) AS count FROM library`,
+    )
+    .get() as { version: string | null; count: number };
+  return { version: row.version ?? null, count: row.count ?? 0 };
+}
+
 /* ── Ignored titles ──────────────────────────────────────────────── */
 
 /** Set of ignored tmdb ids, same shape as libraryTmdbIds. */

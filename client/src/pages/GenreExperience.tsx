@@ -15,6 +15,7 @@ import { AnchorFrame } from "../components/genre/AnchorFrame.js";
 import { GenreModules } from "../components/genre/GenreModules.js";
 import { GenreEmptyState } from "../components/genre/GenreEmptyState.js";
 import { decadeOf } from "../components/genre/TimelineScrubber.js";
+import { useGenreState } from "../lib/useGenreState.js";
 
 /** Niche-genre gate (design R6 / metric 9): below this many titles, show a
  *  tailored empty state instead of a thin rail. */
@@ -31,12 +32,30 @@ export default function GenreExperience() {
     playWorldCue(world, "open");
   }, [world?.slug]);
 
-  // P2.8: mode (self|guided) + mediaType (movie|tv) are page-scope steer
+  // P2.8 (B4): mode (self|guided) + mediaType (movie|tv) are page-scope steer
   // knobs. They live in the queryKey so React Query refetches the server
   // experience whenever the user flips either — real server steering, no
   // URL change required. Defaults preserve the legacy self/movie behavior.
-  const [mode, setMode] = useState<"self" | "guided">("self");
-  const [mediaType, setMediaType] = useState<"movie" | "tv">("movie");
+  // Task 4.4: exploration state (filter + steer + dismissed) is owned by
+  // useGenreState — it is single source of truth, URL-addressable, and
+  // persisted to localStorage so the world restores on reload / deep link.
+  const gs = useGenreState(slug);
+  const {
+    decade,
+    setDecade,
+    search,
+    setSearch,
+    sort,
+    setSort,
+    activeTags,
+    setActiveTags,
+  } = gs;
+  const mode = gs.steer.mode;
+  const setMode = (m: "self" | "guided") =>
+    gs.setSteer({ mode: m, mediaType: gs.steer.mediaType });
+  const mediaType = gs.steer.mediaType;
+  const setMediaType = (mt: "movie" | "tv") =>
+    gs.setSteer({ mode: gs.steer.mode, mediaType: mt });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["genre-experience", slug, mode, mediaType],
@@ -62,10 +81,10 @@ export default function GenreExperience() {
     });
   };
 
-  // P2.4: page-scope decade filter. `decade` is the single source of truth —
-  // null means "all eras"; a number narrows the whole page (rail + scrubber).
-  // The TimelineScrubber is a controlled child: it reports picks back here.
-  const [decade, setDecade] = useState<number | null>(null);
+  // P2.4: page-scope decade filter. `decade` is sourced from useGenreState
+  // (single source of truth) — null means "all eras"; a number narrows the
+  // whole page (rail + scrubber). The TimelineScrubber is a controlled child:
+  // it reports picks back here.
   const visibleItems = decade == null ? (data?.items ?? []) : (data?.items ?? []).filter(
     (it) => decadeOf(it.year) === decade,
   );
@@ -73,10 +92,8 @@ export default function GenreExperience() {
   // P2.6: client-side discovery controls. `decade` narrows first (above via
   // visibleItems); then search / tag-filter / sort compose on top. None of
   // this touches the server — it purely re-orders/filters what we already
-  // have from the genre experience query.
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<"default" | "year" | "rating">("default");
-  const [activeTags, setActiveTags] = useState<string[]>([]);
+  // have from the genre experience query. `decade/search/sort/activeTags` are
+  // sourced from useGenreState (single source of truth).
 
   // P3.5: "Surprise me" steering preset — a client-only shuffle of the
   // existing rail (no server param). Toggling it re-orders `filtered`.
