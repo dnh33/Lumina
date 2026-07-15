@@ -312,6 +312,9 @@ export interface GenreAnchor {
   mediaType: MediaType;
   title: string;
   rating: number | null;
+  /** Release year of the anchor title — used to bucket anchors onto the\n   *  TimelineScrubber decade axis (C9 taste-evolution overlay). Optional
+   *  because older anchors may not carry it. */
+  year?: number | null;
 }
 
 /** Per-title enrichment the genre modules render (server-computed). */

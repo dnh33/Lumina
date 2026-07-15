@@ -1,5 +1,5 @@
 import type { GenreWorld } from "../../lib/genreWorld.js";
-import type { CatalogItem } from "../../lib/types.js";
+import type { CatalogItem, GenreAnchor } from "../../lib/types.js";
 import { TimelineScrubber } from "./TimelineScrubber.js";
 import { TopicCluster, type TopicSpine } from "./TopicCluster.js";
 import { CredibilityStrip, type Credibility } from "./CredibilityStrip.js";
@@ -27,6 +27,10 @@ interface Props {
    *  controlled scrubber and the page filters its rails to this decade. */
   selectedDecade?: number | null;
   onDecade?: (decade: number | null) => void;
+  /** User's taste anchors (reference titles) — forwarded to the
+   *  TimelineScrubber so decades that shaped the user's taste are marked
+   *  on the era axis (C9 taste-evolution overlay). */
+  anchors?: GenreAnchor[];
 }
 
 /** Group items into topic spines by shared primary genre id. */
@@ -49,11 +53,11 @@ function buildTopics(items: CatalogItem[]): TopicSpine[] {
  * (per genreWorld.modules) over the experience's items. One component,
  * N configs — NOT N page variants (design §13.8).
  */
-export function GenreModules({ modules, items, credibility, watchOrder, arguments: args, geo, makers, selectedDecade, onDecade }: Props) {
+export function GenreModules({ modules, items, credibility, watchOrder, arguments: args, geo, makers, selectedDecade, onDecade, anchors }: Props) {
   return (
     <>
       {modules.includes("timeline") && (
-        <TimelineScrubber items={items} selectedDecade={selectedDecade} onDecade={onDecade} />
+        <TimelineScrubber items={items} selectedDecade={selectedDecade} onDecade={onDecade} anchors={anchors} />
       )}
       {modules.includes("topic") && <TopicCluster topics={buildTopics(items)} />}
       {modules.includes("critic") &&
@@ -76,9 +80,14 @@ export function GenreModules({ modules, items, credibility, watchOrder, argument
           if (!a) return null;
           const director = makers?.[it.tmdbId]?.director ?? null;
           const rating = it.imdbRating ?? null;
+          const provenance = a.counterpoint
+            ? `Pushes back on ${a.counterpoint.title}`
+            : director
+              ? `From the team behind ${director}`
+              : null;
           return (
             <div key={`arg-${it.mediaType}:${it.tmdbId}`} className="space-y-2">
-              <TitleCard item={it} director={director} rating={rating} thesis={a.thesis} />
+              <TitleCard item={it} director={director} rating={rating} thesis={a.thesis} provenance={provenance} />
               <ArgumentPanel thesis={a.thesis} counterpoint={a.counterpoint} />
             </div>
           );

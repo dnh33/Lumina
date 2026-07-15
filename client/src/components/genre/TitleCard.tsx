@@ -6,6 +6,8 @@ interface Props {
   director?: string | null;
   rating?: number | null;
   thesis?: string | null;
+  /** Optional "why this belongs here" line (B3); derived, no extra server call. */
+  provenance?: string | null;
 }
 
 /**
@@ -15,7 +17,7 @@ interface Props {
  * curated set of titles rather than scattered strips.
  * Graceful when enrichment fields are absent.
  */
-export function TitleCard({ item, director, rating, thesis }: Props) {
+export function TitleCard({ item, director, rating, thesis, provenance }: Props) {
   const src = poster(item.posterPath, "w185");
   return (
     <section
@@ -39,6 +41,9 @@ export function TitleCard({ item, director, rating, thesis }: Props) {
         )}
         {thesis && (
           <p className="mt-1 text-xs leading-relaxed text-white/70">{thesis}</p>
+        )}
+        {provenance && (
+          <p className="mt-1 text-xs text-white/40">{provenance}</p>
         )}
       </div>
     </section>

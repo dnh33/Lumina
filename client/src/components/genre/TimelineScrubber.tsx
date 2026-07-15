@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import type { CatalogItem } from "../../lib/types.js";
+import type { CatalogItem, GenreAnchor } from "../../lib/types.js";
 
 interface Props {
   items: CatalogItem[];
@@ -9,6 +9,11 @@ interface Props {
   selectedDecade?: number | null;
   /** Called when the user picks a decade tab or steps via the arrows. */
   onDecade?: (decade: number | null) => void;
+  /** User's taste anchors (reference titles). When supplied, decades that
+   *  contain at least one anchor get a small marker on the era axis (C9
+   *  taste-evolution overlay) so the user can see WHERE their taste lives.
+   *  This is purely additive — it never changes decade filtering. */
+  anchors?: GenreAnchor[];
 }
 
 /** Floor a year to its decade. Exported so the genre page can filter by the
@@ -20,7 +25,7 @@ export function decadeOf(year: number | null): number {
 
 const labelFor = (decade: number) => (decade === 0 ? "Unknown" : `${decade}s`);
 
-export function TimelineScrubber({ items, selectedDecade, onDecade }: Props) {
+export function TimelineScrubber({ items, selectedDecade, onDecade, anchors }: Props) {
   const reduce = useReducedMotion();
   const decades = useMemo(() => {
     const map = new Map<number, CatalogItem[]>();
@@ -32,6 +37,18 @@ export function TimelineScrubber({ items, selectedDecade, onDecade }: Props) {
     }
     return [...map.entries()].sort((a, b) => a[0] - b[0]);
   }, [items]);
+
+  // C9: bucket anchors by decade so the era axis can show WHERE the user's
+  // taste lives. Anchors without a resolvable year are skipped. Purely
+  // additive — never affects the item grid or decade filtering above.
+  const anchorDecades = useMemo(() => {
+    const set = new Set<number>();
+    for (const a of anchors ?? []) {
+      const d = decadeOf(a.year ?? null);
+      if (d !== 0) set.add(d);
+    }
+    return set;
+  }, [anchors]);
 
   // Controlled mode: the parent owns `selectedDecade`. Uncontrolled fallback
   // keeps the old local-state behaviour for any direct standalone usage.
@@ -90,6 +107,14 @@ export function TimelineScrubber({ items, selectedDecade, onDecade }: Props) {
               }`}
             >
               {labelFor(decade)}
+              {anchorDecades.has(decade) && (
+                <span
+                  data-testid={`anchor-${decade}`}
+                  aria-label={`Taste anchor in the ${labelFor(decade)}`}
+                  title="A title that shaped your taste lives in this era"
+                  className="ml-1 inline-block h-1.5 w-1.5 translate-y-[-1px] rounded-full bg-gold-400/90 align-middle"
+                />
+              )}
             </button>
           );
         })}

@@ -86,6 +86,8 @@ describe("GenreModules", () => {
     // composed TitleCard renders per-item with director + rating enrichment
     expect(screen.getByText(/Dir\. Jane Doe/)).toBeDefined();
     expect(screen.getByText(/★ 8\.2/)).toBeDefined();
+    // composed TitleCard shows a "why this belongs here" provenance line
+    expect(screen.getByText(/Pushes back on Skeptic/)).toBeDefined();
   });
   it("renders WatchOrderSequencer when 'watchorder' module + data present", () => {
     const woItems: CatalogItem[] = [

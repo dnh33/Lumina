@@ -335,6 +335,7 @@ export default function GenreExperience() {
             makers={maps.makers}
             selectedDecade={decade}
             onDecade={setDecade}
+            anchors={data.anchorsUsed}
           />
 
           <Carousel title="For You in this World" eyebrow="Seeded by the genre you chose">
