@@ -169,13 +169,12 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
     1.5 (ArgumentPanel counterpoint link, defensive — 1.4 not done yet).
     * 1.5 DONE + REVIEWED (13c26fd): ArgumentPanel counterpoint → <Link> when tmdbId present,
       else <span>. Orchestrator re-ran client: 94 tests pass. PASS.
-    * 1.2 DONE + REVIEWED (7a9daa0): enrichGenreItems calls titleInsight(...,false,true).
-      Orchestrator re-ran server: 101 tests pass. PASS.
-    * 1.4 DISPATCHED (deleg_c7ea54f0): server carries counterpoint.tmdbId/mediaType
-      (genreExperienceService.ts:31 type + :153 map; InsightComparison already has them).
-  - Wave 3: 1.7 (cueBeatMap wire), 1.8 (register.accent), 1.9 (Generic husk fix).
-  - VERIFIED GATE: run `npm run test` (server+client) + typecheck + build after each wave.
-  - BLOCKER: do NOT dispatch 1.4 until 1.2 commits (shared file genreExperienceService.ts).
+    * 1.4 DONE + REVIEWED (eba0ff4): server carries counterpoint tmdbId/mediaType. Orchestrator
+      re-ran server: 102 tests pass. K2 chain COMPLETE (AnchorFrame + ArgumentPanel + server).
+  - Wave 3a DISPATCHED (deleg_a475c476): 1.7 (cueBeatMap→playCue, new worldCue.ts),
+    1.8 (register.accent token + consume in 4 components). No shared files → parallel safe.
+  - Wave 3b (after 1.8 commits): 1.9 (Generic husk fix — SAME genreWorld.ts as 1.8; HELD).
+  - PHASE 1 ENDS after 1.9. Then Phase 2 (Layer A complaint fixes P1-P6) begins.
 - Phases 2-7: pending.
 - Each task: TDD (failing test → implement → pass → commit). Orchestrator re-verifies `npm run
   test` + `npm run build` after each batch. No code in main session — subagents own it.
