@@ -183,12 +183,20 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
     - Batch 1 DONE + REVIEWED: 3.1 (7af24ee provenance), 3.3 (b5d25e5 mood
       entry), 3.4 (timeline overlay C9). Orchestrator: client 140 tests. All additive, parallel
       cross-edits on shared files verified safe.
-    - Batch 2 DISPATCHED (deleg_89cad27d): 3.2 world-origin hero + 3.5 steering presets +
-      3.6 whisper strip (combined, edit GenreExperience.tsx) + 3.7 bootstrap (GenreEmptyState).
-  * PHASE 3 ENDS after batch 2. Then Phase 4 (differentiation engine: 4.1 metaphor grammar B1,
-    4.3 ambient Companion B2, 4.4 persistence B4) begins.
-- PHASES 3-7: pending (cheap value-provers, differentiation engine, structural nav, deepenings,
-  TV+a11y).
+    - Batch 2 DONE + REVIEWED: 3.2 (888cf68 world-origin), 3.5 (presets), 3.6 (whisper strip),
+      3.7 (10066e5 bootstrap). Orchestrator: client 152 tests. PHASE 3 COMPLETE (3.1-3.7).
+  * PHASE 4 (differentiation engine) STARTED — expensive, sequenced per option B.
+    - Wave 4a DISPATCHED (deleg_6d6f63d0): 4.4 persistence (B4) — useGenreState + GENRE_STATE_KEY
+      + server libraryVersion. Single state authority (W8). Touches page state wiring.
+    - Wave 4b (after 4.4): 4.1 metaphor grammar (B1) — 1-2 flagship bespoke (Constellation
+      node-backdrop, Frontier geo-spine) + themed TitleCard variants (NOT full graph engine).
+    - Wave 4c (after 4.1): 4.3 ambient Companion (B2) — ChatThread on /genre, distinct
+      GENRE_DOCK_CONVERSATION_KEY, no remount-across-slug (fix App.tsx pathname key).
+  * PHASE 5 (structural nav, LAST): 5.1 cross-world warp (C1), 5.2 decade zoom (D1), 5.3 density
+    (B8). PHASE 6 (deepenings): 6.1 argument dialogue (D2), 6.2 geo/Frontier (D4), 6.3 critic (D5),
+    6.4 compare (C4), 6.5 export (C6), 6.6 marathon (C7). PHASE 7: TV genre (K1) + a11y + final
+    verify + PR (gated on Daniel's /npm run dev review).
+- PHASES 5-7: pending (structural nav, deepenings, TV+a11y). See wave breakdown above.
 - VERIFIED GATE: re-run `npm run test` (server+client) + typecheck + build after each wave.
 - RESILIENCE: at ~62% context — CONTEXT-TEMP is the compaction-survival doc; commit it often.
 - COMMITS so far (this workstream): `b2873b2` broader council, `1122d6e` design, `09ac32f` grill
