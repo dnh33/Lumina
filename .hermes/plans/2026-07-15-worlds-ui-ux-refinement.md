@@ -20,9 +20,10 @@
 
 ### Task 1.1 — Server: split `intro` out, return items *before* enrichment
 - Modify: `server/src/services/genreExperienceService.ts`
-- Add `export async function buildGenreIntro(db, opts): Promise<GenreExperienceIntro>` wrapping `curatorIntro` (recompute `selectAnchors` :278 + `profileStateOf` :276-277). **Return the FULL `GenreExperienceIntro` type (incl. `basedOn: string[]`, populated at :216-219) — do NOT narrow to `{hook, tone}` (that is a type lie; client `types.ts:335` expects `basedOn`).**
-- Change `buildGenreExperience` to return `{ items, anchorsUsed }` **without blocking on enrichment**: return base items + `anchorsUsed` immediately; attach `enrichment` per item via a **separate lazy path** (see 1.5). Keep items cached 12h; intro cached 6h under `genre-exp-intro:${key}`.
-- Test: `server/test/genreExperience.test.ts` — `buildGenreExperience` returns no `intro`; `buildGenreIntro` returns full `GenreExperienceIntro` (assert `basedOn` present).
+- Add `export async function buildGenreIntro(db, opts): Promise<GenreExperienceIntro>` wrapping `curatorIntro` (recompute `selectAnchors` :278 + `profileStateOf` :276-277). **Return the FULL `GenreExperienceIntro` type (incl. `basedOn: string[]`, populated at :216-219). NOTE: there is NO `GenreCuratorIntro` type — do not invent one; use `GenreExperienceIntro`.**
+- **Grill fix (P1 is defeated unless you actually delete the call):** remove `const intro = await curatorIntro(...)` at **:279** AND drop the `intro` field from the return object (currently set :293). Otherwise the items path keeps paying the LLM and Phase 1 is meaningless. `buildGenreExperience` then returns `{ items, anchorsUsed }`.
+- **Grill fix (cache-key format must not drift):** the live items cache key is `mediaType:mode:genres:modules` at **:236** — keep this format VERBATIM. Do NOT reformat to `genres:mediaType:mode:modules` (would invalidate the warm 12h cache → cold stampede on first hit).
+- **Grill fix (intro needs its own cache):** `curatorIntro` currently rides the whole-experience cache (`genre-exp:${key}`). The split needs a NEW `getSetting`/`setSetting` key `genre-exp-intro:${mediaType}:${mode}:${genres.join("+")}` (6h TTL) or the intro endpoint won't actually be warm as asserted.
 
 ### Task 1.2 — Server: add `/discover/genre-intro` + `/discover/genre-enrich` routes
 - Modify: `server/src/routes/catalog.ts`
@@ -124,7 +125,8 @@
 - Modify: `server/src/services/genreExperienceService.ts` `buildGenreExperience` opts
 - **Grill correction:** there is **no discover query builder abstraction** — the discover call is an inline params object at `:258-263` (only `with_genres`/`sort_by`/`vote_count.gte`/`include_adult`). `tmdbGet` (`tmdb/client.ts:41`) forwards any param verbatim, so the new opts are trivially addable — but you must **edit the inline literal and thread new fields through `GenreExperienceOpts` (`:66-72`)**, not "pass to an existing builder."
 - Add optional `keyword?` (`with_keywords`), `decade?` (`primary_release_date.gte/lte`), `sort?` (`sort_by`), `provider?` (`with_watch_providers`), `lang?` (`with_original_language`) to the inline discover params. Append to cache key: `…:keyword:decade:sort:provider:lang` (unset → today's key, cache stays warm). Filtered variants get a shorter TTL (e.g. 1h) to bound row count.
-- **Decade authority:** this server `decade` is for *re-query steering only* (the "Steer this World" conversational re-curation), NOT the timeline tab (that's client-side, P2.3). Never run both on the same selection.
+- **Grill fix (decade source-of-truth + guard):** the server `decade`/`keyword`/`steer` opts are reserved for the *deferred* conversational re-query path ONLY. The client timeline tab (P2.3) is the **sole live source of truth** for decade filtering. Add a hard guard: the page's client filter state must NEVER set the server `decade` param (running both double-filters and can nuke enrichment at decade edges). The server opts are inert until the Steer re-query actually ships.
+- **Grill fix (enrichment burst):** a free-text `keyword` segment creates a new full `enrichGenreItems` burst (fetchDetails + ratings + titleInsight per item, `:107-160` `Promise.all`). Gate `keyword`/`steer` re-query behind **explicit submit, never keystroke** (the P3 client debounce does NOT cover a server re-query). Rely on the per-item insight/ratings caches (`:143`,`:149`) so overlapping titles reuse warm enrichment. Don't add a `keyword` cache segment that keystroke-refreshes.
 - Test: `genreExperience.test.ts` — with `keyword='nature'` the discover params object carries `with_keywords`; cache key differs from base.
 
 ### Task 5.2 — Route + API params
@@ -186,8 +188,10 @@ From the creative council (2 Opus runs). Ranked, deferred to a follow-up plan �
 ## ADR appendix (grill outcomes — to commit with the build)
 - **ADR-W1: AI-decoupling = lazy enrichment, not just intro split.** The curator `intro` split alone does not retire "UI waits on AI" for `argument` worlds (N per-title `titleInsight` calls block the items endpoint). Decision: base items return instantly; curator hook + per-title enrichment stream in via separate queries (Tasks 1.4–1.5). Rejected: intro-only split (leaves complaint alive on cold cache).
 - **ADR-W2: No anchor writes during curation.** `titleInsight`'s `logAnchor("take")` during batch enrichment logs a `take` for every title — a G3 violation the mocked test hid. Decision: `skipAnchorLog` flag for batch enrichment; curation is read-only w.r.t. the anchor graph. Rejected: status quo (whole-genre anchor storm).
-- **ADR-W3: Single decade authority.** Client timeline tab = fast-path filter; server `decade` opt = re-query steering only. Never both on one selection (boundary mismatch at decade edges).
+- **ADR-W3: Single decade authority.** Client timeline tab = fast-path filter; server `decade`/`keyword`/`steer` opts reserved for the deferred re-query ONLY, inert until then; client filter never sets the server param.
 - **ADR-W4: Metaphor = color + spacing gesture (font lock).** Per-metaphor font swaps contradict the locked font tokens; express metaphor via accent color + border/spacing only.
+- **ADR-W5: Cache-key format is a contract.** The live items key `mediaType:mode:genres:modules` (`:236`) must be kept verbatim; reformatting invalidates the warm 12h cache → cold stampede. `buildGenreIntro` needs its own `genre-exp-intro:…` key (6h).
+- **ADR-W6: No phantom types.** Use `GenreExperienceIntro`; there is no `GenreCuratorIntro`. Split is meaningless unless `curatorIntro` call (`:279`) + `intro` return field (`:293`) are actually deleted.
 
 ## Glossary updates (to fold into CONTEXT.md)
 - **World**: a per-genre immersive page (`/genre/:slug`) driven by a `GenreWorld` config (metaphor, register, modules).
