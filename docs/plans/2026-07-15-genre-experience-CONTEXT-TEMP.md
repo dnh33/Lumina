@@ -1,43 +1,161 @@
 # Genre Experience — Continuity Context (compaction-safe)
 
-> Living ground-truth for the immersive genre-experience feature. v1.5 COMPLETE (2026-07-15).
-> Branch: `immersive-curated-genre-specific-experience` · Worktree: `.worktrees/immersive-curated-genre-specific-experie`
+> Living ground-truth for the immersive genre-experience feature. **FEATURE-COMPLETE + LIVE-VERIFIED (2026-07-15).**
+> Branch: `immersive-curated-genre-specific-experie` · Worktree: `.worktrees/immersive-curated-genre-specific-experie`
 
 ## What shipped
-Standalone "genre world" experience at `/genre/:slug` + `/genre` picker. A genre-seeded
+Standalone "genre world" experience at `/genre/:slug` + `/genre` picker. Genre-seeded
 discovery engine (server) + a **config-driven module host** (client) rendering per-genre
-module sets across **all 13 genres**.
+module sets across **all 13 genres**, fed by **real per-title enrichment** from the server.
 
-## v1.5 scope — ALL DONE
-- **Module framework (T11):** `GenreModules` renders `genreWorld.modules` — one component, N configs (design §13.8). Not N page variants.
-- **6 modules built + wired:** `timeline` (T11, pre-existing) · `topic`/TopicCluster (F2, T12) · `credibility`/CredibilityStrip (F4, T13) · `watchorder`/WatchOrderSequencer (F5, T14) · `argument`/ArgumentPanel (F3, T15) · `geo`/GeoMap (T16, region share-bars, no map lib).
-- **Keyword normalization (G6, T10):** `TitleDetails.keywords` + `RawTmdbDetails.keywords` (movie `keywords` / tv `keywords.results`). 3 server tests.
-- **13-genre matrix (T18 + spec):** `genreWorld` now defines 13 worlds (modules per authored+grilled matrix spec `2026-07-15-genre-v15-matrix-spec.md`). `SLUG_ALIASES` extended so server resolves all 13 slugs (war-politics/film-noir/anime/science-fiction).
-- **Empty states (R6, metric 9, T17):** `GenreEmptyState` with Western/Music/War&Politics-specific copy + generic fallback. Niche `<N` gate (N=6) in `GenreExperience` hides rails → empty state.
-- **AI-guided CTA (T8, prior):** prefills Companion chat with world hook.
+## v1.5 scope — ALL DONE + LIVE-WIRED
+- **Module framework (T11):** `GenreModules` renders `genreWorld.modules` — one component, N configs.
+- **6 modules, all rendering real data live:**
+  - `timeline` (scrubber) · `topic`/TopicCluster (F2, from keywords) · `maker`/MakerSpotlight
+    (director, from detail fetch) · `credibility`/CredibilityStrip (F4, watchProviders+ratings)
+  - `watchorder`/WatchOrderSequencer (F5, seasons for tv) · `argument`/ArgumentPanel (F3, titleInsight thesis+counterpoint)
+  - `geo`/GeoMap (originCountry)
+- **Keyword normalization (G6, T10):** `TitleDetails.keywords` (movie/tv shapes).
+- **13-genre matrix (T18 + spec):** `genreWorld` defines 13 worlds; `SLUG_ALIASES` extended.
+- **Empty states (R6, metric 9, T17):** genre-specific + niche `<N=6` gate.
+- **Real enrichment (EN, commit 711ce76):** `buildGenreExperience` accepts `modules`;
+  `enrichGenreItems` fetches director/seasons/providers/originCountry/ratings/argument
+  **only for enabled modules**; client builds module maps from `item.enrichment`.
 
-## Explicitly DEFERRED (not drift — documented in spec)
-The bespoke *native signatures* named in the design (Constellation map, dread-spectrum,
-frontier map, director-spotlight, studio-lore) require NEW components not built here.
-The 13-genre matrix uses the 6 real modules. These signatures are a SEPARATE build.
+## Bug caught by LIVE verification (commit 1f24887)
+`buildGenreExperience` cached by `genres:mediaType:mode` **without `modules`** → a cached
+no-modules build would serve a later modules-enabled request as un-enriched (modules looked
+empty). Fixed: cache key now appends sorted modules. **Live-proven:** no-modules call = 0/20
+enriched; with-modules call right after = 20/20 enriched, geo 20/20.
 
-## Verification (all green, real exit codes)
-- Client tests **86/86** (21 files) · Server tests **96/96** (16 files)
-- Client typecheck 0 · Server typecheck 0 · Full build `built in ~827ms` exit 0
-- Blind-spot: branch `0 20` ahead of `origin/main` (merge-base == origin/main tip `9f8b4a1`).
+## LIVE verification — real server, real APIs (not mocks)
+Booted server with TMDB + OpenRouter configured. `GET /api/discover/genre-experience?genres=documentary&modules=...` → HTTP 200, 20 items:
+- geo (originCountry): **20/20** ✅  · maker (director): **20/20** ✅
+- argument (thesis): **20/20** ✅  · credibility watchProviders: **16/20** ✅
+- credibility IMDb/RT scores: **0/20** ⚠️ — `OMDB_API_KEY` NOT set in this dev env (OMDb
+  call returns null). Code is correct; scores populate wherever OMDB_API_KEY exists.
+- watchorder seasons: 0 — correct for movies (tv would populate).
+**Lesson:** do NOT trust a port "listening". A zombie server was holding :4000 serving OLD
+code and returned 0/20 enrichment until killed + cold-rebuilt on real code. Always kill the
+port first, confirm the serving PID is YOUR process, force a cold cache rebuild, then probe.
+
+## Verification (all green, real exit codes, last commit 1f24887)
+- Client tests **87/87** (21 files) · Server tests **98/98** (16 files) — NOTE one client
+  test (GenreExperience.guided) intermittently times out at 5s under full-suite contention;
+  passes in isolation (778ms) + on re-run. Flaky, not a regression.
+- Client typecheck 0 · Server typecheck 0 · Full build green
+- Blind-spot: branch ~`0 21` ahead of `origin/main` (merge-base == origin/main tip)
 
 ## How to run / review
 ```bash
 cd "<worktree path>"
-npm run dev          # open client URL (~:5173)
+# SERVER (needed for real enrichment): from server/ dir -> npx tsx src/index.ts  (listens :4000)
+npm run dev          # opens client (Vite ~:5173) + server
 # /genre (picker) · /genre/documentary · /genre/science-fiction · /genre/western · etc.
 ```
-- Niche gate visible on a genre with <6 titles (e.g. a thin `western` world shows the frontier empty state).
-- PR: **NOT yet opened** — human review required first (Daniel clicks through `npm run dev`).
+- Server is currently LIVE on `http://127.0.0.1:4000` (proc_861065968dfe / parent PID 23980,
+  listener child 23148, TMDB+OpenRouter configured). Kill any stale holder on :4000 before
+  restarting: `netstat -ano | grep :4000` → `taskkill /PID <pid> /F`.
+- Every enabled module shows real data; OMDb scores blank here (no key).
 
 ## Notes for next session
+- **PR NOT opened** — gated on Daniel's `npm run dev` review. Say "ship it" → final
+  blind-spot check + `gh pr create` (NO "Generated with" trailer).
 - "Polishes" — Daniel mentioned post-build UI polishes; not yet specified.
-- The module data (credibility/watchOrder/arguments/geo maps) is prop-driven; the server
-  `genreExperience` response doesn't yet populate them, so modules render empty in live
-  app until a server enrichment pass feeds real per-title data. Tested via prop injection.
 - Font migration (Fork 9 = B) still a SEPARATE whole-app workstream; genre code uses CSS vars.
+- `git add -A` on EN commit swept in pre-existing untracked design docs + briefs (genre
+  scope, no secrets) — acceptable, all related artifacts.
+- Native signatures (Constellation/dread-spectrum/frontier-map/director-spotlight/studio-lore)
+  remain a documented separate build (deferred, not drift).
+- Memory note: write a cross-session lesson about killing-the-port + cold-cache before
+  live-verifying (the zombie-on-4000 incident).
+
+---
+
+# WORLDS UX REFINEMENT — workstream context (compaction-safe, 2026-07-15)
+
+> SEPARATE from the shipped feature above. This is the NEXT phase: investigate + plan the
+> Worlds UI/UX holistically (new features + deepening + blind spots), per Daniel's directive.
+
+## Locked decisions (this session)
+- **Daniel's directive:** run a council thinking in WHOLE about Worlds UI — new value/immersion
+  features, outside-the-box, blind angles — AND grill-with-docs on the plan. Then PLAN using
+  `superpowers` writing skills. Save resilient context (this file).
+- **Merge decision (clarify, 2026-07-15):** the council's 8 NEW feature ideas are MERGED INTO
+  the build-now plan — NOT deferred to a Phase 7 backlog. (Prior plan had filed them as deferred;
+  that was the miss Daniel caught: "Any new features? We literally had agents look into this.")
+- **Process (superpowers):** Brainstorm → design doc (`docs/plans/YYYY-MM-DD-<topic>-design.md`,
+  committed) → MANDATORY pre-build grill gate (subagents authored the research) → writing-plans →
+  subagent TDD build. Do NOT write code before design approved. One question at a time.
+
+## Council outputs (all committed)
+- `docs/plans/cc-creative-opus.txt` — Opus creative council: 8 new features (ranked) + 6 blind angles.
+  TOP idea: **metaphor is named not built** (all 13 worlds share one skeleton, recolored).
+- `docs/plans/cc-grill-opus.txt` — Opus grill of the P1-P6 plan: found P1's premise half-true
+  (splitting curator alone doesn't fix "UI waits on AI" — per-title `titleInsight` blocks items
+  endpoint for `argument` worlds); + `logAnchor` storm during enrichment; + openGuided break; +
+  P5 discover-builder doesn't exist; + P6 font lock; + decade authority.
+- `docs/plans/council-visual-hierarchy-critique.md` — earlier 3-lens UX critique.
+- `.hermes/plans/2026-07-15-worlds-ui-ux-refinement.md` — the P1-P6 plan, grill-hardened
+  (commits `6257754` + `fa574ff`). Contains 6 ADRs (W1-W6: lazy enrichment, no logAnchor storm,
+  single decade authority, font lock, cache-key verbatim, no phantom type) + glossary.
+
+## The 8 new features (MERGED IN, build now)
+1. Metaphor as layout grammar (Constellation node-map / Threshold corridor / Frontier geo-spine)
+2. Ambient in-world Companion (diegetic narrator speaking `register`, pull-only)
+3. "Why this belongs here" provenance (anchor match / shared director / topic on expand)
+4. World persistence (save/resume scrub, steer, dismissed; deep-links `?decade=&mood=`)
+5. Sound via existing `cueBeatMap` + `playCue` (currently fires nothing)
+6. One spatial spine per world (demote other modules to contextual detail)
+7. Per-world serendipity gesture (adjacent star / next door / ride further out)
+8. Library density as place (lit/dark stars, read/unread spines)
+
+## NEW broader council (COMPLETE, 2026-07-15) — `deleg_a74171be`
+- `docs/plans/worlds-broader-council.md` — product lens: 10 new features BEYOND the 8, 8 deepenings,
+  8 blind spots, promotion flags (must-have vs nice-to-have of the merged 8).
+- `docs/plans/council-architecture-feasibility.md` — arch lens: cost/leverage/trap per feature,
+  6 architecture blind spots (C1-C6).
+- TOP new feature beyond the 8: **Cross-world warp** (Worlds map + neighboring-worlds rail).
+- TOP deepening: **Timeline as the World's spine + taste overlay** (anchorsUsed/watchlist on decade axis).
+
+### MUST-FIX BUGS the council found in SHIPPED code (not just plan gaps)
+These are correctness/premise defects — fix BEFORE merging the 8 features (they'd inherit/amplify):
+- **B1/TV unreachable + guided dead:** `GenreExperience.tsx:22` hardcodes `mediaType:"movie"`+`mode:"self"`.
+  Server TV + guided paths exist but never triggered. Whole media dimension missing.
+- **B2/Dead-end links:** `AnchorFrame` (plain `<li>`, no /title link) + `ArgumentPanel` counterpoint
+  (plain text, no link) — two "personal" surfaces promise nav, deliver none.
+- **B6/`logAnchor` storm STILL LIVE:** `enrichGenreItems` (`genreExperienceService.ts:149`) calls
+  `titleInsight` w/ no `skipAnchorLog` guard. P1.6 fix NOT in code. G3 violation.
+- **B3/`Generic` husks:** non-proof slugs → bare timeline, no metaphor/modules.
+- **B5/`cueBeatMap` dead:** `playCue` never called on genre page; `register` ~90% unexpressed.
+- Also live: `buildTopics` `Genre ${gid}`, geo `name:code`, `CredibilityStrip` fake `distributor:"Available"`.
+
+### Promotion flags (merged 8)
+- MUST-HAVE (ship w/ P1-P6): #1 metaphor grammar (1-2 flagships, not 6), #2 ambient Companion,
+  #3 provenance, #4 persistence (w/ P2/P3 URL state), #6 spatial spine (fold into #1).
+- NICE-TO-HAVE: #5 sound (cheap wiring now), #7 serendipity, #8 density-as-place.
+- Cheap wins to take now (arch council): provenance via counterpoint, wire dead cueBeatMap,
+  density via flag(), taste-origin via computeTasteProfile, render watchProviders already fetched.
+- TRAPS: A1 metaphor = EXPENSIVE if all 6 (font lock caps immersion, ×6 a11y); A6 spatial spine
+  TRAP if staffed separately (subsumed by P4+A1).
+
+### Architecture blind spots to design against (C1-C6)
+C1 state sprawl (URL+localStorage+server steer = 3+ sources of truth → single authority),
+C2 world-level reconcile missing (persisted state no invalidate-on-library-change),
+C3 ×6 a11y surfaces if all metaphors, C4 font lock caps immersion (color/spacing/sound only),
+C5 Companion-on-/genre chat collision (App.tsx:56 hides ChatDock; reconcile conversation keys),
+C6 per-metaphor empty states (generic empty state insufficient for bespoke layouts).
+
+## Next action (do NOT start coding)
+1. ✅ Await broader council → DONE (above).
+2. ⟶ WRITE design doc `docs/plans/2026-07-15-worlds-v2-design.md` (brainstorm synthesis: merge
+   P1-P6 + 8 features + new-council ideas + must-fix bugs + promotion flags + C1-C6), commit.
+3. ⟶ GRILL GATE (multi-agent SAFE/STILL-BLOCKING) on the design doc.
+4. ⟶ writing-plans → `.hermes/plans/2026-07-15-worlds-v2-plan.md`.
+5. Daniel approves design → subagent TDD build.
+
+## Env / run-state
+- Branch `immersive-curated-genre-specific-experie`, ahead of origin/main (v1=~21, + enrichment
+  + cachefix + 2 doc commits). Worktree: `.worktrees/immersive-curated-genre-specific-experie`.
+- Server previously killed (port 4000 free). `.env` symlinked from primary repo (NOT committed).
+- CC quota 429 wall persists → direct execution fallback for TDD. No "Generated with" PR trailer.
