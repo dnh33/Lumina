@@ -51,6 +51,11 @@ export interface GenreExperienceOpts {
 const SLUG_ALIASES: Record<string, string> = {
   "sci-fi": "science fiction",
   "scifi": "science fiction",
+  "science-fiction": "science fiction",
+  "film-noir": "film noir",
+  "war-politics": "war & politics",
+  "anime": "animation",
+  "animation": "animation",
 };
 
 /** Resolve genre slugs to TMDB genre ids; unknown slugs are dropped. */
