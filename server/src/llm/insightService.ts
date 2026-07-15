@@ -193,6 +193,7 @@ export async function titleInsight(
   tmdbId: number,
   mediaType: MediaType,
   refresh = false,
+  skipAnchorLog = false,
 ): Promise<TitleInsight> {
   const cacheKey = `insight:${mediaType}:${tmdbId}`;
   if (!refresh) {
@@ -230,7 +231,7 @@ export async function titleInsight(
   // THAT title only. Log it as the "take" surface — but ONLY the opened
   // title. Logging every loved title here fatiguued the entire library after
   // just a few card-opens (the whole-library storm). Skips retired titles.
-  if (!isRetired(db, tmdbId, mediaType)) {
+  if (!isRetired(db, tmdbId, mediaType) && !skipAnchorLog) {
     logAnchor(db, tmdbId, mediaType, "take");
   }
   const owned = getEntryByTmdb(db, tmdbId, mediaType);
@@ -269,7 +270,9 @@ export async function titleInsight(
       (fatigue.get(`${b.mediaType}:${b.tmdbId}`) ?? 0),
   );
   for (const n of orderedNeighbors.slice(0, 3)) {
-    logAnchor(db, n.tmdbId, n.mediaType, "insight_neighbors");
+    if (!skipAnchorLog) {
+      logAnchor(db, n.tmdbId, n.mediaType, "insight_neighbors");
+    }
   }
   const neighborBlock = orderedNeighbors.length
     ? "Titles from THEIR LIBRARY most like this one (cite these tmdbIds in comparisons):\n" +
