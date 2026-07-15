@@ -346,7 +346,7 @@ export default function GenreExperience() {
           {introData?.hook && (
             <button
               onClick={openGuided}
-              className="rounded-full bg-amber-400/90 px-5 py-2.5 text-sm font-medium text-ink-950 transition-colors hover:bg-amber-300"
+              className="rounded-full bg-[var(--world-accent)]/90 px-5 py-2.5 text-sm font-medium text-ink-950 transition-opacity hover:opacity-90"
             >
               Explore with the Companion
             </button>

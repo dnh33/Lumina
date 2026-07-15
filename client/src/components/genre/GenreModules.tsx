@@ -5,6 +5,7 @@ import { TopicCluster, type TopicSpine } from "./TopicCluster.js";
 import { CredibilityStrip, type Credibility } from "./CredibilityStrip.js";
 import { WatchOrderSequencer, type WatchChapter } from "./WatchOrderSequencer.js";
 import { ArgumentPanel, type Counterpoint } from "./ArgumentPanel.js";
+import { TitleCard } from "./TitleCard.js";
 import { GeoMap, type GeoRegion } from "./GeoMap.js";
 import { MakerSpotlight } from "./MakerSpotlight.js";
 import { genreName } from "../../lib/genreNames.js";
@@ -72,9 +73,15 @@ export function GenreModules({ modules, items, credibility, watchOrder, argument
         args &&
         items.map((it) => {
           const a = args[it.tmdbId];
-          return a ? (
-            <ArgumentPanel key={`arg-${it.mediaType}:${it.tmdbId}`} thesis={a.thesis} counterpoint={a.counterpoint} />
-          ) : null;
+          if (!a) return null;
+          const director = makers?.[it.tmdbId]?.director ?? null;
+          const rating = it.imdbRating ?? null;
+          return (
+            <div key={`arg-${it.mediaType}:${it.tmdbId}`} className="space-y-2">
+              <TitleCard item={it} director={director} rating={rating} thesis={a.thesis} />
+              <ArgumentPanel thesis={a.thesis} counterpoint={a.counterpoint} />
+            </div>
+          );
         })}
       {modules.includes("geo") &&
         geo &&

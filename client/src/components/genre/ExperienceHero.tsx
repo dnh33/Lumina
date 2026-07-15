@@ -13,7 +13,7 @@ export function ExperienceHero({ slug, world }: Props) {
       style={{ ["--world-accent" as any]: accentVar(world) }}
       className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-gradient-to-br from-[var(--world-accent)]/[0.08] via-white/[0.02] to-transparent p-6 sm:p-10"
     >
-      <p className="text-xs uppercase tracking-[0.2em] text-amber-300/70">{world.metaphor}</p>
+      <p className="text-xs uppercase tracking-[0.2em] text-[var(--world-accent)]/70">{world.metaphor}</p>
       <h1 className="mt-2 font-[var(--font-display)] text-4xl font-semibold tracking-tight text-white sm:text-5xl">
         {name}
       </h1>

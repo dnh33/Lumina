@@ -73,15 +73,19 @@ describe("GenreModules", () => {
 
   it("renders ArgumentPanel when 'argument' module + data present", () => {
     const argItems: CatalogItem[] = [
-      { tmdbId: 1, mediaType: "movie", title: "Doc A", year: 2010, overview: "", posterPath: null, backdropPath: null, voteAverage: 7, genreIds: [99], popularity: 1, inLibrary: false },
+      { tmdbId: 1, mediaType: "movie", title: "Doc A", year: 2010, overview: "", posterPath: null, backdropPath: null, voteAverage: 7, genreIds: [99], popularity: 1, inLibrary: false, imdbRating: 8.2 },
     ];
     const args: Record<number, any> = {
       1: { thesis: "Climate change is solvable", counterpoint: { title: "Skeptic", relation: "disagrees on cause" } },
     };
-    renderMods(["argument"], argItems, undefined, undefined, args);
+    const makers: Record<number, any> = { 1: { director: "Jane Doe", directorId: 42, title: "Doc A" } };
+    renderMods(["argument"], argItems, undefined, undefined, args, undefined, makers);
     expect(screen.getByText(/The argument/)).toBeDefined();
-    expect(screen.getByText(/Climate change is solvable/)).toBeDefined();
+    expect(screen.getAllByText(/Climate change is solvable/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Counterpoint/)).toBeDefined();
+    // composed TitleCard renders per-item with director + rating enrichment
+    expect(screen.getByText(/Dir\. Jane Doe/)).toBeDefined();
+    expect(screen.getByText(/★ 8\.2/)).toBeDefined();
   });
   it("renders WatchOrderSequencer when 'watchorder' module + data present", () => {
     const woItems: CatalogItem[] = [
