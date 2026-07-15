@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { GenreAnchor } from "../../lib/types.js";
 import type { GenreWorld } from "../../lib/genreWorld.js";
 
@@ -20,8 +21,13 @@ export function AnchorFrame({ anchors, world }: Props) {
             key={`${a.mediaType}:${a.tmdbId}`}
             className="rounded-full border border-white/[0.08] px-3 py-1 text-sm text-white/70"
           >
-            {a.title}
-            {a.rating != null && <span className="ml-1 text-white/40">· {a.rating}/10</span>}
+            <Link
+              to={`/title/${a.mediaType}/${a.tmdbId}`}
+              className="hover:text-white/90"
+            >
+              {a.title}
+              {a.rating != null && <span className="ml-1 text-white/40">· {a.rating}/10</span>}
+            </Link>
           </li>
         ))}
       </ul>
