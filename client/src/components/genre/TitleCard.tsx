@@ -8,6 +8,31 @@ interface Props {
   thesis?: string | null;
   /** Optional "why this belongs here" line (B3); derived, no extra server call. */
   provenance?: string | null;
+  /** Themed variant driven by the world's metaphor (Task 4.1): e.g.
+   *  "constellation" | "frontier" | "panel" | "reading-room" | "generic".
+   *  Minimal, readable per-variant emphasis — no layout change. */
+  variant?: string;
+}
+
+/** Map a metaphor card-variant to a small set of theme classes (Task 4.1). */
+function variantClasses(variant?: string): string {
+  switch (variant) {
+    case "constellation":
+      return "ring-1 ring-[var(--world-accent)]/20";
+    case "frontier":
+      return "border-l-2 border-[var(--world-accent)]";
+    case "panel":
+      return "bg-white/[0.05]";
+    case "reading-room":
+      return "border border-white/10";
+    case "warm-interior":
+      return "bg-white/[0.04] shadow-sm";
+    case "threshold":
+      return "border-t-2 border-[var(--world-accent)]/40";
+    case "generic":
+    default:
+      return "";
+  }
 }
 
 /**
@@ -17,12 +42,12 @@ interface Props {
  * curated set of titles rather than scattered strips.
  * Graceful when enrichment fields are absent.
  */
-export function TitleCard({ item, director, rating, thesis, provenance }: Props) {
+export function TitleCard({ item, director, rating, thesis, provenance, variant }: Props) {
   const src = poster(item.posterPath, "w185");
   return (
     <section
       aria-label={`${item.title} summary`}
-      className="flex gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3"
+      className={`flex gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 ${variantClasses(variant)}`}
     >
       {src && (
         <img

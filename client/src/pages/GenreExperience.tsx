@@ -473,6 +473,7 @@ export default function GenreExperience() {
             selectedDecade={decade}
             onDecade={setDecade}
             anchors={data.anchorsUsed}
+            world={world}
           />
 
           <div data-shuffle={shuffle ? "true" : "false"}>
