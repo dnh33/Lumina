@@ -168,15 +168,14 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
   * 1.7 `3cd85de` cueBeatMap→playCue · 1.8 `a96e7ca` register.accent (W4)
   * 1.9 `17d2136` non-proof genres real modules (K4)
 - **PHASE 2 (Layer A complaint fixes P1-P6) STARTED.**
-  * Wave 2.1 DISPATCHED (deleg_3f892e88): Tasks 2.1 (split intro → /discover/genre-intro +
-    buildGenreIntro, own cache key) + 2.3 (rewire openGuided to new intro query). Combined in
-    ONE subagent (tightly coupled server+client). Keeps enrichment in buildGenreExperience for now.
-  * Wave 2.2 (after 2.1/2.3): 2.2 lazy enrichment (the BIG grill catch — items return before
-    per-title titleInsight for argument worlds). Server returns un-enriched items; client enriches
-    per-title after paint.
-  * Wave 2.3: 2.4 timeline arrows + page-scope filter, 2.5 clickable PosterCard (parallel-safe).
-  * Wave 2.4: 2.6 client search/sort/tags. 2.7 TitleCard composition + tabs. 2.8 steer opts.
-    2.9 polish (accent, depends on 1.8).
+  * Wave 2.1 DONE + REVIEWED (1ad8e30): split intro → /discover/genre-intro + buildGenreIntro
+    (own cache key), openGuided rewired to non-blocking intro query. Orchestrator: server 107,
+    client 111 tests. PASS — rails no longer block on LLM intro.
+  * Wave 2.2 DISPATCHED (deleg_8040b675): 2.2 lazy per-title argument enrichment (the big grill
+    catch — server drops LLM `argument` from buildGenreExperience; client fetches via existing
+    GET /insight/:type/:tmdbId after paint).
+  * Wave 2.3 (after 2.2): 2.4 timeline arrows + page-scope filter, 2.5 clickable PosterCard.
+  * Wave 2.4: 2.6 search/sort/tags, 2.7 TitleCard composition, 2.8 steer opts, 2.9 polish.
 - PHASES 3-7: pending (cheap value-provers, differentiation engine, structural nav, deepenings,
   TV+a11y).
 - VERIFIED GATE: re-run `npm run test` (server+client) + typecheck + build after each wave.
