@@ -171,9 +171,11 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
       else <span>. Orchestrator re-ran client: 94 tests pass. PASS.
     * 1.4 DONE + REVIEWED (eba0ff4): server carries counterpoint tmdbId/mediaType. Orchestrator
       re-ran server: 102 tests pass. K2 chain COMPLETE (AnchorFrame + ArgumentPanel + server).
-  - Wave 3a DISPATCHED (deleg_a475c476): 1.7 (cueBeatMap→playCue, new worldCue.ts),
-    1.8 (register.accent token + consume in 4 components). No shared files → parallel safe.
-  - Wave 3b (after 1.8 commits): 1.9 (Generic husk fix — SAME genreWorld.ts as 1.8; HELD).
+    * 1.7 DONE + REVIEWED (3cd85de): worldCue.ts + open beat on mount. Orchestrator: client
+      106 tests. PASS. (Parallel cross-edit with 1.8 on GenreExperience.tsx verified safe.)
+    * 1.8 DONE + REVIEWED (a96e7ca): register.accent + --world-accent consume in 4 components.
+      Orchestrator: client 106 tests. W4 hollow→real token. PASS.
+  - Wave 3b DISPATCHED (deleg_f4f3aa2a): 1.9 (non-proof genres get real modules, K4).
   - PHASE 1 ENDS after 1.9. Then Phase 2 (Layer A complaint fixes P1-P6) begins.
 - Phases 2-7: pending.
 - Each task: TDD (failing test → implement → pass → commit). Orchestrator re-verifies `npm run
