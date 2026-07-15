@@ -10,6 +10,7 @@ import type { WatchProviders } from "../lib/types.js";
 import { Carousel } from "../components/Carousel.js";
 import { PosterCard } from "../components/PosterCard.js";
 import { ExperienceHero } from "../components/genre/ExperienceHero.js";
+import { WhisperStrip } from "../components/genre/WhisperStrip.js";
 import { AnchorFrame } from "../components/genre/AnchorFrame.js";
 import { GenreModules } from "../components/genre/GenreModules.js";
 import { GenreEmptyState } from "../components/genre/GenreEmptyState.js";
@@ -77,6 +78,14 @@ export default function GenreExperience() {
   const [sort, setSort] = useState<"default" | "year" | "rating">("default");
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
+  // P3.5: "Surprise me" steering preset — a client-only shuffle of the
+  // existing rail (no server param). Toggling it re-orders `filtered`.
+  const [shuffle, setShuffle] = useState(false);
+  // P3.5: "Less well-known" steering preset — a client-only filter that
+  // hides the well-known blockbusters (high voteAverage) so the rail surfaces
+  // the lesser-known titles. No server param is added.
+  const [lessKnown, setLessKnown] = useState(false);
+
   // Derive the toggleable genre tags from the items' distinct genre ids,
   // resolved to human names. (CatalogItem has no `tags` field, so genre ids
   // are the only per-title facet we can reliably chip on client-side.)
@@ -109,8 +118,25 @@ export default function GenreExperience() {
     if (sort === "rating") {
       return [...base].sort((a, b) => (b.voteAverage ?? 0) - (a.voteAverage ?? 0));
     }
+    if (shuffle) {
+      // deterministic-ish Fisher–Yates on a copy so re-renders are stable
+      const out = [...base];
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out;
+    }
     return base;
-  }, [visibleItems, search, sort, activeTags]);
+  }, [visibleItems, search, sort, activeTags, shuffle, lessKnown]);
+
+  // P3.5 "Less well-known": drop the well-known blockbusters (voteAverage >= 8)
+  // entirely on the client so the rail surfaces deeper cuts. Composed after
+  // `filtered` so it layers cleanly on top of search/sort/tags/shuffle.
+  const steered = useMemo(() => {
+    if (!lessKnown) return filtered;
+    return filtered.filter((it) => (it.voteAverage ?? 0) < 8);
+  }, [filtered, lessKnown]);
 
   const toggleTag = (tag: string) =>
     setActiveTags((prev) =>
@@ -218,7 +244,21 @@ export default function GenreExperience() {
       style={{ ["--world-accent" as any]: accentVar(world) }}
       className="mx-auto max-w-6xl space-y-8 px-4 py-8"
     >
-      <ExperienceHero slug={slug} world={world} />
+      <ExperienceHero
+        slug={slug}
+        world={world}
+        anchorsUsed={data.anchorsUsed}
+        profileState={data.profileState}
+      />
+
+      {/* P3.6 (C5): deterministic, LLM-free whisper of the current filter
+          state. Sits above the rail so it frames what the user is seeing. */}
+      <WhisperStrip
+        decade={decade}
+        count={data.items.length}
+        anchorCount={(data.anchorsUsed ?? []).length}
+        unwatched={data.items.filter((it) => !it.inLibrary).length}
+      />
 
       {isNiche ? (
         <GenreEmptyState world={world} count={data.items.length} threshold={NICHE_THRESHOLD} onBootstrap={() => navigate("/library")} />
@@ -323,11 +363,91 @@ export default function GenreExperience() {
                 ))}
               </div>
             </div>
-          </div>
+            </div>
+
+            {/* P3.5 (C8): steering presets — distinct, additive chips that
+              steer the rail via client state only (mode / mediaType / shuffle /
+              lessKnown). They are NOT the same as the P2.8 toggle groups above,
+              so they carry a `data-preset` marker and unique labels. */}
+            <div
+              role="group"
+              aria-label="Steering presets"
+              className="flex flex-wrap items-center gap-1.5"
+            >
+              <span className="mr-1 text-2xs uppercase tracking-wider text-mist-500">Presets</span>
+              <button
+                type="button"
+                data-preset="media-movie"
+                aria-label="Steering preset: Movies"
+                aria-pressed={mediaType === "movie"}
+                onClick={() => setMediaType("movie")}
+                className={`rounded-full px-3 py-1 text-2xs font-medium ring-1 transition-colors ${
+                  mediaType === "movie"
+                    ? "bg-gold-400/90 text-ink-950 ring-gold-400/60"
+                    : "bg-white/[0.04] text-mist-300 ring-white/10 hover:bg-white/[0.08]"
+                }`}
+              >
+                Movies
+              </button>
+              <button
+                type="button"
+                data-preset="media-tv"
+                aria-label="Steering preset: TV"
+                aria-pressed={mediaType === "tv"}
+                onClick={() => setMediaType("tv")}
+                className={`rounded-full px-3 py-1 text-2xs font-medium ring-1 transition-colors ${
+                  mediaType === "tv"
+                    ? "bg-gold-400/90 text-ink-950 ring-gold-400/60"
+                    : "bg-white/[0.04] text-mist-300 ring-white/10 hover:bg-white/[0.08]"
+                }`}
+              >
+                TV
+              </button>
+              <button
+                type="button"
+                data-preset="mode-guided"
+                aria-label="Steering preset: Guided"
+                aria-pressed={mode === "guided"}
+                onClick={() => setMode("guided")}
+                className={`rounded-full px-3 py-1 text-2xs font-medium ring-1 transition-colors ${
+                  mode === "guided"
+                    ? "bg-gold-400/90 text-ink-950 ring-gold-400/60"
+                    : "bg-white/[0.04] text-mist-300 ring-white/10 hover:bg-white/[0.08]"
+                }`}
+              >
+                Guided
+              </button>
+              <button
+                type="button"
+                data-preset="surprise"
+                aria-pressed={shuffle}
+                onClick={() => setShuffle((s) => !s)}
+                className={`rounded-full px-3 py-1 text-2xs font-medium ring-1 transition-colors ${
+                  shuffle
+                    ? "bg-gold-400/90 text-ink-950 ring-gold-400/60"
+                    : "bg-white/[0.04] text-mist-300 ring-white/10 hover:bg-white/[0.08]"
+                }`}
+              >
+                Surprise me
+              </button>
+              <button
+                type="button"
+                data-preset="less-known"
+                aria-pressed={lessKnown}
+                onClick={() => setLessKnown((s) => !s)}
+                className={`rounded-full px-3 py-1 text-2xs font-medium ring-1 transition-colors ${
+                  lessKnown
+                    ? "bg-gold-400/90 text-ink-950 ring-gold-400/60"
+                    : "bg-white/[0.04] text-mist-300 ring-white/10 hover:bg-white/[0.08]"
+                }`}
+              >
+                Less well-known
+              </button>
+            </div>
 
           <GenreModules
             modules={world.modules}
-            items={filtered}
+            items={steered}
             credibility={maps.credibility}
             watchOrder={maps.watchOrder}
             arguments={argumentsMap}
@@ -338,11 +458,13 @@ export default function GenreExperience() {
             anchors={data.anchorsUsed}
           />
 
-          <Carousel title="For You in this World" eyebrow="Seeded by the genre you chose">
-            {filtered.map((it) => (
-              <PosterCard key={`${it.mediaType}:${it.tmdbId}`} item={it} width="w-full" />
-            ))}
-          </Carousel>
+          <div data-shuffle={shuffle ? "true" : "false"}>
+            <Carousel title="For You in this World" eyebrow="Seeded by the genre you chose">
+              {steered.map((it) => (
+                <PosterCard key={`${it.mediaType}:${it.tmdbId}`} item={it} width="w-full" />
+              ))}
+            </Carousel>
+          </div>
 
           {introData?.hook && (
             <button

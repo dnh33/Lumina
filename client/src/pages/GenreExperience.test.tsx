@@ -60,6 +60,6 @@ describe("GenreExperience page", () => {
 
   it("shows the library-anchor framing from anchorsUsed", async () => {
     renderAt("documentary");
-    await waitFor(() => expect(screen.getByText(/The Act of Killing/i)).toBeDefined());
+    await waitFor(() => expect(screen.getAllByText(/The Act of Killing/i).length).toBeGreaterThan(0));
   });
 });
