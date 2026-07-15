@@ -233,7 +233,7 @@ export async function buildGenreExperience(
   opts: GenreExperienceOpts,
 ): Promise<GenreExperience> {
   const mode: ExperienceMode = opts.mode ?? "self";
-  const key = `${opts.mediaType}:${mode}:${opts.genres.join("+")}`;
+  const key = `${opts.mediaType}:${mode}:${opts.genres.join("+")}:${(opts.modules ?? []).sort().join(",")}`;
 
   const cachedRaw = getSetting(db, `genre-exp:${key}`);
   if (cachedRaw) {
