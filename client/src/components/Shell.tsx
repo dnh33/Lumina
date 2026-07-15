@@ -5,6 +5,7 @@ import { Compass, LibraryBig, Settings, Sparkles } from "lucide-react";
 const NAV = [
   { to: "/", label: "Discover", icon: Compass, end: true },
   { to: "/library", label: "Library", icon: LibraryBig, end: false },
+  { to: "/genre", label: "Worlds", icon: Sparkles, end: false },
   { to: "/chat", label: "Companion", icon: Sparkles, end: false },
   { to: "/settings", label: "Settings", icon: Settings, end: false },
 ];
