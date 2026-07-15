@@ -305,21 +305,21 @@ export interface SuggestionItem {
   pick?: "safe" | "stretch";
 }
 
-export interface GenreItem {
+export interface GenreAnchor {
   tmdbId: number;
-  mediaType: string;
+  mediaType: MediaType;
   title: string;
-  year?: number;
-  genreIds: number[];
-  inLibrary: boolean;
+  rating: number | null;
 }
+
+export type GenreItem = CatalogItem;
 
 export interface GenreExperience {
   key: string;
   genres: string[];
   mode: "self" | "guided";
-  intro: { hook: string; tone: string; basedOn: string[] };
+  intro: { hook: string; tone: string; basedOn: string[] } | null;
   items: GenreItem[];
-  anchorsUsed: unknown[];
-  profileState: unknown;
+  anchorsUsed: GenreAnchor[];
+  profileState: ProfileState;
 }
