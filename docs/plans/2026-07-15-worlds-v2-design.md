@@ -16,8 +16,10 @@ council's new-feature vision.
   engagement optimization. "For you" must be *transparent* (provenance), not a black box.
 - **Locked system:** fonts are two tokens (`--font-display`, `--font-sans`); motion/sound
   policy is global (`MotionConfig reducedMotion="user"`, `SOUND_KEY` mute). Per-metaphor
-  font swaps are **forbidden** (ADR-W4). Immersion = accent color + spacing/border + sound,
-  NOT chrome/font swaps.
+  font swaps are **forbidden** (ADR-W4). **GRILL CORRECTION (W4):** "accent color immersion"
+  is currently hollow — every genre component hardcodes `amber-400` and `genreWorld.ts` has NO
+  accent token. So differentiation today = a text label + spacing, all amber. **Must add
+  `register.accent` (CSS var) and consume it** before "accent color" is a real differentiator.
 - **No write side-effects during curation** (G3/ADR-W2): building/reading a World must not
   mutate the user's anchor/comparison graph.
 - **Single source of truth for filter/persist state** (ADR-W3, C1): client is authority;
@@ -73,7 +75,8 @@ Pulled from `worlds-broader-council.md` (top of each list). Proposed MUST-CONSID
   Cheap, private-app superpower.
 - **C4 Juxtaposition / compare mode** — `/genre/:a..:b?compare` overlays two Worlds.
 - **C5 Ambient whisper strip** — one-line world-read that re-captions as you filter (distinct
-  from B2 Companion).
+  from B2 Companion). **GRILL CORRECTION:** define C5 as a **deterministic filter→string
+  template**, explicitly NOT routed through the Companion persona (else double-narration with B2).
 - **C6 Export/save World as note** — Markdown into notes store + printable.
 - **C7 Marathon builder** — sequence from `watchorder`+watchlist, save as playlist.
 - **C8 Steering presets** — quick chips mapping to existing server opts (no new LLM).
@@ -86,8 +89,13 @@ From `worlds-broader-council.md` (B-section). Highest-impact:
   LLM era-thesis, decade *zooms* not just filters).
 - **D2 Argument = dialogue** (counterpoint becomes real `/title` link; user annotation stored
   locally; surface pro/con/neutral from `insight.comparisons`).
-- **D3 Metaphor layouts** (B1 realized): Constellation node-map, Panel gutters, Threshold
-  corridor — from one shared primitive kit.
+- **D3 Metaphor layouts** (B1 realized): **GRILL CORRECTION — Constellation node-map is a LARGE
+  net-new layout engine** (no node-graph/coordinate/edge/pan-zoom model exists; `GenreModules`
+  is one skeleton, `GeoMap` is a per-title bar). Scope Constellation as **"node backdrop +
+  themed TitleCard"** (decorative constellation lines behind existing cards), NOT a full
+  graph engine — or add an explicit engine line-item with its own estimate. Frontier geo-spine
+  is closer but still bar-not-spine; Panel gutters + Threshold corridor are feasible themed
+  variants. From one shared primitive kit.
 - **D4 Geo fix** (ISO→name, real region view, your-region-vs-world; spine for Frontier).
 - **D5 Critic deepen** (consensus divergence IMDb≠RT, you-vs-critics, provider deep-link).
 - **D6 Maker index** (recurring directors, affinity, sort-by-director).
@@ -107,27 +115,35 @@ From `worlds-broader-council.md` (B-section). Highest-impact:
 
 | ID | Bug | Evidence | Fix |
 |---|---|---|---|
-| K1 | **TV + `guided` mode unreachable** | `GenreExperience.tsx:22` hardcodes `mediaType:"movie"`+`mode:"self"`; server TV/guided paths exist but never triggered | Parameterize mediaType/mode from route + UI toggle |
-| K2 | **Dead-end links** | `AnchorFrame` plain `<li>` (no `/title`); `ArgumentPanel` counterpoint plain text (no link) | Wrap in `<Link to="/title/...">`; reuse `PosterCard` link shape |
-| K3 | **`logAnchor` storm STILL LIVE** | `enrichGenreItems` (`genreExperienceService.ts:149`) calls `titleInsight` w/ no `skipAnchorLog` | Implement ADR-W2 `skipAnchorLog`; add server test asserting no `take` writes |
+| K1 | **TV + `guided` mode unreachable** | `GenreExperience.tsx:22` hardcodes `mediaType:"movie"`+`mode:"self"`. TV discover path IS real (`genreExperienceService.ts:258` `/discover/${mediaType}`, route parses `tv`). **BUT `guided` is fiction:** `mode` only enters the cache key + `res.mode` — `curatorIntro`/`enrichGenreItems` never branch on it, so `guided` ≡ `self`. Fix = real guided branching OR drop the claim; NOT "just wire a toggle." | Parameterize client from route+UI; add genuine guided server behavior (or remove). |
+| K2 | **Dead-end links** | `AnchorFrame` plain `<li>` (carries tmdbId → SAFE `<Link>`). `ArgumentPanel` counterpoint plain text AND has **no tmdbId** (server drops it at `enrichGenreItems:153`; `insight.comparisons[0]` has tmdbId but isn't passed through). Fix needs a **server shape change** (pass tmdbId/mediaType), not just a client `<Link>`. | AnchorFrame: wrap in `<Link>`. ArgumentPanel: server must carry counterpoint.tmdbId first. |
+| K3 | **`logAnchor` storm STILL LIVE** | `enrichGenreItems` (`:149`) calls `titleInsight(db, tmdbId, mediaType)` — `skipAnchorLog` **does not exist** (signature `(db, tmdbId, mediaType, refresh=false)`, `insightService.ts:191`). Must be **ADDED**, guarding BOTH write sites: `logAnchor(…,"take")` (`:234`) + neighbor loop `logAnchor(…,"insight_neighbors")` (`:271-273`). | Add `skipAnchorLog` param to `titleInsight`; thread through both sites; server test asserts no writes. |
 | K4 | **`Generic` husks** | non-proof slugs → `getGenreWorld` returns bare timeline, no metaphor/modules | Give every genre a real (if minimal) `GenreWorld`; or honest bootstrap (C10) |
 | K5 | **`cueBeatMap` dead** | `playCue` never called on genre page; `register` ~90% unexpressed | Wire B5 (consume `cueBeatMap`) |
 | K6 | **Label/name bugs** | `buildTopics` `Genre ${gid}`; geo `name:code`; `CredibilityStrip` fake `distributor:"Available"` | `GENRE_ID_NAMES` const; ISO→name; render real `watchProviders` |
 
 ## 5. Architecture blind spots to design against (C1–C6)
 
-- **C1 State sprawl** — URL + `localStorage` + server steer = 3+ sources of truth. **Single
-  authority + one serializer** (extend ADR-W3 to all persisted/filter state).
-- **C2 World-level reconcile missing** — persisted scrub/steer/dismiss have no invalidate-on-
-  library-change. Version the persisted blob (timestamp + library checksum) or accept graceful-stale.
+- **C1 State sprawl** — **GRILL: the "single authority + one serializer" is currently HAND-WAVED,
+  not built.** `GenreExperience.tsx` reads only `useParams` slug + one react-query; no URL
+  params, no genre localStorage key (`keys.ts` has none). Must ADD `GENRE_STATE_KEY` +
+  `useGenreState` serializing `{decade,q,sort,tags}`→URL and `{scrub,steer,dismissed}`→
+  localStorage in ONE writer; react-query reads from it.
+- **C2 World-level reconcile missing** — **GRILL: no library-version signal exists.** Only
+  `PRAGMA user_version` (schema), not content. Must ADD `libraryVersion(db)` =
+  `MAX(updated_at)`+row count; stamp the persisted blob, compare on load.
 - **C3 ×6 a11y surfaces** if all metaphors built bespoke. Cap B1 at 1–2 flagships; audit each.
 - **C4 Font lock caps immersion** — set expectation: payoff = "tasteful differentiation," not
   deep immersion, until font system unlocks.
-- **C5 Companion-on-`/genre` collision** — `App.tsx:56` hides `ChatDock`; B2 embeds in-world chat.
-  Reconcile conversation keys (distinct key, or lift suppression + merge). Avoid remount-aborts-stream.
+- **C5 Companion-on-`/genre` collision** — **GRILL: collision is REAL and specific.** `App.tsx:56`
+  hides `ChatDock`; `ChatDock` reads/writes global `DOCK_CONVERSATION_KEY`. Embedding B2's
+  `ChatThread` with the same key = two threads fight one id; AND `App.tsx:32-37` keys motion by
+  `pathname`, so `/genre/a`→`/genre/b` remounts `GenreExperience` → remounts embedded thread →
+  aborts in-flight stream. Fix: distinct `GENRE_DOCK_CONVERSATION_KEY` + don't remount thread
+  across slug changes (lift or pause stream).
 - **C6 Per-metaphor empty states** — generic empty state insufficient for bespoke layouts; each
   metaphor needs its own graceful degradation (incl. mid-load + LLM-`argument`-fail where
-  `enrichment` is `null`).
+  `enrichment` is `null`). Parameterize `GenreEmptyState` by `metaphor`.
 
 ## 6. ADRs (carried + new)
 
@@ -157,3 +173,36 @@ From `worlds-broader-council.md` (B-section). Highest-impact:
   URL; verify rails paint before AI, arrows scroll, titles clickable, filters work, sound fires
   on beats (sound-off default), no `take` anchors written, persistence survives reload.
 - No "Generated with" PR trailer; human review required before merge.
+
+---
+
+## 9. Grill findings (pre-build multi-agent gate — 2026-07-15)
+
+Four-lens grill team (technical-fidelity, architecture/composition, UX/feel, scope/richness)
+attacked the design against the repo. **Verdict: design is sound in structure but several
+claims were OVERSTATED and are corrected inline above (K1/K2/K3, W4, B1, C1/C2/C5, C5-whisper).**
+All SAFE: K6 labels, W-type (GenreExperienceIntro, cache key, playCue), C6 (parameterized),
+cache-key vs moods/adjacency, AnchorFrame link.
+
+### Corrections folded into the doc (most impactful)
+1. **K3 `skipAnchorLog` is NET-NEW**, not "threaded" — `titleInsight(db,tmdbId,mediaType,
+   refresh=false)` has no such param. Must be ADDED, guarding BOTH write sites (`:234` take +
+   `:271` insight_neighbors). Missing the neighbor loop = storm persists.
+2. **K1 `guided` mode is FICTION** — type/plumbing exist but `curatorIntro`/`enrichGenreItems`
+   never branch on `mode`; behaviorally `guided` ≡ `self`. Real branching needed, or drop claim.
+   (TV path itself IS real and fixable via client param.)
+3. **K2 ArgumentPanel link needs a SERVER shape change** — counterpoint has no tmdbId (server
+   drops it at `enrichGenreItems:153`). AnchorFrame link is a safe client `<Link>`.
+4. **W4 accent is hollow** — components hardcode `amber-400`; no `register.accent` token.
+   "Accent color immersion" is decoration until `register.accent` (CSS var) is added + consumed.
+5. **B1 Constellation = net-new layout engine** — scope to "node backdrop + themed TitleCard",
+   not a full graph engine, or estimate separately.
+6. **C1/C2/C5 state architecture UNBUILT** — no serializer, no `libraryVersion` signal, ChatDock
+   key collision on slug-change remount. Must be built (GENRE_STATE_KEY, libraryVersion,
+   GENRE_DOCK_CONVERSATION_KEY + no remount-across-slug).
+7. **C5 whisper strip must be a deterministic filter→string template**, NOT routed through the
+   Companion persona (avoids double-narration with B2).
+
+### Open items the grill could not close (need Daniel's call — see §7)
+- Layer C scope (all 10 vs subset), B1 metaphor count, TV/guided now vs defer, compare/marathon
+  now vs later. These are scope/effort forks, not correctness blockers.
