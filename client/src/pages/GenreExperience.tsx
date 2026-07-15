@@ -2,6 +2,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api.js";
 import { getGenreWorld } from "../lib/genreWorld.js";
+import { countryName, watchProviderNames } from "../lib/genreNames.js";
+import type { WatchProviders } from "../lib/types.js";
 import { Carousel } from "../components/Carousel.js";
 import { PosterCard } from "../components/PosterCard.js";
 import { ExperienceHero } from "../components/genre/ExperienceHero.js";
@@ -50,7 +52,7 @@ export default function GenreExperience() {
     }
     if (world.modules.includes("critic")) {
       maps.credibility[it.tmdbId] = {
-        distributor: e.watchProviders ? "Available" : null,
+        distributor: e.watchProviders ? watchProviderNames(e.watchProviders as WatchProviders | null).join(", ") : null,
         streaming: !!e.watchProviders,
         consensus: e.imdbRating != null ? `IMDb ${e.imdbRating}` : (e.rtRating != null ? `RT ${e.rtRating}` : null),
         stance: null,
@@ -63,7 +65,7 @@ export default function GenreExperience() {
       maps.arguments[it.tmdbId] = e.argument;
     }
     if (world.modules.includes("geo") && e.originCountry.length) {
-      maps.geo[it.tmdbId] = e.originCountry.map((code) => ({ code, name: code, count: 1 }));
+      maps.geo[it.tmdbId] = e.originCountry.map((code) => ({ code, name: countryName(code), count: 1 }));
     }
   }
 

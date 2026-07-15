@@ -7,6 +7,7 @@ import { WatchOrderSequencer, type WatchChapter } from "./WatchOrderSequencer.js
 import { ArgumentPanel, type Counterpoint } from "./ArgumentPanel.js";
 import { GeoMap, type GeoRegion } from "./GeoMap.js";
 import { MakerSpotlight } from "./MakerSpotlight.js";
+import { genreName } from "../../lib/genreNames.js";
 
 interface Props {
   modules: GenreWorld["modules"];
@@ -33,7 +34,7 @@ function buildTopics(items: CatalogItem[]): TopicSpine[] {
     byGenre.get(gid)!.push(it);
   }
   return [...byGenre.entries()].map(([gid, list]) => ({
-    label: `Genre ${gid}`,
+    label: genreName(gid),
     items: list,
   }));
 }

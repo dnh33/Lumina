@@ -42,9 +42,22 @@ describe("GenreModules", () => {
       { tmdbId: 3, mediaType: "movie", title: "Sci C", year: 2015, overview: "", posterPath: null, backdropPath: null, voteAverage: 7, genreIds: [878], popularity: 1, inLibrary: false },
     ];
     renderMods(["topic"], topicItems);
-    // two genre spines (99 and 878) -> two topic headings
-    expect(screen.getAllByText(/Genre \d+/).length).toBe(2);
+    // two genre spines (99 -> Documentary, 878 -> Science Fiction) -> two real topic headings
+    expect(screen.getAllByText("Documentary").length).toBe(1);
+    expect(screen.getAllByText("Science Fiction").length).toBe(1);
     expect(screen.getAllByText("Doc A").length).toBeGreaterThan(0);
+  });
+
+  it("labels topic spines with the real genre name, not 'Genre <id>'", () => {
+    const topicItems: CatalogItem[] = [
+      { tmdbId: 1, mediaType: "movie", title: "Doc A", year: 2010, overview: "", posterPath: null, backdropPath: null, voteAverage: 7, genreIds: [99], popularity: 1, inLibrary: false },
+      { tmdbId: 3, mediaType: "movie", title: "Sci C", year: 2015, overview: "", posterPath: null, backdropPath: null, voteAverage: 7, genreIds: [878], popularity: 1, inLibrary: false },
+    ];
+    renderMods(["topic"], topicItems);
+    // no synthetic "Genre 99" / "Genre 878" labels should be rendered
+    expect(screen.queryByText(/^Genre \d+$/)).toBeNull();
+    expect(screen.getByText("Documentary")).toBeDefined();
+    expect(screen.getByText("Science Fiction")).toBeDefined();
   });
 
   it("renders CredibilityStrip per title when 'critic' module + credibility map present", () => {
