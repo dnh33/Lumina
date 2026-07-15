@@ -6,11 +6,16 @@ import { GenreModules } from "./GenreModules.js";
 import type { CatalogItem } from "../../lib/types.js";
 
 const qc = new QueryClient();
-const renderMods = (modules: any, items: CatalogItem[], credibility?: Record<number, any>) =>
+const renderMods = (
+  modules: any,
+  items: CatalogItem[],
+  credibility?: Record<number, any>,
+  watchOrder?: Record<number, any>,
+) =>
   render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
-        <GenreModules modules={modules} items={items} credibility={credibility} />
+        <GenreModules modules={modules} items={items} credibility={credibility} watchOrder={watchOrder} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -50,6 +55,18 @@ describe("GenreModules", () => {
     expect(screen.getByText(/Stance: advocacy/)).toBeDefined();
   });
 
+  it("renders WatchOrderSequencer when 'watchorder' module + data present", () => {
+    const woItems: CatalogItem[] = [
+      { tmdbId: 1, mediaType: "tv", title: "Doc Series", year: 2018, overview: "", posterPath: null, backdropPath: null, voteAverage: 8, genreIds: [99], popularity: 1, inLibrary: false },
+    ];
+    const watchOrder: Record<number, any> = {
+      1: { seasons: [{ number: 1, name: "Season 1", episodeCount: 6, watched: true }, { number: 2, name: "Season 2", episodeCount: 4, watched: false }], recommendedStart: 2 },
+    };
+    renderMods(["watchorder"], woItems, undefined, watchOrder);
+    expect(screen.getByText(/Watch order/)).toBeDefined();
+    expect(screen.getByText(/Start here/)).toBeDefined();
+    expect(screen.getByText("Season 1")).toBeDefined();
+  });
   it("renders nothing extra when modules is empty", () => {
     const { container } = renderMods([], items);
     expect(container.firstChild).toBeNull();
