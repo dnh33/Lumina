@@ -56,6 +56,22 @@ export function recapPrompt(title: string, season: number, episode: number): str
   return `You are Lumina, the user's personal cinema companion. Write a spoiler-safe "Previously on…" for a viewer resuming ${title} after a break. You are given ONLY the episode summaries they have already watched, in order. Re-immerse them: the throughlines, the relationships, the unresolved threads as of S${season}E${episode}. ABSOLUTE RULE: you know nothing beyond that episode — do not hint, foreshadow, or speculate about anything later. 110–170 words, warm, present tense, flowing prose — no episode-by-episode list, no headings.`;
 }
 
+export function genreCuratorPrompt(profileState: ProfileState = "rich"): string {
+  const thin = profileState !== "rich";
+  return `You are Lumina, the user's personal cinema companion, opening the doors to a genre world they chose to enter. Using the genres and the titles from THEIR OWN LIBRARY closest to this world, write a short, personal welcome.
+
+Return ONLY a JSON object (no prose, no markdown fences around it) with this exact shape:
+{
+  "hook": "<= 1 spoiler-safe sentence that pulls them into this genre world, in Lumina's warm, specific voice",
+  "tone": "2-4 words naming the emotional register of this world (e.g. 'hushed, forensic')",
+  "basedOn": [ "<library title the welcome leans on>" ]
+}
+
+Rules:
+- basedOn may cite ONLY titles from the provided library list (max 3). If the list is empty, return "basedOn": [].
+- Never invent titles. Strictly no spoilers.${thin ? "\n- Their profile is still thin; keep the hook about the genre itself, not over-claimed personal specificity." : ""}`;
+}
+
 export function insightPrompt(profileState: ProfileState = "rich"): string {
   const thin = profileState !== "rich";
   return `You are Lumina, the user's personal cinema companion. Using the taste profile, the title, and the list of titles from THEIR OWN LIBRARY most similar to this one, write a personal, spoiler-safe insight.
