@@ -300,8 +300,26 @@ export interface SuggestionItem {
   title: string;
   year?: number;
   /** one-clause taste rationale from the model */
-  /** one-clause taste rationale from the model */
   reason?: string;
   /** safe = squarely their taste, stretch = adventurous */
   pick?: "safe" | "stretch";
+}
+
+export interface GenreItem {
+  tmdbId: number;
+  mediaType: string;
+  title: string;
+  year?: number;
+  genreIds: number[];
+  inLibrary: boolean;
+}
+
+export interface GenreExperience {
+  key: string;
+  genres: string[];
+  mode: "self" | "guided";
+  intro: { hook: string; tone: string; basedOn: string[] };
+  items: GenreItem[];
+  anchorsUsed: unknown[];
+  profileState: unknown;
 }

@@ -10,6 +10,7 @@ import {
   trending,
   upNext,
 } from "../services/discoverService.js";
+import { buildGenreExperience } from "../services/genreExperienceService.js";
 import {
   fetchDetailsFromTmdb,
   getEntryByTmdb,
@@ -122,6 +123,14 @@ catalogRouter.get("/discover/encore", (_req, res) => {
 
 catalogRouter.get("/discover/for-you", async (_req, res) => {
   res.json(await forYou(getDb()));
+});
+
+catalogRouter.get("/discover/genre-experience", async (req, res) => {
+  const genres = String(req.query.genres ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const mode = req.query.mode === "guided" ? "guided" : "self";
+  const mediaType = req.query.mediaType === "tv" ? "tv" : "movie";
+  const result = await buildGenreExperience(getDb(), { genres, mediaType, mode });
+  res.json(result);
 });
 
 catalogRouter.get("/discover/because", async (_req, res) => {

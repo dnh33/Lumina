@@ -7,6 +7,7 @@ import type {
   EpisodeRecap,
   EpisodeRow,
   ForYou,
+  GenreExperience,
   Genre,
   Health,
   IgnoredTitle,
@@ -58,6 +59,8 @@ export const api = {
       `/api/tmdb/title/${type}/${tmdbId}`,
     ),
   forYou: () => get<ForYou>("/api/discover/for-you"),
+  genreExperience: (genres: string[], mode: "self" | "guided" = "self", mediaType: "movie" | "tv" = "movie") =>
+    get<GenreExperience>(`/api/discover/genre-experience?genres=${encodeURIComponent(genres.join(","))}&mode=${mode}&mediaType=${mediaType}`),
   because: () => get<Because>("/api/discover/because"),
   upNext: () => get<UpNextItem[]>("/api/discover/up-next"),
   encore: () => get<LibraryEntry[]>("/api/discover/encore"),
