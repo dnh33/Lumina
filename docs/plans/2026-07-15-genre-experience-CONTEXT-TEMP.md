@@ -189,11 +189,13 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
     - Wave 4a DONE (orchestrator committed bcc3f7b; subagent's self-commit didn't land — per
       Daniel, subagents MUST NOT use git; orchestrator owns all commits). Orchestrator: server 111,
       client 158 tests. useGenreState + GENRE_STATE_KEY + libraryVersion (B4/W8). PASS.
-  * PHASE 4 wave 4b DISPATCHED (deleg pending): 4.1 metaphor grammar (B1) — 1-2 flagship bespoke
-    (Constellation node-backdrop, Frontier geo-spine) + themed TitleCard variants (NOT full graph
-    engine). EXTEND metaphor.ts metaphorLayout(world); pass world into GenreModules/TitleCard.
-    - Wave 4c (after 4.1): 4.3 ambient Companion (B2) — ChatThread on /genre, distinct
-      GENRE_DOCK_CONVERSATION_KEY, no remount-across-slug (fix App.tsx pathname key).
+  - Wave 4b DONE (orchestrator committed cd80825; subagent did NOT commit per rule). Client 174
+    tests. metaphorLayout + ConstellationBackdrop + FrontierSpine + themed TitleCard. PASS.
+  * PHASE 4 wave 4c DISPATCHED (deleg_c1ee8083): 4.3 ambient Companion (B2) — CompanionPanel on
+  /genre, distinct GENRE_DOCK_CONVERSATION_KEY (constant → survives slug remount), world voice via
+  prefill+welcomeSuggestions. Do NOT touch useChat/App.tsx hide logic.
+  * PHASE 4 ENDS after 4.3. Then Phase 5 (structural nav: 5.1 warp C1, 5.2 decade zoom D1, 5.3
+  density B8) — the EXPENSIVE nav, sequenced LAST per option B.
   * PHASE 5 (structural nav, LAST): 5.1 cross-world warp (C1), 5.2 decade zoom (D1), 5.3 density
     (B8). PHASE 6 (deepenings): 6.1 argument dialogue (D2), 6.2 geo/Frontier (D4), 6.3 critic (D5),
     6.4 compare (C4), 6.5 export (C6), 6.6 marathon (C7). PHASE 7: TV genre (K1) + a11y + final
