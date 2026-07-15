@@ -7,6 +7,11 @@ import { PosterCard } from "../components/PosterCard.js";
 import { ExperienceHero } from "../components/genre/ExperienceHero.js";
 import { AnchorFrame } from "../components/genre/AnchorFrame.js";
 import { GenreModules } from "../components/genre/GenreModules.js";
+import { GenreEmptyState } from "../components/genre/GenreEmptyState.js";
+
+/** Niche-genre gate (design R6 / metric 9): below this many titles, show a
+ *  tailored empty state instead of a thin rail. */
+const NICHE_THRESHOLD = 6;
 
 export default function GenreExperience() {
   const { slug = "documentary" } = useParams<{ slug: string }>();
@@ -45,27 +50,35 @@ export default function GenreExperience() {
     );
   }
 
+  const isNiche = data.items.length < NICHE_THRESHOLD;
+
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-8">
       <ExperienceHero slug={slug} world={world} />
 
-      <AnchorFrame anchors={data.anchorsUsed} world={world} />
+      {isNiche ? (
+        <GenreEmptyState world={world} count={data.items.length} threshold={NICHE_THRESHOLD} />
+      ) : (
+        <>
+          <AnchorFrame anchors={data.anchorsUsed} world={world} />
 
-      <GenreModules modules={world.modules} items={data.items} />
+          <GenreModules modules={world.modules} items={data.items} />
 
-      <Carousel title="For You in this World" eyebrow="Seeded by the genre you chose">
-        {data.items.map((it) => (
-          <PosterCard key={`${it.mediaType}:${it.tmdbId}`} item={it} width="w-full" />
-        ))}
-      </Carousel>
+          <Carousel title="For You in this World" eyebrow="Seeded by the genre you chose">
+            {data.items.map((it) => (
+              <PosterCard key={`${it.mediaType}:${it.tmdbId}`} item={it} width="w-full" />
+            ))}
+          </Carousel>
 
-      {data.intro?.hook && (
-        <button
-          onClick={openGuided}
-          className="rounded-full bg-amber-400/90 px-5 py-2.5 text-sm font-medium text-ink-950 transition-colors hover:bg-amber-300"
-        >
-          Explore with the Companion
-        </button>
+          {data.intro?.hook && (
+            <button
+              onClick={openGuided}
+              className="rounded-full bg-amber-400/90 px-5 py-2.5 text-sm font-medium text-ink-950 transition-colors hover:bg-amber-300"
+            >
+              Explore with the Companion
+            </button>
+          )}
+        </>
       )}
     </div>
   );
