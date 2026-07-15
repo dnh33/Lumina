@@ -51,7 +51,7 @@ export function TimelineScrubber({ items }: Props) {
               onClick={() => setSelected(decade)}
               className={`rounded-full px-3 py-1 text-sm transition-colors ${
                 active
-                  ? "bg-amber-400/90 text-ink-950"
+                  ? "bg-[var(--world-accent)]/90 text-ink-950"
                   : "border border-white/[0.08] text-white/60 hover:text-white/90"
               }`}
             >

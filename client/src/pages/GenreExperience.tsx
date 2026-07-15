@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api.js";
 import { getGenreWorld } from "../lib/genreWorld.js";
+import { accentVar } from "../lib/metaphor.js";
 import { playWorldCue } from "../lib/worldCue.js";
 import { countryName, watchProviderNames } from "../lib/genreNames.js";
 import type { WatchProviders } from "../lib/types.js";
@@ -97,7 +98,10 @@ export default function GenreExperience() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-4 py-8">
+    <div
+      style={{ ["--world-accent" as any]: accentVar(world) }}
+      className="mx-auto max-w-6xl space-y-8 px-4 py-8"
+    >
       <ExperienceHero slug={slug} world={world} />
 
       {isNiche ? (

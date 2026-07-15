@@ -28,7 +28,7 @@ export function GeoMap({ regions }: Props) {
             <span className="w-28 shrink-0 text-white/70">{r.name}</span>
             <span className="h-2 flex-1 overflow-hidden rounded bg-white/[0.06]">
               <span
-                className="block h-full bg-amber-400/70"
+                className="block h-full bg-[var(--world-accent)]/70"
                 style={{ width: `${Math.round((r.count / total) * 100)}%` }}
               />
             </span>

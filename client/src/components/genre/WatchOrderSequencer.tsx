@@ -27,7 +27,7 @@ export function WatchOrderSequencer({ seasons, recommendedStart }: Props) {
           <li
             key={s.number}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 ${
-              s.number === recommendedStart ? "bg-amber-400/15 ring-1 ring-amber-400/40" : "bg-white/[0.03]"
+              s.number === recommendedStart ? "bg-[var(--world-accent)]/15 ring-1 ring-[var(--world-accent)]/40" : "bg-white/[0.03]"
             }`}
           >
             <span className="text-xs text-white/40">S{s.number}</span>

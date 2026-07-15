@@ -2,6 +2,8 @@ export interface GenreRegister {
   lexicon: string[];
   tonePrompt: string;
   cueBeatMap: string[]; // keys into lib/sound.ts cues
+  /** CSS color token (hex) used to tint metaphor UI accents per world. */
+  accent: string;
 }
 
 export interface GenreWorld {
@@ -20,104 +22,104 @@ export const GENRE_WORLDS: Record<string, GenreWorld> = {
   documentary: {
     slug: "documentary",
     metaphor: "Reading Room",
-    register: { lexicon: ["evidence", "argument", "source"], tonePrompt: "Curious, credible, analytical.", cueBeatMap: ["open"] },
+    register: { lexicon: ["evidence", "argument", "source"], tonePrompt: "Curious, credible, analytical.", cueBeatMap: ["open"], accent: "#64748b" },
     modules: ["timeline", "maker", "critic", "topic", "argument", "watchorder"],
   },
   "science-fiction": {
     slug: "science-fiction",
     metaphor: "Constellation",
-    register: { lexicon: ["wonder", "frontier", "scale"], tonePrompt: "Precise, awed, expansive.", cueBeatMap: ["open", "discover"] },
+    register: { lexicon: ["wonder", "frontier", "scale"], tonePrompt: "Precise, awed, expansive.", cueBeatMap: ["open", "discover"], accent: "#6366f1" },
     modules: ["timeline", "maker", "topic", "argument"],
   },
   // alias so /genre/sci-fi (server-resolved) + any legacy link still resolves
   "sci-fi": {
     slug: "sci-fi",
     metaphor: "Constellation",
-    register: { lexicon: ["wonder", "frontier", "scale"], tonePrompt: "Precise, awed, expansive.", cueBeatMap: ["open", "discover"] },
+    register: { lexicon: ["wonder", "frontier", "scale"], tonePrompt: "Precise, awed, expansive.", cueBeatMap: ["open", "discover"], accent: "#6366f1" },
     modules: ["timeline", "maker", "topic", "argument"],
   },
   horror: {
     slug: "horror",
     metaphor: "Threshold",
-    register: { lexicon: ["dread", "confront", "release"], tonePrompt: "Uneasy, then visceral.", cueBeatMap: ["open", "warn"] },
+    register: { lexicon: ["dread", "confront", "release"], tonePrompt: "Uneasy, then visceral.", cueBeatMap: ["open", "warn"], accent: "#ef4444" },
     modules: ["timeline", "maker", "topic", "argument"],
   },
   romance: {
     slug: "romance",
     metaphor: "Warm Interior",
-    register: { lexicon: ["anticipation", "intimacy", "warmth"], tonePrompt: "Tender, attentive, warm.", cueBeatMap: ["open"] },
+    register: { lexicon: ["anticipation", "intimacy", "warmth"], tonePrompt: "Tender, attentive, warm.", cueBeatMap: ["open"], accent: "#f59e0b" },
     modules: ["timeline", "maker", "topic", "argument"],
   },
   western: {
     slug: "western",
     metaphor: "Frontier",
-    register: { lexicon: ["restlessness", "expanse", "trial"], tonePrompt: "Spare, weather-beaten, resolute.", cueBeatMap: ["open"] },
+    register: { lexicon: ["restlessness", "expanse", "trial"], tonePrompt: "Spare, weather-beaten, resolute.", cueBeatMap: ["open"], accent: "#14b8a6" },
     modules: ["timeline", "maker", "topic", "geo"],
   },
   anime: {
     slug: "anime",
     metaphor: "Panel",
-    register: { lexicon: ["discovery", "kinetic", "lore"], tonePrompt: "Vivid, kinetic, lore-rich.", cueBeatMap: ["open", "discover"] },
+    register: { lexicon: ["discovery", "kinetic", "lore"], tonePrompt: "Vivid, kinetic, lore-rich.", cueBeatMap: ["open", "discover"], accent: "#10b981" },
     modules: ["timeline", "maker", "topic"],
   },
   "film-noir": {
     slug: "film-noir",
     metaphor: "Threshold",
-    register: { lexicon: ["shadows", "motive", "fatalism"], tonePrompt: "Cynical, precise, low-key.", cueBeatMap: ["open", "warn"] },
+    register: { lexicon: ["shadows", "motive", "fatalism"], tonePrompt: "Cynical, precise, low-key.", cueBeatMap: ["open", "warn"], accent: "#8b5cf6" },
     modules: ["timeline", "maker", "topic", "argument"],
   },
   thriller: {
     slug: "thriller",
     metaphor: "Threshold",
-    register: { lexicon: ["tension", "stakes", "release"], tonePrompt: "Taut, escalating, precise.", cueBeatMap: ["open", "warn"] },
+    register: { lexicon: ["tension", "stakes", "release"], tonePrompt: "Taut, escalating, precise.", cueBeatMap: ["open", "warn"], accent: "#e11d48" },
     modules: ["timeline", "maker", "topic", "argument"],
   },
   fantasy: {
     slug: "fantasy",
     metaphor: "Constellation",
-    register: { lexicon: ["wonder", "lore", "scale"], tonePrompt: "Evocative, expansive, mythic.", cueBeatMap: ["open", "discover"] },
+    register: { lexicon: ["wonder", "lore", "scale"], tonePrompt: "Evocative, expansive, mythic.", cueBeatMap: ["open", "discover"], accent: "#7c3aed" },
     modules: ["timeline", "maker", "topic", "argument"],
   },
   crime: {
     slug: "crime",
     metaphor: "Panel",
-    register: { lexicon: ["case", "motive", "thread"], tonePrompt: "Methodical, sharp, observant.", cueBeatMap: ["open"] },
+    register: { lexicon: ["case", "motive", "thread"], tonePrompt: "Methodical, sharp, observant.", cueBeatMap: ["open"], accent: "#fb7185" },
     modules: ["timeline", "maker", "topic", "argument"],
   },
   mystery: {
     slug: "mystery",
     metaphor: "Panel",
-    register: { lexicon: ["clue", "doubt", "reveal"], tonePrompt: "Curious, patient, exacting.", cueBeatMap: ["open"] },
+    register: { lexicon: ["clue", "doubt", "reveal"], tonePrompt: "Curious, patient, exacting.", cueBeatMap: ["open"], accent: "#c084fc" },
     modules: ["timeline", "maker", "topic", "argument"],
   },
   comedy: {
     slug: "comedy",
     metaphor: "Warm Interior",
-    register: { lexicon: ["timing", "relief", "wit"], tonePrompt: "Light, bright, quick.", cueBeatMap: ["open"] },
+    register: { lexicon: ["timing", "relief", "wit"], tonePrompt: "Light, bright, quick.", cueBeatMap: ["open"], accent: "#fb923c" },
     modules: ["timeline", "maker", "topic", "watchorder"],
   },
   music: {
     slug: "music",
     metaphor: "Panel",
-    register: { lexicon: ["rhythm", "era", "voice"], tonePrompt: "Sensory, era-aware, warm.", cueBeatMap: ["open", "discover"] },
+    register: { lexicon: ["rhythm", "era", "voice"], tonePrompt: "Sensory, era-aware, warm.", cueBeatMap: ["open", "discover"], accent: "#22d3ee" },
     modules: ["timeline", "maker", "topic", "geo"],
   },
   "war-politics": {
     slug: "war-politics",
     metaphor: "Reading Room",
-    register: { lexicon: ["evidence", "power", "source"], tonePrompt: "Grounded, accountable, analytical.", cueBeatMap: ["open"] },
+    register: { lexicon: ["evidence", "power", "source"], tonePrompt: "Grounded, accountable, analytical.", cueBeatMap: ["open"], accent: "#475569" },
     modules: ["timeline", "maker", "critic", "topic", "argument", "geo"],
   },
   history: {
     slug: "history",
     metaphor: "Reading Room",
-    register: { lexicon: ["evidence", "context", "source"], tonePrompt: "Curious, contextual, credible.", cueBeatMap: ["open"] },
+    register: { lexicon: ["evidence", "context", "source"], tonePrompt: "Curious, contextual, credible.", cueBeatMap: ["open"], accent: "#0ea5e9" },
     modules: ["timeline", "maker", "critic", "topic", "geo"],
   },
   travel: {
     slug: "travel",
     metaphor: "Frontier",
-    register: { lexicon: ["place", "expanse", "arrival"], tonePrompt: "Open, sensory, inviting.", cueBeatMap: ["open", "discover"] },
+    register: { lexicon: ["place", "expanse", "arrival"], tonePrompt: "Open, sensory, inviting.", cueBeatMap: ["open", "discover"], accent: "#2dd4bf" },
     modules: ["timeline", "maker", "topic", "geo"],
   },
 };
@@ -125,7 +127,7 @@ export const GENRE_WORLDS: Record<string, GenreWorld> = {
 const GENERIC: GenreWorld = {
   slug: "*",
   metaphor: "Generic",
-  register: { lexicon: ["discover"], tonePrompt: "Curious, warm.", cueBeatMap: ["open"] },
+  register: { lexicon: ["discover"], tonePrompt: "Curious, warm.", cueBeatMap: ["open"], accent: "#71717a" },
   modules: ["timeline"],
 };
 
