@@ -148,14 +148,28 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
 
 ## Next action (do NOT start coding)
 1. ✅ Await broader council → DONE (above).
-2. ⟶ WRITE design doc `docs/plans/2026-07-15-worlds-v2-design.md` (brainstorm synthesis: merge
-   P1-P6 + 8 features + new-council ideas + must-fix bugs + promotion flags + C1-C6), commit.
-3. ⟶ GRILL GATE (multi-agent SAFE/STILL-BLOCKING) on the design doc.
-4. ⟶ writing-plans → `.hermes/plans/2026-07-15-worlds-v2-plan.md`.
-5. Daniel approves design → subagent TDD build.
+2. ✅ Design doc `docs/plans/2026-07-15-worlds-v2-design.md` — WRITTEN + grill-gated (4 lenses).
+3. ✅ GRILL GATE → 4 lenses; caught overstated claims (K3 net-new, K1 guided fiction, K2 server
+   shape, W4 accent hollow, B1 net-new engine, C1/C2/C5 state unbuilt, C5 whisper deterministic).
+4. ✅ SCOPE DECISION (clarify 2026-07-15): **option B — merge ALL features, cheap-wins-first.**
+   (Earlier doc contradiction §7 Q1 vs line 30 resolved; all C1-C10 ship in v2.)
+5. ✅ PLAN `docs/plans/2026-07-15-worlds-v2-plan.md` (writing-plans) — 7 phases, bite-sized TDD
+   tasks, exact file:line, verification. Committed `f51e110`.
+6. ⟶ BUILD via subagent-driven-development (delegate_task, fresh per task, 2-stage review).
+   Daniel: "do it properly + pro-actively save temp context + use subagents to save context."
+   → Phase 1 (Tasks 1.1-1.9, must-fix bugs) dispatched first.
+
+## BUILD STATE (update as phases complete)
+- Phase 1 (foundations+bugs): IN PROGRESS (Tasks 1.1-1.9).
+- Phases 2-7: pending.
+- Each task: TDD (failing test → implement → pass → commit). Orchestrator re-verifies `npm run
+  test` + `npm run build` after each batch. No code in main session — subagents own it.
+- COMMITS so far (this workstream): `b2873b2` broader council, `1122d6e` design, `09ac32f` grill
+  fold, `6ae2b78` scope resolve, `f51e110` plan. (Feature code commits land as subagents finish.)
 
 ## Env / run-state
-- Branch `immersive-curated-genre-specific-experie`, ahead of origin/main (v1=~21, + enrichment
-  + cachefix + 2 doc commits). Worktree: `.worktrees/immersive-curated-genre-specific-experie`.
+- Branch `immersive-curated-genre-specific-experie`, ahead of origin/main. Worktree:
+  `.worktrees/immersive-curated-genre-specific-experie`.
 - Server previously killed (port 4000 free). `.env` symlinked from primary repo (NOT committed).
-- CC quota 429 wall persists → direct execution fallback for TDD. No "Generated with" PR trailer.
+- CC quota 429 wall persists → direct `delegate_task` (sonnet/opus leaf) for TDD build.
+- No "Generated with" PR trailer. Human review (Daniel) required before merge.
