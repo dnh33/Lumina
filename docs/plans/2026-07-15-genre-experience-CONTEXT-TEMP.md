@@ -175,10 +175,12 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
     server 109, client 114 tests. Rails paint instantly (no LLM in items endpoint). PASS.
   * Wave 2.3 DONE + REVIEWED (3a9dbf6): page-scope decade filter + arrows; K2 locked.
     Orchestrator: client 123 tests. (2.5 was no-op — K2 already done; locked with test.)
-  * Wave 2.4a DISPATCHED (deleg_84404da6): 2.6 (search/sort/tags, client-side) + 2.8
-    (mode self|guided + mediaType movie|tv steer, re-query). Both edit GenreExperience.tsx.
-  * Wave 2.4b (after 2.4a): 2.7 TitleCard composition (new component, wire into GenreModules).
-  * Wave 2.4c (after 2.4a): 2.9 polish — CTA + accents use var(--world-accent) (depends on 1.8).
+  * Wave 2.4a DONE + REVIEWED (5d12d90): 2.6 search/sort/tags + 2.8 mode/mediaType steer.
+    Orchestrator: client 127 tests. Subagent corrected brief type error (it.tags→genreIds). PASS.
+  * Wave 2.4b/2.4c DISPATCHED (deleg_9451862e): 2.7 (composed TitleCard) + 2.9 (world-accent
+    CTA, use var(--world-accent)). Combined (2.9 edits CTA in same page 2.8 touched).
+  * PHASE 2 ENDS after 2.7/2.9. Then Phase 3 (cheap value-provers: provenance B3, persistence
+    B4, sound B5) begins.
 - PHASES 3-7: pending (cheap value-provers, differentiation engine, structural nav, deepenings,
   TV+a11y).
 - VERIFIED GATE: re-run `npm run test` (server+client) + typecheck + build after each wave.
