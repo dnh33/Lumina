@@ -171,11 +171,12 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
   * Wave 2.1 DONE + REVIEWED (1ad8e30): split intro → /discover/genre-intro + buildGenreIntro
     (own cache key), openGuided rewired to non-blocking intro query. Orchestrator: server 107,
     client 111 tests. PASS — rails no longer block on LLM intro.
-  * Wave 2.2 DISPATCHED (deleg_8040b675): 2.2 lazy per-title argument enrichment (the big grill
-    catch — server drops LLM `argument` from buildGenreExperience; client fetches via existing
-    GET /insight/:type/:tmdbId after paint).
-  * Wave 2.3 (after 2.2): 2.4 timeline arrows + page-scope filter, 2.5 clickable PosterCard.
-  * Wave 2.4: 2.6 search/sort/tags, 2.7 TitleCard composition, 2.8 steer opts, 2.9 polish.
+  * Wave 2.2 DONE + REVIEWED (5d1f0b1): lazy per-title argument enrichment. Orchestrator:
+    server 109, client 114 tests. Rails paint instantly (no LLM in items endpoint). PASS.
+  * Wave 2.3 DISPATCHED (deleg_e60f3893): 2.4 (page-scope decade filter + arrows) + 2.5
+    (clickable rail PosterCard → /title, K2). Combined (both edit GenreExperience.tsx).
+  * Wave 2.4 (after 2.3): 2.6 search/sort/tags, 2.7 TitleCard composition, 2.8 steer opts,
+    2.9 polish.
 - PHASES 3-7: pending (cheap value-provers, differentiation engine, structural nav, deepenings,
   TV+a11y).
 - VERIFIED GATE: re-run `npm run test` (server+client) + typecheck + build after each wave.
