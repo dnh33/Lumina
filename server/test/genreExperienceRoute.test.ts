@@ -60,6 +60,7 @@ describe("GET /discover/genre-experience", () => {
       genres: ["documentary"],
       mediaType: "movie",
       mode: "self",
+      modules: expect.any(Array),
     });
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ genres: ["documentary"], items: expect.any(Array) }),
@@ -78,6 +79,7 @@ describe("GET /discover/genre-experience", () => {
       genres: ["sci-fi", "horror"],
       mediaType: "tv",
       mode: "guided",
+      modules: expect.any(Array),
     });
   });
 });

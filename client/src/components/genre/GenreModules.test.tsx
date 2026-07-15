@@ -13,11 +13,12 @@ const renderMods = (
   watchOrder?: Record<number, any>,
   args?: Record<number, any>,
   geo?: Record<number, any>,
+  makers?: Record<number, any>,
 ) =>
   render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
-        <GenreModules modules={modules} items={items} credibility={credibility} watchOrder={watchOrder} arguments={args} geo={geo} />
+        <GenreModules modules={modules} items={items} credibility={credibility} watchOrder={watchOrder} arguments={args} geo={geo} makers={makers} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -95,6 +96,15 @@ describe("GenreModules", () => {
     expect(screen.getByText(/Where it/)).toBeDefined();
     expect(screen.getByText("USA")).toBeDefined();
     expect(screen.getByText("UK")).toBeDefined();
+  });
+  it("renders MakerSpotlight when 'maker' module + director present", () => {
+    const mkItems: CatalogItem[] = [
+      { tmdbId: 1, mediaType: "movie", title: "Doc A", year: 2010, overview: "", posterPath: null, backdropPath: null, voteAverage: 7, genreIds: [99], popularity: 1, inLibrary: false },
+    ];
+    const makers: Record<number, any> = { 1: { director: "Jane Doe", directorId: 42, title: "Doc A" } };
+    renderMods(["maker"], mkItems, undefined, undefined, undefined, undefined, makers);
+    expect(screen.getByText(/Maker/i)).toBeDefined();
+    expect(screen.getByText("Jane Doe")).toBeDefined();
   });
   it("renders nothing extra when modules is empty", () => {
     const { container } = renderMods([], items);

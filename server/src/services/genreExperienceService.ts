@@ -1,20 +1,42 @@
 import type { DB } from "../db/connection.js";
 import { genreMap, tmdbGet } from "../tmdb/client.js";
-import { normalizeList } from "../tmdb/normalize.js";
-import type { MediaType, RawTmdbItem } from "../tmdb/types.js";
+import { normalizeList, normalizeDetails } from "../tmdb/normalize.js";
+import type { MediaType, RawTmdbItem, TitleDetails, WatchProviders } from "../tmdb/types.js";
 import { flag, type CatalogItemWithFlags } from "./discoverService.js";
 import { fatigueScores, isRetired } from "./anchorService.js";
 import { retrieveLibrary } from "../rag/retrieval.js";
 import { computeTasteProfile } from "../rag/tasteProfile.js";
-import { profileStateOf, type ProfileState } from "../llm/insightService.js";
+import { profileStateOf, type ProfileState, titleInsight } from "../llm/insightService.js";
 import { currentModel, getLlm, getSetting, setSetting } from "../llm/openrouter.js";
 import { genreCuratorPrompt } from "../llm/prompts.js";
+import { ensureRatings } from "./ratingsService.js";
+import { fetchDetailsFromTmdb } from "./libraryService.js";
 
 interface Paged {
   results?: RawTmdbItem[];
 }
 
 export type GenreItem = CatalogItemWithFlags;
+
+export interface GenreItemEnrichment {
+  director: string | null;
+  directorId: number | null;
+  /** tv only */
+  seasons?: { seasonNumber: number; name: string; episodeCount: number }[];
+  watchProviders: WatchProviders | null;
+  originCountry: string[];
+  imdbRating?: number | null;
+  rtRating?: number | null;
+  /** F3 "The Argument": thesis + pointer to a divergent neighbor */
+  argument?: { thesis: string; counterpoint?: { title: string; relation: string } | null } | null;
+}
+
+// extend GenreItem with optional enrichment so existing consumers are unaffected
+declare module "./discoverService.js" {
+  interface CatalogItemWithFlags {
+    enrichment?: GenreItemEnrichment;
+  }
+}
 
 export type ExperienceMode = "self" | "guided";
 
@@ -45,6 +67,8 @@ export interface GenreExperienceOpts {
   genres: string[];
   mediaType: MediaType;
   mode?: ExperienceMode;
+  /** enabled module keys (from genreWorld) — drives which enrichment to compute */
+  modules?: string[];
 }
 
 // TMDB genre names the slugs don't map onto verbatim.
@@ -71,6 +95,68 @@ export async function genreSlugsToIds(
       return map.get(name) ?? map.get(name.replace(/-/g, " "));
     })
     .filter((x): x is number => !!x);
+}
+
+/**
+ * Per-item enrichment so the client modules render real data (not props the
+ * server never produced). Bounded by which modules are enabled for the world:
+ * only the fetches those modules need run. Detail fetches + insight are cached
+ * (tmdbGet TTL / insight: cache), so a warm build is cheap; the whole experience
+ * is also cached 12h in buildGenreExperience.
+ */
+async function enrichGenreItems(
+  db: DB,
+  items: GenreItem[],
+  modules: Set<string>,
+  mediaType: MediaType,
+): Promise<GenreItem[]> {
+  const needDetails = modules.has("maker") || modules.has("watchorder") || modules.has("critic") || modules.has("geo");
+  const needRatings = modules.has("critic");
+  const needArgument = modules.has("argument");
+  if (!needDetails && !needRatings && !needArgument) return items;
+
+  return Promise.all(
+    items.map(async (it) => {
+      const enrichment: GenreItemEnrichment = {
+        director: null,
+        directorId: null,
+        watchProviders: null,
+        originCountry: [],
+      };
+
+      if (needDetails) {
+        const details: TitleDetails = await fetchDetailsFromTmdb(it.tmdbId, it.mediaType);
+        enrichment.director = details.director;
+        enrichment.directorId = details.directorId;
+        enrichment.watchProviders = details.watchProviders;
+        enrichment.originCountry = details.originCountry ?? [];
+        if (mediaType === "tv" && details.seasons?.length) {
+          enrichment.seasons = details.seasons.map((s) => ({
+            seasonNumber: s.seasonNumber,
+            name: s.name,
+            episodeCount: s.episodeCount,
+          }));
+        }
+      }
+
+      if (needRatings) {
+        const scores = await ensureRatings(db, it.tmdbId, it.mediaType);
+        enrichment.imdbRating = scores.imdb;
+        enrichment.rtRating = scores.rt;
+      }
+
+      if (needArgument) {
+        const insight = await titleInsight(db, it.tmdbId, it.mediaType);
+        const counter = insight.comparisons?.[0];
+        enrichment.argument = {
+          thesis: insight.hook ?? insight.text,
+          counterpoint: counter ? { title: counter.title, relation: counter.relation } : null,
+        };
+      }
+
+      return { ...it, enrichment };
+    }),
+  );
 }
 
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000;
@@ -178,6 +264,13 @@ export async function buildGenreExperience(
     // GATE G2: flag() is the single chokepoint that drops ignored titles
     // and excluded genres. Never bare filterCatalog here.
     items = flag(db, normalizeList(data.results, opts.mediaType));
+  }
+
+  // Enrich per enabled modules (drives real module data). No-op when no
+  // enrichment-driving modules are enabled.
+  const moduleSet = new Set(opts.modules ?? []);
+  if (items.length && moduleSet.size) {
+    items = await enrichGenreItems(db, items, moduleSet, opts.mediaType);
   }
 
   const profile = computeTasteProfile(db);

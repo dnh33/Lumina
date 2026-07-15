@@ -61,6 +61,42 @@ vi.mock("../src/llm/openrouter.js", async (importOriginal) => {
   };
 });
 
+// Mock detail/ratings/insight so enrichment runs offline and is deterministic.
+vi.mock("../src/services/libraryService.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/services/libraryService.js")>();
+  return {
+    ...actual,
+    fetchDetailsFromTmdb: async (_id: number, _mt: string) => ({
+      director: "Test Director",
+      directorId: 777,
+      watchProviders: { flatrate: [{ provider_name: "Netflix" }] },
+      originCountry: ["US", "GB"],
+      seasons: [{ seasonNumber: 1, name: "Season 1", episodeCount: 10 }],
+    }),
+  };
+});
+vi.mock("../src/services/ratingsService.js", () => ({
+  ensureRatings: async () => ({ imdb: 8.2, rt: 90 }),
+}));
+vi.mock("../src/llm/insightService.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/llm/insightService.js")>();
+  return {
+    ...actual,
+    profileStateOf: actual.profileStateOf,
+    titleInsight: async () => ({
+      text: "A sharp, necessary film.",
+      hook: "A sharply argued doc.",
+      verdict: "yes",
+      matchScore: 9,
+      comparisons: [{ title: "Counter Title", relation: "contrasts with" }],
+      followups: [],
+      profileState: "rich",
+      cached: false,
+      model: "test",
+    }),
+  };
+});
+
 import { memoryDb, seedEntry, makeDetails } from "./helpers.js";
 import { buildGenreExperience } from "../src/services/genreExperienceService.js";
 import { setExcludedGenres } from "../src/services/libraryService.js";
@@ -98,5 +134,34 @@ describe("buildGenreExperience", () => {
     await buildGenreExperience(db, { genres: ["documentary"], mediaType: "movie" });
     const rows = db.prepare("SELECT COUNT(*) AS n FROM anchor_usage").get() as { n: number };
     expect(rows.n).toBe(0);
+  });
+});
+
+describe("buildGenreExperience enrichment (v1.5 modules)", () => {
+  it("populates director/geo/argument when modules enabled", async () => {
+    const db = memoryDb();
+    const res = await buildGenreExperience(db, {
+      genres: ["documentary"],
+      mediaType: "tv",
+      modules: ["maker", "geo", "argument", "critic", "watchorder"],
+    });
+    expect(res.items.length).toBeGreaterThan(0);
+    const it = res.items[0];
+    expect(it.enrichment?.director).toBe("Test Director");
+    expect(it.enrichment?.originCountry).toEqual(["US", "GB"]);
+    expect(it.enrichment?.argument?.thesis).toMatch(/sharp/i);
+    expect(it.enrichment?.argument?.counterpoint?.title).toBe("Counter Title");
+    expect(it.enrichment?.imdbRating).toBe(8.2);
+    expect(it.enrichment?.seasons?.[0]?.episodeCount).toBe(10);
+  });
+
+  it("does NOT enrich when no enrichment-driving modules are enabled", async () => {
+    const db = memoryDb();
+    const res = await buildGenreExperience(db, {
+      genres: ["documentary"],
+      mediaType: "movie",
+      modules: ["timeline"],
+    });
+    expect(res.items[0].enrichment).toBeUndefined();
   });
 });

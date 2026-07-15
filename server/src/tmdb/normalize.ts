@@ -188,6 +188,7 @@ export function normalizeDetails(
       })),
     imdbRating: null,
     rtRating: null,
+    originCountry: raw.origin_country ?? [],
   };
 }
 

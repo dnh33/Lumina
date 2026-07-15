@@ -129,7 +129,10 @@ catalogRouter.get("/discover/genre-experience", async (req, res) => {
   const genres = String(req.query.genres ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const mode = req.query.mode === "guided" ? "guided" : "self";
   const mediaType = req.query.mediaType === "tv" ? "tv" : "movie";
-  const result = await buildGenreExperience(getDb(), { genres, mediaType, mode });
+  const modules = req.query.modules
+    ? String(req.query.modules).split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+  const result = await buildGenreExperience(getDb(), { genres, mediaType, mode, modules });
   res.json(result);
 });
 

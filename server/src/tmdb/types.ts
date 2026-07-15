@@ -67,6 +67,8 @@ export interface TitleDetails extends CatalogItem {
   /** Critics scores, populated lazily from OMDb. Null until fetched. */
   imdbRating?: number | null;
   rtRating?: number | null;
+  /** ISO 3166-1 production-country codes (["US"]) — geo module */
+  originCountry?: string[];
 }
 
 export interface SeasonSummary {
@@ -128,6 +130,8 @@ export interface RawTmdbDetails extends RawTmdbItem {
   genres?: { id: number; name: string }[];
   /** TMDB keyword tags — movie: `keywords`; tv: `keywords.results` */
   keywords?: { id: number; name: string }[] | { results?: { id: number; name: string }[] };
+  /** Production country codes (ISO 3166-1), e.g. ["US"] — powers geo module */
+  origin_country?: string[];
   runtime?: number;
   episode_run_time?: number[];
   number_of_seasons?: number;

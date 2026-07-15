@@ -19,7 +19,7 @@ export default function GenreExperience() {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["genre-experience", slug],
-    queryFn: () => api.genreExperience([slug]),
+    queryFn: () => api.genreExperience([slug], "self", "movie", world.modules),
   });
 
   const navigate = useNavigate();
@@ -33,6 +33,41 @@ export default function GenreExperience() {
       },
     });
   };
+
+  // Build per-title module maps from server-computed enrichment.
+  const maps = { credibility: {}, watchOrder: {}, arguments: {}, geo: {}, makers: {} } as {
+    credibility: Record<number, any>;
+    watchOrder: Record<number, any>;
+    arguments: Record<number, any>;
+    geo: Record<number, any>;
+    makers: Record<number, any>;
+  };
+  for (const it of data?.items ?? []) {
+    const e = it.enrichment;
+    if (!e) continue;
+    if (world.modules.includes("maker") && e.director) {
+      maps.makers[it.tmdbId] = { director: e.director, directorId: e.directorId, title: it.title };
+    }
+    if (world.modules.includes("critic")) {
+      maps.credibility[it.tmdbId] = {
+        distributor: e.watchProviders ? "Available" : null,
+        streaming: !!e.watchProviders,
+        consensus: e.imdbRating != null ? `IMDb ${e.imdbRating}` : (e.rtRating != null ? `RT ${e.rtRating}` : null),
+        stance: null,
+      };
+    }
+    if (world.modules.includes("watchorder") && e.seasons?.length) {
+      maps.watchOrder[it.tmdbId] = { seasons: e.seasons, recommendedStart: 1 };
+    }
+    if (world.modules.includes("argument") && e.argument) {
+      maps.arguments[it.tmdbId] = e.argument;
+    }
+    if (world.modules.includes("geo") && e.originCountry.length) {
+      maps.geo[it.tmdbId] = e.originCountry.map((code) => ({ code, name: code, count: 1 }));
+    }
+  }
+
+  const isNiche = (data?.items.length ?? 0) < NICHE_THRESHOLD;
 
   if (isLoading) {
     return (
@@ -50,8 +85,6 @@ export default function GenreExperience() {
     );
   }
 
-  const isNiche = data.items.length < NICHE_THRESHOLD;
-
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-8">
       <ExperienceHero slug={slug} world={world} />
@@ -62,7 +95,15 @@ export default function GenreExperience() {
         <>
           <AnchorFrame anchors={data.anchorsUsed} world={world} />
 
-          <GenreModules modules={world.modules} items={data.items} />
+          <GenreModules
+            modules={world.modules}
+            items={data.items}
+            credibility={maps.credibility}
+            watchOrder={maps.watchOrder}
+            arguments={maps.arguments}
+            geo={maps.geo}
+            makers={maps.makers}
+          />
 
           <Carousel title="For You in this World" eyebrow="Seeded by the genre you chose">
             {data.items.map((it) => (

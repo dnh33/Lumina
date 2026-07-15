@@ -19,6 +19,8 @@ export interface CatalogItem {
    *  rating is `rating` on LibraryEntry / the hero number — kept separate. */
   imdbRating?: number | null;
   rtRating?: number | null;
+  /** Genre-module enrichment (director/seasons/providers/geo/argument). */
+  enrichment?: GenreItemEnrichment;
 }
 
 export interface PersonCredit {
@@ -310,6 +312,18 @@ export interface GenreAnchor {
   mediaType: MediaType;
   title: string;
   rating: number | null;
+}
+
+/** Per-title enrichment the genre modules render (server-computed). */
+export interface GenreItemEnrichment {
+  director: string | null;
+  directorId: number | null;
+  seasons?: { seasonNumber: number; name: string; episodeCount: number }[];
+  watchProviders: unknown | null;
+  originCountry: string[];
+  imdbRating?: number | null;
+  rtRating?: number | null;
+  argument?: { thesis: string; counterpoint?: { title: string; relation: string } | null } | null;
 }
 
 export type GenreItem = CatalogItem;

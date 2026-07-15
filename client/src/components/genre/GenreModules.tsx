@@ -6,6 +6,7 @@ import { CredibilityStrip, type Credibility } from "./CredibilityStrip.js";
 import { WatchOrderSequencer, type WatchChapter } from "./WatchOrderSequencer.js";
 import { ArgumentPanel, type Counterpoint } from "./ArgumentPanel.js";
 import { GeoMap, type GeoRegion } from "./GeoMap.js";
+import { MakerSpotlight } from "./MakerSpotlight.js";
 
 interface Props {
   modules: GenreWorld["modules"];
@@ -18,6 +19,8 @@ interface Props {
   arguments?: Record<number, { thesis: string; counterpoint?: Counterpoint | null }>;
   /** optional production-region breakdown (geo); keyed by tmdbId */
   geo?: Record<number, GeoRegion[]>;
+  /** optional filmmaker spotlight (maker); keyed by tmdbId */
+  makers?: Record<number, { director: string | null; directorId: number | null; title: string }>;
 }
 
 /** Group items into topic spines by shared primary genre id. */
@@ -40,7 +43,7 @@ function buildTopics(items: CatalogItem[]): TopicSpine[] {
  * (per genreWorld.modules) over the experience's items. One component,
  * N configs — NOT N page variants (design §13.8).
  */
-export function GenreModules({ modules, items, credibility, watchOrder, arguments: args, geo }: Props) {
+export function GenreModules({ modules, items, credibility, watchOrder, arguments: args, geo, makers }: Props) {
   return (
     <>
       {modules.includes("timeline") && <TimelineScrubber items={items} />}
@@ -72,6 +75,14 @@ export function GenreModules({ modules, items, credibility, watchOrder, argument
           const regions = geo[it.tmdbId];
           return regions ? (
             <GeoMap key={`geo-${it.mediaType}:${it.tmdbId}`} regions={regions} />
+          ) : null;
+        })}
+      {modules.includes("maker") &&
+        makers &&
+        items.map((it) => {
+          const m = makers[it.tmdbId];
+          return m ? (
+            <MakerSpotlight key={`mk-${it.mediaType}:${it.tmdbId}`} director={m.director} directorId={m.directorId} title={it.title} />
           ) : null;
         })}
     </>
