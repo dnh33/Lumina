@@ -52,6 +52,8 @@ export interface TitleDetails extends CatalogItem {
   /** YouTube key of the best official trailer/teaser */
   trailerKey: string | null;
   watchProviders: WatchProviders | null;
+  /** TMDB keyword tags (movie: keywords; tv: keywords.results) — powers genre topic-threading */
+  keywords: { id: number; name: string }[];
   nextEpisodeToAir: {
     season: number;
     episode: number;
@@ -124,6 +126,8 @@ export interface RawTmdbItem {
 export interface RawTmdbDetails extends RawTmdbItem {
   tagline?: string;
   genres?: { id: number; name: string }[];
+  /** TMDB keyword tags — movie: `keywords`; tv: `keywords.results` */
+  keywords?: { id: number; name: string }[] | { results?: { id: number; name: string }[] };
   runtime?: number;
   episode_run_time?: number[];
   number_of_seasons?: number;
