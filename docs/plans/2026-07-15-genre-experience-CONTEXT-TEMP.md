@@ -167,10 +167,9 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
     * 1.6 `4906880` (label bugs K6) — REVIEWED PASS.
   - Wave 2a DISPATCHED (deleg_d71aa891): 1.2 (thread skipAnchorLog via enrichGenreItems),
     1.5 (ArgumentPanel counterpoint link, defensive — 1.4 not done yet).
-    * 1.5 IN FLIGHT, PRE-SCREENED OK: ArgumentPanel.tsx extends Counterpoint type with optional
-      tmdbId/mediaType, wraps title in <Link> only when present, else <span>. Will PASS review.
-      Not yet committed (subagent running).
-    * 1.2 IN FLIGHT (enrichGenreItems call site — genreExperienceService.ts).
+    * 1.5 DONE + REVIEWED (13c26fd): ArgumentPanel counterpoint → <Link> when tmdbId present,
+      else <span>. Orchestrator re-ran client: 94 tests pass. PASS.
+    * 1.2 IN FLIGHT (enrichGenreItems call site — genreExperienceService.ts). NOT committed yet.
   - Wave 2b (after 1.2 commits): 1.4 (counterpoint.tmdbId server-side — SAME file as 1.2,
     genreExperienceService.ts; HELD to avoid conflict). 1.4 also extends the enrichment
     counterpoint TYPE (server) + maps tmdbId/mediaType at genreExperienceService.ts:153.
