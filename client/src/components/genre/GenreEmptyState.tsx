@@ -4,6 +4,9 @@ interface Props {
   world: GenreWorld;
   count: number;
   threshold: number;
+  /** C10: when provided, renders a CTA that nudges the user to seed an
+   *  anchor from their library, closing the cold-start loop. */
+  onBootstrap?: () => void;
 }
 
 /** Genre-specific empty-state copy (design R6: Western/Music/War&Politics). */
@@ -26,7 +29,7 @@ const COPY: Record<string, { title: string; body: string }> = {
  * Niche-genre empty state (design R6 / metric 9). Shown when a genre has
  * fewer than `threshold` titles — a tailored empty, not a blank rail.
  */
-export function GenreEmptyState({ world, count, threshold }: Props) {
+export function GenreEmptyState({ world, count, threshold, onBootstrap }: Props) {
   const copy = COPY[world.slug] ?? {
     title: "A thin world",
     body: `Only ${count} title${count === 1 ? "" : "s"} lined up. Anchor this world with something you love and it fills in.`,
@@ -38,6 +41,15 @@ export function GenreEmptyState({ world, count, threshold }: Props) {
       <p className="mt-4 text-xs uppercase tracking-wide text-white/30">
         {count} / {threshold} titles
       </p>
+      {onBootstrap && (
+        <button
+          type="button"
+          onClick={onBootstrap}
+          className="mt-6 rounded-full bg-[var(--world-accent)]/90 px-5 py-2.5 text-sm font-medium text-ink-950 transition-opacity hover:opacity-90"
+        >
+          Anchor this world
+        </button>
+      )}
     </section>
   );
 }

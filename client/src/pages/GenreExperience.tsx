@@ -221,7 +221,7 @@ export default function GenreExperience() {
       <ExperienceHero slug={slug} world={world} />
 
       {isNiche ? (
-        <GenreEmptyState world={world} count={data.items.length} threshold={NICHE_THRESHOLD} />
+        <GenreEmptyState world={world} count={data.items.length} threshold={NICHE_THRESHOLD} onBootstrap={() => navigate("/library")} />
       ) : (
         <>
           <AnchorFrame anchors={data.anchorsUsed} world={world} />
