@@ -20,7 +20,7 @@ export const GENRE_WORLDS: Record<string, GenreWorld> = {
       tonePrompt: "Curious, credible, analytical.",
       cueBeatMap: ["open"],
     },
-    modules: ["timeline", "maker", "critic"],
+    modules: ["timeline", "maker", "critic", "topic"],
   },
   "sci-fi": {
     slug: "sci-fi",
