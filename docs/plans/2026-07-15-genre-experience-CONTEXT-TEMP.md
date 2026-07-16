@@ -205,10 +205,16 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
   * PHASE 6 wave 6b DONE (orchestrator committed 795a30e; BOTH subagents FALSE '3 failures/
     224' claims — orchestrator showed 227/227). Client 227 tests. 6.2/6.6/6.8/6.7 shipped.
     PHASE 6 COMPLETE (all 8 deepenings: 6.1-6.8).
-  * PHASE 7 (TV+a11y+polish) — FINAL PHASE — DISPATCHED:
-    - deleg_37a9ecfb, 2 parallel: SubA = 7.1 TV (K1) + 7.3 a11y audit (C3) — combined page/timeline
-      owner (drop guided no-op, mediaType from URL, tablist a11y, skip-link, error retry).
-      SubB = 7.2 per-metaphor empty states (C6, GenreEmptyState). No-commit rule.
+  * PHASE 7 (TV+a11y) — FIRST ATTEMPT FAILED: SubA (7.1+7.3) shipped a RED tree (typecheck
+    error `mainRef` undefined + dropped guided toggle → 30 failing page tests). Orchestrator caught
+    it (subagent falsely claimed "3/4 green"). RECOVERY: reverted SubA's page-tier files to clean
+    795a30e, removed its broken new tests, KEPT 7.2 GenreEmptyState (green). Baseline re-verified
+    234 tests. RE-DISPATCHED Phase 7 to ONE subagent (deleg_864eb70e) with strict guardrails:
+    keep guided toggle, declare all refs, full suite+typecheck MUST pass, no-commit.
+  * 7.2 (per-metaphor empty states C6) DONE + verified by orchestrator — GenreEmptyState.tsx
+    parameterized by metaphor, 9 metaphor tests. (Its subagent claimed 236; baseline now 234 w/ it.)
+  * LESSON (logged): parallel subagents editing GenreExperience.tsx repeatedly ship RED. Single
+    owner + hard orchestrator gate required. Every Phase-7-attempt self-report was false.
   * AFTER PHASE 7: grill re-gate (scope unchanged since plan → light) + FINAL verify (live server
     boot + screenshot per Daniel's UI bar) + PR (gated on Daniel's /npm run dev review; NO merge
     without Daniel; NO 'Generated with' trailer). This is the LAST build phase.
