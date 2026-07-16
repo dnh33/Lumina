@@ -12,6 +12,7 @@ import ChatPage from "./pages/ChatPage";
 import Settings from "./pages/Settings";
 import GenreExperience from "./pages/GenreExperience";
 import GenrePicker from "./pages/GenrePicker";
+import CompareWorlds from "./pages/CompareWorlds";
 
 export default function App() {
   const location = useLocation();
@@ -44,6 +45,11 @@ export default function App() {
             <Route path="/person/:id" element={<PersonPage />} />
             <Route path="/genre/:slug" element={<GenreExperience />} />
             <Route path="/genre" element={<GenrePicker />} />
+            {/* Task 6.7 (C4): overlay two worlds' experiences. A single-slug
+                alias renders the same page in its "world not found" state when
+                the second world is missing. */}
+            <Route path="/compare/:a/:b" element={<CompareWorlds />} />
+            <Route path="/compare/:a" element={<CompareWorlds />} />
             {/* Single splat route: navigating /chat → /chat/:id only changes the
                 param (re-render), never remounts ChatPage. Prevents the
                 first-send race where the remount aborted the in-flight stream. */}

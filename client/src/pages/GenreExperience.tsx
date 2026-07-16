@@ -14,6 +14,9 @@ import { WhisperStrip } from "../components/genre/WhisperStrip.js";
 import { AnchorFrame } from "../components/genre/AnchorFrame.js";
 import { GenreModules } from "../components/genre/GenreModules.js";
 import { GenreEmptyState } from "../components/genre/GenreEmptyState.js";
+import { GeoMap, type GeoRegion } from "../components/genre/GeoMap.js";
+import { MarathonBuilder } from "../components/genre/MarathonBuilder.js";
+import { ExportWorld } from "../components/genre/ExportWorld.js";
 import { decadeOf } from "../components/genre/TimelineScrubber.js";
 import { useGenreState } from "../lib/useGenreState.js";
 import { CompanionPanel } from "../components/genre/CompanionPanel.js";
@@ -254,6 +257,33 @@ export default function GenreExperience() {
   // Merge server (legacy) argument enrichment with the lazily-fetched one.
   const argumentsMap = { ...maps.arguments, ...lazyArguments };
 
+  // Task 6.2 (D4): aggregate every title's origin regions into one world-wide
+  // geo view for the standalone GeoMap section, and derive the user's own
+  // library countries (from titles already in their library) so the map can
+  // frame "in your library" vs "new to you".
+  const geoRegions: GeoRegion[] = useMemo(() => {
+    if (!world.modules.includes("geo")) return [];
+    const byCode = new Map<string, GeoRegion>();
+    for (const list of Object.values(maps.geo)) {
+      for (const r of list as GeoRegion[]) {
+        const existing = byCode.get(r.code);
+        if (existing) existing.count += r.count;
+        else byCode.set(r.code, { ...r });
+      }
+    }
+    return [...byCode.values()].sort((a, b) => b.count - a.count);
+  }, [world.modules, maps.geo]);
+
+  const libraryCountries: string[] = useMemo(() => {
+    const set = new Set<string>();
+    for (const it of data?.items ?? []) {
+      if (it.inLibrary && it.enrichment?.originCountry?.length) {
+        for (const c of it.enrichment.originCountry) set.add(c);
+      }
+    }
+    return [...set];
+  }, [data]);
+
   const isNiche = (data?.items.length ?? 0) < NICHE_THRESHOLD;
 
   if (isLoading) {
@@ -493,6 +523,20 @@ export default function GenreExperience() {
             eraThesis={eraThesis}
           />
 
+          {world.modules.includes("geo") && geoRegions.length > 0 && (
+            <GeoMap regions={geoRegions} libraryCountries={libraryCountries} />
+          )}
+
+          {world.modules.includes("watchorder") && (
+            <MarathonBuilder
+              slug={slug}
+              seasons={(steered ?? [])
+                .flatMap((it) => maps.watchOrder[it.tmdbId]?.seasons ?? [])
+                .map((s) => ({ number: s.number, name: s.name, episodeCount: s.episodeCount, watched: s.watched }))}
+              watchlist={steered.map((it) => ({ title: it.title, year: it.year ?? undefined }))}
+            />
+          )}
+
           {/* Task 5.1 (C1): cross-world warp. The NeighborRail is the primary
               navigation surface; the WorldsMap is a decorative, optional
               collapsible overview of how worlds connect. */}
@@ -523,6 +567,21 @@ export default function GenreExperience() {
             </summary>
             <WorldsMap />
           </details>
+
+          {/* Task 6.8 (C6): export the curated world as a Markdown note +
+              printable view — hero hook + selected titles + annotations.
+              annotationsMap is keyed by tmdbId, so re-key it to the same
+              index order as `steered` for the export. */}
+          <ExportWorld
+            slug={slug}
+            hook={introData?.hook}
+            titles={steered.map((it) => ({ title: it.title, year: it.year ?? undefined }))}
+            annotations={steered.reduce<Record<number, string>>((acc, it, i) => {
+              const a = argumentsMap[it.tmdbId];
+              if (a?.thesis) acc[i] = a.thesis;
+              return acc;
+            }, {})}
+          />
 
           {/* Task 4.3 (B2): ambient in-world Companion — distinct from the
               global dock (App.tsx hides ChatDock on /genre), no collision. */}
