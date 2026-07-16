@@ -22,7 +22,7 @@ export function NeighborRail({ world }: NeighborRailProps) {
 
   return (
     <nav aria-label="Neighboring worlds" className="rounded-2xl bg-white/[0.03] p-3 ring-1 ring-white/10">
-      <SectionHead variant="readout">Neighboring worlds</SectionHead>
+      <SectionHead>Neighboring worlds</SectionHead>
       <ul className="flex flex-wrap items-center gap-2">
         {neighbors.map((slug) => {
           const neighbor = getGenreWorld(slug);

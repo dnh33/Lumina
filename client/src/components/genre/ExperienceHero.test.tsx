@@ -31,10 +31,11 @@ describe("ExperienceHero accent", () => {
     expect(root.className).toContain("reg-ticks");
     // NO gradient fill — Instrument Ink is flat carbon, accent rationed
     expect(root.className).not.toContain("bg-gradient-to-br");
-    // metaphor carried as a mono provenance readout (trusted register), not a decorative accent kicker
-    const readout = container.querySelector(".readout");
-    expect(readout).not.toBeNull();
-    expect(readout?.textContent).toBe(world.metaphor);
+    // metaphor carried as a quiet sans whisper (NOT a mono readout — slop.md:
+    // monospace-as-house-voice is a tell). Assert it renders, plain sans.
+    const metaphor = container.querySelector("p.text-mist-400");
+    expect(metaphor).not.toBeNull();
+    expect(metaphor?.textContent).toBe(world.metaphor);
     // ghost numeral watermark behind the text
     const ghost = container.querySelector(".ghost-numeral");
     expect(ghost).not.toBeNull();
@@ -42,5 +43,20 @@ describe("ExperienceHero accent", () => {
     // H1 uses the display (felt) register
     const h1 = container.querySelector("h1");
     expect(h1?.className).toContain("font-[var(--font-display)]");
+  });
+
+  it("renders the cinematic signature (grain + dust motes) behind the content", () => {
+    const world = getGenreWorld("science-fiction");
+    const { container } = render(
+      <ExperienceHero slug="science-fiction" world={world} titleCount={20} />,
+    );
+    // film grain layer present
+    expect(container.querySelector(".film-grain")).not.toBeNull();
+    // a handful of dust motes, none gating content visibility
+    const motes = container.querySelectorAll(".dust-mote");
+    expect(motes.length).toBeGreaterThanOrEqual(6);
+    // content is NOT opacity-gated: H1 + metaphor render regardless of motion
+    expect(container.querySelector("h1")?.textContent).toBe("Science-fiction");
+    expect(container.querySelector("p.text-mist-400")?.textContent).toBe(world.metaphor);
   });
 });

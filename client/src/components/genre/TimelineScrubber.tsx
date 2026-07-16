@@ -90,7 +90,7 @@ export function TimelineScrubber({ items, selectedDecade, onDecade, anchors, era
         <h2 id="timeline-heading" className="font-[var(--font-display)] text-lg font-semibold tracking-tight text-white/90">
           Timeline
         </h2>
-        <span className="readout">scrub by era</span>
+        <span className="text-2xs text-mist-500">scrub by era</span>
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2" role="tablist" aria-labelledby="timeline-heading">

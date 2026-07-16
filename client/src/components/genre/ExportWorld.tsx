@@ -81,7 +81,7 @@ export function ExportWorld({ slug, hook, titles, annotations = {} }: Props) {
   return (
     <section aria-label="Export world" className="space-y-3">
       <div className="flex items-center gap-3">
-        <SectionHead variant="title" className="flex-1 mb-0">Export</SectionHead>
+        <SectionHead className="flex-1 mb-0">Export</SectionHead>
         <button
           type="button"
           onClick={save}

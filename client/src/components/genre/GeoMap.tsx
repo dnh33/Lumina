@@ -33,7 +33,7 @@ export function GeoMap({ regions, libraryCountries = [] }: Props) {
   const libSet = new Set(libraryCountries);
   return (
     <section aria-label="Where it's from" className="space-y-2">
-      <SectionHead variant="title">Where it&rsquo;s from</SectionHead>
+      <SectionHead>Where it&rsquo;s from</SectionHead>
       <ul className="space-y-1">
         {regions.map((r) => {
           const name = r.name || countryName(r.code);

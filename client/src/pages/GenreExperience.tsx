@@ -472,7 +472,7 @@ export default function GenreExperience() {
             </label>
 
             <label className="flex items-center gap-2 text-sm text-mist-300">
-              <span className="text-2xs uppercase tracking-wider text-mist-500">Sort</span>
+              <span className="text-2xs text-mist-500">Sort</span>
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as "default" | "year" | "rating")}
@@ -542,7 +542,7 @@ export default function GenreExperience() {
               aria-label="Steering presets"
               className="flex flex-wrap items-center gap-1.5"
             >
-              <span className="mr-1 text-2xs uppercase tracking-wider text-mist-500">Presets</span>
+              <span className="mr-1 text-2xs text-mist-500">Presets</span>
               <button
                 type="button"
                 data-preset="surprise"

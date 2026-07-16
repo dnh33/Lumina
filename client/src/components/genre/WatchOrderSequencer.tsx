@@ -21,7 +21,7 @@ export function WatchOrderSequencer({ seasons, recommendedStart }: Props) {
   if (!seasons.length) return null;
   return (
     <section aria-label="Watch order" className="space-y-2">
-      <SectionHead variant="title">Watch order</SectionHead>
+      <SectionHead>Watch order</SectionHead>
       <ol className="space-y-1">
         {seasons.map((s) => (
           <li

@@ -40,7 +40,7 @@ export function TopicCluster({ topics, onTopicSelect }: Props) {
               {t.label}
             </button>
           ) : (
-            <SectionHead variant="title">{t.label}</SectionHead>
+            <SectionHead>{t.label}</SectionHead>
           )}
           <div className="flex gap-4 overflow-x-auto pb-2">
             {t.items.map((it) => (

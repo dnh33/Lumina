@@ -46,7 +46,7 @@ export function WorldsMap() {
 
   return (
     <div className="rounded-2xl bg-white/[0.03] p-3 ring-1 ring-white/10">
-      <SectionHead variant="readout">Worlds map</SectionHead>
+      <SectionHead>Worlds map</SectionHead>
       <svg
         role="img"
         aria-label="Map of all genre worlds; edges connect neighboring worlds. Click a node to warp to that world."

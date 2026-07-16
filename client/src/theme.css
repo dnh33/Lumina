@@ -345,13 +345,46 @@ select:focus-visible {
   z-index: 0;
 }
 
-/* Mono provenance readout — the Instrument Ink "trusted" register.
-   Tracked wide, whispering in the margin. Used for era/decade + counts. */
-.readout {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-mist-400);
-  font-variant-numeric: tabular-nums;
+/* ── Cinematic signature (Wave 3) ───────────────────────────────────────
+   Film grain + sparse dust motes behind the hero — the literal texture of
+   cinema, specific to a film-memory app. Premium noise (slop.md: "you feel
+   it, not see it"), NOT the banned colored-orb aurora. Always behind
+   content (z-0); never opacity-gated, so content is visible without JS.
+   Reduced-motion: frozen (no drift). */
+
+/* Grain: an SVG fractal-noise tile at very low opacity, blended over the
+   carbon. Feels tactile, never a flat fill. */
+.film-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+/* A single dust mote — a tiny warm speck, barely there. Positioned per
+   instance via inline style; this is the treatment only. */
+.dust-mote {
+  position: absolute;
+  z-index: 0;
+  border-radius: 9999px;
+  background: rgba(232, 184, 75, 0.5);
+  pointer-events: none;
+  opacity: 0;
+  animation: dust-drift 14s ease-in-out infinite;
+}
+
+@keyframes dust-drift {
+  0%   { opacity: 0;   transform: translateY(8px); }
+  35%  { opacity: 0.5; transform: translateY(0); }
+  70%  { opacity: 0.3; transform: translateY(-6px); }
+  100% { opacity: 0;   transform: translateY(-14px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dust-mote { animation: none; opacity: 0.25; }
+  .film-grain { opacity: 0.04; }
 }

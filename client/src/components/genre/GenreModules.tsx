@@ -112,7 +112,7 @@ export function GenreModules({ modules, items, credibility, watchOrder, argument
       {modules.includes("topic") && <TopicCluster topics={buildTopics(items)} onTopicSelect={onTopicSelect} />}
       {directorIndex.length > 0 && (
         <section className="mt-6 rounded-lg border border-white/10 bg-white/5 p-4" aria-label="Director index">
-          <SectionHead variant="title">Filmmakers in this world</SectionHead>
+          <SectionHead>Filmmakers in this world</SectionHead>
           <ul className="flex flex-wrap gap-2">
             {directorIndex.map(({ name, count }) => (
               <li

@@ -91,7 +91,7 @@ export function ArgumentPanel({ thesis, counterpoint, comparisons, tmdbId }: Pro
 
   return (
     <section aria-label="The argument" className="rounded-2xl bg-white/[0.03] p-5">
-      <h3 className="readout mb-2">The argument</h3>
+      <h3 className="text-xs tracking-tight text-mist-400">The argument</h3>
       <p className="text-sm leading-relaxed text-white/80">{thesis}</p>
 
       {rows.length > 0 && (
