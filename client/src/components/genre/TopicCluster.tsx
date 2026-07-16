@@ -34,7 +34,7 @@ export function TopicCluster({ topics, onTopicSelect }: Props) {
           {onTopicSelect ? (
             <button
               type="button"
-              className="mb-3 cursor-pointer text-sm font-medium uppercase tracking-wide text-white/50 transition-colors hover:text-white/80"
+              className="mb-3 cursor-pointer text-sm font-medium text-mist-300 transition-colors hover:text-white"
               onClick={() => onTopicSelect(t.id)}
             >
               {t.label}

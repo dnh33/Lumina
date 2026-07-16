@@ -14,7 +14,7 @@ const ALL_MOODS = Array.from(
 function MoodEntry() {
   return (
     <section aria-label="Browse by mood">
-      <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-amber-300/70">
+      <h2 className="mb-3 text-sm font-medium text-mist-300">
         Browse by mood
       </h2>
       <div className="flex flex-wrap gap-2">
@@ -27,7 +27,7 @@ function MoodEntry() {
               key={mood}
               to={`/genre/${target}`}
               aria-label={`Browse ${mood} worlds`}
-              className="rounded-full border border-white/[0.08] px-3 py-1 text-sm capitalize text-white/70 transition-colors hover:border-amber-400/30 hover:text-white/90"
+              className="rounded-full border border-white/[0.08] px-3 py-1 text-sm capitalize text-white/70 transition-colors hover:border-gold-400/30 hover:text-white/90"
             >
               {mood}
             </Link>
@@ -67,16 +67,16 @@ export default function GenrePicker() {
       <MoodEntry />
 
       <section>
-        <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-amber-300/70">Featured</h2>
+        <h2 className="mb-3 text-sm font-medium text-mist-300">Featured</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           {proof.map(({ slug, world }) => (
             <Link
               key={slug}
               to={`/genre/${slug}`}
-              className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:border-amber-400/30 hover:bg-amber-400/[0.04]"
+              className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:border-gold-400/30 hover:bg-gold-400/[0.04]"
             >
               <p className="font-[var(--font-display)] text-xl capitalize text-white/90">{slug}</p>
-              <p className="mt-1 text-sm text-amber-300/70">{world.metaphor}</p>
+              <p className="mt-1 text-sm text-mist-400">{world.metaphor}</p>
               <p className="mt-2 text-xs text-white/50">{world.register.tonePrompt}</p>
             </Link>
           ))}
@@ -84,7 +84,7 @@ export default function GenrePicker() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-white/40">All genres</h2>
+        <h2 className="mb-3 text-sm font-medium text-mist-300">All genres</h2>
         <div className="flex flex-wrap gap-2">
           {rest.map((g) => (
             <Link

@@ -110,7 +110,7 @@ export default function CompareWorlds() {
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-8">
       <header className="space-y-2">
-        <p className="text-2xs uppercase tracking-widest text-mist-500">
+        <p className="text-2xs text-mist-500">
           Compare worlds
         </p>
         <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold text-mist-100">
@@ -126,7 +126,7 @@ export default function CompareWorlds() {
         <div className="grid gap-6 md:grid-cols-2">
           {/* Divergent theses — the two curator hooks side by side. */}
           <section className="rounded-2xl bg-white/[0.03] p-5 ring-1 ring-white/10">
-            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-mist-400">
+            <h2 className="mb-3 text-sm font-medium text-mist-300">
               Divergent theses
             </h2>
             <div className="space-y-4 text-sm leading-relaxed text-mist-200">
@@ -141,7 +141,7 @@ export default function CompareWorlds() {
 
           {/* Shared anchors — titles anchored in both worlds. */}
           <section className="rounded-2xl bg-white/[0.03] p-5 ring-1 ring-white/10">
-            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-mist-400">
+            <h2 className="mb-3 text-sm font-medium text-mist-300">
               Shared anchors
             </h2>
             {sharedAnchors.length ? (
@@ -162,7 +162,7 @@ export default function CompareWorlds() {
 
           {/* Overlapping titles — same title in both rails. */}
           <section className="rounded-2xl bg-white/[0.03] p-5 ring-1 ring-white/10 md:col-span-2">
-            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-mist-400">
+            <h2 className="mb-3 text-sm font-medium text-mist-300">
               Overlapping titles
             </h2>
             {overlappingTitles.length ? (

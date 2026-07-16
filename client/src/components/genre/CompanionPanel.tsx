@@ -120,12 +120,10 @@ export function CompanionPanel({ world }: { world: GenreWorld }) {
       <motion.button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        whileHover={reduceMotion ? undefined : { scale: 1.06 }}
-        whileTap={reduceMotion ? undefined : { scale: 0.94 }}
         aria-label={open ? `Close the ${world.slug} companion` : `Talk to the ${world.slug} companion`}
         aria-expanded={open}
         title="Talk to the in-world companion"
-        className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-12 w-12 cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-br from-gold-300/90 to-gold-500/90 text-ink-950 shadow-[0_10px_36px_-6px_rgba(232,184,75,0.5)] md:bottom-6 md:right-8"
+        className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-12 w-12 cursor-pointer items-center justify-center rounded-2xl bg-gold-400 text-ink-950 hover:bg-gold-300 md:bottom-6 md:right-8"
       >
         {open ? (
           <X className="h-5 w-5" />
