@@ -17,8 +17,8 @@ describe("GenreEmptyState cold-start bootstrap loop (C10)", () => {
 
     const cta = screen.getByRole("button", { name: /anchor this world/i });
     expect(cta).toBeDefined();
-    // Tailored copy must remain intact even with the CTA present.
-    expect(screen.getByText(/A thin world/i)).toBeDefined();
+    // Tailored (Warm Interior) copy must remain intact even with the CTA present.
+    expect(screen.getByText(/A quiet room/i)).toBeDefined();
 
     fireEvent.click(cta);
     expect(onBootstrap).toHaveBeenCalledTimes(1);

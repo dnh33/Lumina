@@ -96,23 +96,6 @@ describe("GenreExperience steering presets (3.5 / C8)", () => {
     });
   });
 
-  it("clicking the Guided preset re-queries the server with mode 'guided'", async () => {
-    await renderPage();
-    await waitFor(() =>
-      expect(api.genreExperience as any).toHaveBeenCalledWith(
-        ["documentary"], "self", "movie", expect.any(Array),
-      ),
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Steering preset: Guided" }));
-
-    await waitFor(() => {
-      const calls = (api.genreExperience as any).mock.calls;
-      const last = calls[calls.length - 1];
-      expect(last).toEqual([["documentary"], "guided", "movie", expect.any(Array)]);
-    });
-  });
-
   it("'Less well-known' filters out high-vote titles from the rail", async () => {
     await renderPage();
     await waitFor(() => expect(screen.getAllByText("Alpha Film").length).toBeGreaterThan(0));

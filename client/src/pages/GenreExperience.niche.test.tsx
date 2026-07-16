@@ -41,7 +41,7 @@ function renderNiche() {
 describe("GenreExperience niche-gate (R6 / metric 9)", () => {
   it("shows a tailored empty state (not a rail) when below the threshold", async () => {
     renderNiche();
-    await waitFor(() => expect(screen.getByText(/The frontier is quiet/i)).toBeDefined());
+    await waitFor(() => expect(screen.getByText(/An uncharted frontier/i)).toBeDefined());
     // rails should NOT render -> the title cards are absent
     expect(screen.queryByText("Western One")).toBeNull();
     expect(screen.getByText(/2 \/ 6 titles/i)).toBeDefined();

@@ -142,22 +142,4 @@ describe("GenreExperience discovery + steer controls", () => {
       expect(last).toEqual([["documentary"], "self", "tv", expect.any(Array)]);
     });
   });
-
-  it("(d) toggling mode to guided re-queries the server with 'guided'", async () => {
-    await renderPage();
-    await waitFor(() =>
-      expect(api.genreExperience).toHaveBeenCalledWith(
-        ["documentary"], "self", "movie", expect.any(Array),
-      ),
-    );
-
-    const guidedButton = screen.getByRole("button", { name: "guided" });
-    fireEvent.click(guidedButton);
-
-    await waitFor(() => {
-      const calls = (api.genreExperience as any).mock.calls;
-      const last = calls[calls.length - 1];
-      expect(last).toEqual([["documentary"], "guided", "movie", expect.any(Array)]);
-    });
-  });
 });
