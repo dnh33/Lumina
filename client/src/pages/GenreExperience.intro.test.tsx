@@ -55,24 +55,27 @@ async function renderIntro() {
   );
 }
 
-describe("GenreExperience openGuided reads from the split intro query (P1.3)", () => {
+describe("GenreExperience split intro query (P1.3)", () => {
   beforeEach(() => {
     navigate.mockClear();
   });
 
-  it("navigates to /chat with a prefill sourced from the intro query", async () => {
+  it("renders the world sourced from the split intro query (no eject button)", async () => {
     await renderIntro();
     await waitFor(() =>
-      expect(screen.getByText(/Explore with the Companion/i)).toBeDefined(),
+      expect(screen.getByText(/For You in this World/i)).toBeDefined(),
     );
-    fireEvent.click(screen.getByText(/Explore with the Companion/i));
-    expect(navigate).toHaveBeenCalledWith(
+    expect(screen.queryByText(/Explore with the Companion/i)).toBeNull();
+  });
+
+  it("does NOT navigate to /chat from the genre page (B2)", async () => {
+    await renderIntro();
+    await waitFor(() =>
+      expect(screen.getByText(/For You in this World/i)).toBeDefined(),
+    );
+    expect(navigate).not.toHaveBeenCalledWith(
       "/chat",
-      expect.objectContaining({
-        state: expect.objectContaining({
-          prefill: expect.stringContaining("Step into the evidence."),
-        }),
-      }),
+      expect.objectContaining({ state: expect.anything() }),
     );
   });
 });

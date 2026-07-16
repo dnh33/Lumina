@@ -42,10 +42,10 @@ export default function GenreExperience() {
     playWorldCue(world, "open");
   }, [world?.slug]);
 
-  // P2.8 (B4): mode (self|guided) + mediaType (movie|tv) are page-scope steer
-  // knobs. They live in the queryKey so React Query refetches the server
-  // experience whenever the user flips either — real server steering, no
-  // URL change required. Defaults preserve the legacy self/movie behavior.
+  // P2.8 (B4): mediaType (movie|tv) is a page-scope steer knob. It lives in
+  // the queryKey so React Query refetches the server experience when the user
+  // flips it — real server steering, no URL change required. The legacy
+  // "self" experience mode is the only server mode, so it is pinned to "self".
   // Task 4.4: exploration state (filter + steer + dismissed) is owned by
   // useGenreState — it is single source of truth, URL-addressable, and
   // persisted to localStorage so the world restores on reload / deep link.
@@ -60,9 +60,6 @@ export default function GenreExperience() {
     activeTags,
     setActiveTags,
   } = gs;
-  const mode = gs.steer.mode;
-  const setMode = (m: "self" | "guided") =>
-    gs.setSteer({ mode: m, mediaType: gs.steer.mediaType });
   const mediaType = gs.steer.mediaType;
   const setMediaType = (mt: "movie" | "tv") =>
     gs.setSteer({ mode: gs.steer.mode, mediaType: mt });
@@ -91,28 +88,18 @@ export default function GenreExperience() {
   }, []);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["genre-experience", slug, mode, mediaType],
-    queryFn: () => api.genreExperience([slug], mode, mediaType, world.modules),
+    queryKey: ["genre-experience", slug, "self", mediaType],
+    queryFn: () => api.genreExperience([slug], "self", mediaType, world.modules),
   });
 
   // P1.1/2.3: the curator intro is fetched separately so the rails paint
   // without waiting on the LLM. This query is non-blocking for the items.
   const { data: introData } = useQuery({
-    queryKey: ["genre-intro", slug, mode, mediaType],
-    queryFn: () => api.genreIntro([slug], mode, mediaType, world.modules),
+    queryKey: ["genre-intro", slug, "self", mediaType],
+    queryFn: () => api.genreIntro([slug], "self", mediaType, world.modules),
   });
 
   const navigate = useNavigate();
-  const openGuided = () => {
-    const hook = introData?.hook;
-    navigate("/chat", {
-      state: {
-        prefill: hook
-          ? `${hook} Take me deeper into the ${slug} world — what should I watch next and why?`
-          : `Walk me into the ${slug} world. What should I watch next and why?`,
-      },
-    });
-  };
 
   // P2.4: page-scope decade filter. `decade` is sourced from useGenreState
   // (single source of truth) — null means "all eras"; a number narrows the
@@ -403,7 +390,8 @@ export default function GenreExperience() {
 
           {/* P2.6 + P2.8: discovery + steer control bar.
               - Search / sort / tag-chips are client-side (re-filter `visibleItems`).
-              - Mode + mediaType flip the server queries via the queryKey. */}
+              - mediaType flips the server queries via the queryKey; mode is pinned
+                to the legacy "self" server mode (no client toggle). */}
           <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-white/[0.03] p-3 ring-1 ring-white/10">
             <label className="flex items-center gap-2 text-sm text-mist-300">
               <span className="sr-only">Search titles</span>
@@ -455,27 +443,6 @@ export default function GenreExperience() {
             </div>
 
             <div className="ml-auto flex flex-wrap items-center gap-3">
-              <div
-                role="group"
-                aria-label="Experience mode"
-                className="flex items-center gap-1 rounded-lg bg-ink-800 p-0.5 ring-1 ring-white/10"
-              >
-                {(["self", "guided"] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    aria-pressed={mode === m}
-                    onClick={() => setMode(m)}
-                    className={`rounded-md px-2.5 py-1 text-2xs font-medium capitalize transition-colors ${
-                      mode === m
-                        ? "bg-gold-400/90 text-ink-950"
-                        : "text-mist-300 hover:text-mist-100"
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
               <div
                 role="group"
                 aria-label="Media type"
@@ -537,20 +504,6 @@ export default function GenreExperience() {
                 }`}
               >
                 TV
-              </button>
-              <button
-                type="button"
-                data-preset="mode-guided"
-                aria-label="Steering preset: Guided"
-                aria-pressed={mode === "guided"}
-                onClick={() => setMode("guided")}
-                className={`rounded-full px-3 py-1 text-2xs font-medium ring-1 transition-colors ${
-                  mode === "guided"
-                    ? "bg-gold-400/90 text-ink-950 ring-gold-400/60"
-                    : "bg-white/[0.04] text-mist-300 ring-white/10 hover:bg-white/[0.08]"
-                }`}
-              >
-                Guided
               </button>
               <button
                 type="button"
@@ -621,15 +574,6 @@ export default function GenreExperience() {
               ))}
             </Carousel>
           </div>
-
-          {introData?.hook && (
-            <button
-              onClick={openGuided}
-              className="rounded-full bg-[var(--world-accent)]/90 px-5 py-2.5 text-sm font-medium text-ink-950 transition-opacity hover:opacity-90"
-            >
-              Explore with the Companion
-            </button>
-          )}
 
           {/* Task 5.1 (C1): optional decorative worlds graph in a collapsible
               panel — complements the NeighborRail, doesn't replace it. */}

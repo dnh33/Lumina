@@ -13,7 +13,6 @@ const experience = {
   key: "movie:self:documentary",
   genres: ["documentary"],
   mode: "self",
-  intro: { hook: "Step into the evidence.", tone: "hushed, forensic", basedOn: ["The Act of Killing"] },
   items: [
     { tmdbId: 1, mediaType: "movie", title: "Doc One", year: 2015, overview: "", posterPath: null, backdropPath: null, voteAverage: 8.1, genreIds: [99], popularity: 10, inLibrary: false },
     { tmdbId: 2, mediaType: "movie", title: "Doc Two", year: 2018, overview: "", posterPath: null, backdropPath: null, voteAverage: 7.4, genreIds: [99], popularity: 9, inLibrary: false },
@@ -26,14 +25,20 @@ const experience = {
   profileState: "rich",
 };
 
+const intro = {
+  hook: "Step into the evidence.",
+  tone: "hushed, forensic",
+  basedOn: ["The Act of Killing"],
+};
+
 vi.mock("../lib/api.js", () => ({
   api: {
     genreExperience: vi.fn(async () => experience),
-    genreIntro: vi.fn(async () => experience.intro),
+    genreIntro: vi.fn(async () => intro),
   },
 }));
 
-async function renderGuided() {
+async function renderWorld() {
   const qc = new QueryClient();
   const mod = await import("./GenreExperience.js");
   return render(
@@ -47,20 +52,32 @@ async function renderGuided() {
   );
 }
 
-describe("GenreExperience AI-guided CTA", () => {
+describe("GenreExperience eject-to-/chat (B2 / K1)", () => {
   beforeEach(() => {
     navigate.mockClear();
   });
 
-  it("navigates to /chat with a prefilled narrative hook from the world", async () => {
-    await renderGuided();
-    await waitFor(() => expect(screen.getByText(/Explore with the Companion/i)).toBeDefined());
-    fireEvent.click(screen.getByText(/Explore with the Companion/i));
-    expect(navigate).toHaveBeenCalledWith(
+  it("renders the world WITHOUT a 'Explore with the Companion' eject button", async () => {
+    await renderWorld();
+    await waitFor(() => expect(screen.getByText(/For You in this World/i)).toBeDefined());
+    expect(screen.queryByText(/Explore with the Companion/i)).toBeNull();
+  });
+
+  it("never navigates to /chat from the genre page (in-world Companion is the only surface)", async () => {
+    await renderWorld();
+    await waitFor(() => expect(screen.getByText(/For You in this World/i)).toBeDefined());
+    // Interact broadly so any hidden eject path would have fired.
+    const buttons = screen.queryAllByRole("button");
+    for (const b of buttons) {
+      try {
+        fireEvent.click(b);
+      } catch {
+        /* ignore: some buttons need focused state */
+      }
+    }
+    expect(navigate).not.toHaveBeenCalledWith(
       "/chat",
-      expect.objectContaining({
-        state: expect.objectContaining({ prefill: expect.stringContaining("Step into the evidence.") }),
-      }),
+      expect.objectContaining({ state: expect.anything() }),
     );
   });
 });
