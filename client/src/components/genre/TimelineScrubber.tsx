@@ -14,6 +14,11 @@ interface Props {
    *  taste-evolution overlay) so the user can see WHERE their taste lives.
    *  This is purely additive — it never changes decade filtering. */
   anchors?: GenreAnchor[];
+  /** Deterministic, LLM-free era thesis for the currently selected decade
+   *  (Task 5.2 / D1). When `selectedDecade` is set AND this is provided, the
+   *  scrubber enters a zoomed state and surfaces this line. Computed by the
+   *  page from decade + world.metaphor + item count — no server endpoint. */
+  eraThesis?: string;
 }
 
 /** Floor a year to its decade. Exported so the genre page can filter by the
@@ -25,7 +30,7 @@ export function decadeOf(year: number | null): number {
 
 const labelFor = (decade: number) => (decade === 0 ? "Unknown" : `${decade}s`);
 
-export function TimelineScrubber({ items, selectedDecade, onDecade, anchors }: Props) {
+export function TimelineScrubber({ items, selectedDecade, onDecade, anchors, eraThesis }: Props) {
   const reduce = useReducedMotion();
   const decades = useMemo(() => {
     const map = new Map<number, CatalogItem[]>();
@@ -70,8 +75,17 @@ export function TimelineScrubber({ items, selectedDecade, onDecade, anchors }: P
   const atStart = currentIdx <= 0;
   const atEnd = currentIdx >= sortedDecades.length - 1;
 
+  // D1 (Task 5.2): a selected decade ZOOMS the world — not just filters.
+  // The scrubber enters a zoomed state (data-zoomed) so the parent can
+  // emphasize, and the active tab is marked (data-zoom) for emphasis.
+  const zoomed = selectedDecade != null;
+
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6" aria-label="Timeline">
+    <section
+      data-zoomed={zoomed ? "true" : "false"}
+      className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6"
+      aria-label="Timeline"
+    >
       <div className="mb-4 flex items-baseline justify-between gap-3">
         <h2 className="font-[var(--font-display)] text-lg font-semibold tracking-tight text-white/90">
           Timeline
@@ -102,9 +116,10 @@ export function TimelineScrubber({ items, selectedDecade, onDecade, anchors }: P
               onClick={() => (controlled ? onDecade?.(decade) : setInternal(decade))}
               className={`rounded-full px-3 py-1 text-sm transition-colors ${
                 active
-                  ? "bg-[var(--world-accent)]/90 text-ink-950"
+                  ? "bg-[var(--world-accent)]/90 text-ink-950 scale-[1.06] ring-2 ring-[var(--world-accent)]/60"
                   : "border border-white/[0.08] text-white/60 hover:text-white/90"
               }`}
+              data-zoom={active ? "true" : undefined}
             >
               {labelFor(decade)}
               {anchorDecades.has(decade) && (
@@ -131,6 +146,15 @@ export function TimelineScrubber({ items, selectedDecade, onDecade, anchors }: P
           ▶
         </button>
       </div>
+
+      {zoomed && eraThesis && (
+        <p
+          data-testid="era-thesis"
+          className="mb-4 rounded-xl border border-[var(--world-accent)]/30 bg-[var(--world-accent)]/[0.06] px-3 py-2 text-sm italic text-white/80"
+        >
+          {eraThesis}
+        </p>
+      )}
 
       <motion.ul
         className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"

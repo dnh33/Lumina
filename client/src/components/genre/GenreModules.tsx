@@ -34,6 +34,10 @@ interface Props {
    *  TimelineScrubber so decades that shaped the user's taste are marked
    *  on the era axis (C9 taste-evolution overlay). */
   anchors?: GenreAnchor[];
+  /** Deterministic, LLM-free era thesis for the selected decade (Task 5.2 / D1).
+   *  Forwarded to the TimelineScrubber so it can show the zoomed-era thesis line.
+   *  Computed by the page from decade + world.metaphor + item count. */
+  eraThesis?: string;
   /** The genre world this page is rendering. Drives the metaphor layout
    *  grammar (Task 4.1): a decorative backdrop for the Constellation/Frontier
    *  flagships + a themed TitleCard variant for every world. Optional for
@@ -61,7 +65,7 @@ function buildTopics(items: CatalogItem[]): TopicSpine[] {
  * (per genreWorld.modules) over the experience's items. One component,
  * N configs — NOT N page variants (design §13.8).
  */
-export function GenreModules({ modules, items, credibility, watchOrder, arguments: args, geo, makers, selectedDecade, onDecade, anchors, world }: Props) {
+export function GenreModules({ modules, items, credibility, watchOrder, arguments: args, geo, makers, selectedDecade, onDecade, anchors, world, eraThesis }: Props) {
   const layout = metaphorLayout(world);
   const accent = accentVar(world);
   // Nothing to render (no backdrop, no enabled modules) -> render nothing so
@@ -72,7 +76,7 @@ export function GenreModules({ modules, items, credibility, watchOrder, argument
       {layout.backdrop === "constellation" && <ConstellationBackdrop accent={accent} />}
       {layout.backdrop === "frontier" && <FrontierSpine accent={accent} />}
       {modules.includes("timeline") && (
-        <TimelineScrubber items={items} selectedDecade={selectedDecade} onDecade={onDecade} anchors={anchors} />
+        <TimelineScrubber items={items} selectedDecade={selectedDecade} onDecade={onDecade} anchors={anchors} eraThesis={eraThesis} />
       )}
       {modules.includes("topic") && <TopicCluster topics={buildTopics(items)} />}
       {modules.includes("critic") &&

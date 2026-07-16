@@ -256,3 +256,11 @@ select:focus-visible {
 .glow-gold {
   box-shadow: 0 0 24px rgba(232, 184, 75, 0.25);
 }
+
+/* ── Density-as-place (B8) ──────────────────────────────────────── */
+/* An ignored title reads as "set aside": dimmed + desaturated so it recedes
+   into the shelf background without vanishing entirely. */
+.density-dimmed {
+  opacity: 0.6;
+  filter: grayscale(0.6);
+}

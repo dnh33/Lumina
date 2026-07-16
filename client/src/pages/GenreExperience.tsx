@@ -17,6 +17,8 @@ import { GenreEmptyState } from "../components/genre/GenreEmptyState.js";
 import { decadeOf } from "../components/genre/TimelineScrubber.js";
 import { useGenreState } from "../lib/useGenreState.js";
 import { CompanionPanel } from "../components/genre/CompanionPanel.js";
+import { NeighborRail } from "../components/genre/NeighborRail.js";
+import { WorldsMap } from "../components/genre/WorldsMap.js";
 
 /** Niche-genre gate (design R6 / metric 9): below this many titles, show a
  *  tailored empty state instead of a thin rail. */
@@ -89,6 +91,19 @@ export default function GenreExperience() {
   const visibleItems = decade == null ? (data?.items ?? []) : (data?.items ?? []).filter(
     (it) => decadeOf(it.year) === decade,
   );
+
+  // Task 5.2 (D1): a selected decade ZOOMS the world, not just filters. The
+  // deterministic, LLM-free era thesis is derived from the decade + the world's
+  // metaphor + how many titles live in that decade. No server endpoint is added
+  // (per grill): this is a pure client computation that the TimelineScrubber
+  // surfaces as the zoomed-era thesis line.
+  const eraThesis = useMemo(() => {
+    if (decade == null) return undefined;
+    const count = visibleItems.length;
+    return count === 0
+      ? `Era thesis for the ${decade}s: ${world.metaphor} territory, still unexplored.`
+      : `Era thesis for the ${decade}s: ${world.metaphor} framed by ${count} ${count === 1 ? "title" : "titles"}.`;
+  }, [decade, visibleItems, world.metaphor]);
 
   // P2.6: client-side discovery controls. `decade` narrows first (above via
   // visibleItems); then search / tag-filter / sort compose on top. None of
@@ -475,7 +490,13 @@ export default function GenreExperience() {
             onDecade={setDecade}
             anchors={data.anchorsUsed}
             world={world}
+            eraThesis={eraThesis}
           />
+
+          {/* Task 5.1 (C1): cross-world warp. The NeighborRail is the primary
+              navigation surface; the WorldsMap is a decorative, optional
+              collapsible overview of how worlds connect. */}
+          <NeighborRail world={world} />
 
           <div data-shuffle={shuffle ? "true" : "false"}>
             <Carousel title="For You in this World" eyebrow="Seeded by the genre you chose">
@@ -493,6 +514,15 @@ export default function GenreExperience() {
               Explore with the Companion
             </button>
           )}
+
+          {/* Task 5.1 (C1): optional decorative worlds graph in a collapsible
+              panel — complements the NeighborRail, doesn't replace it. */}
+          <details className="rounded-2xl bg-white/[0.02] p-3 ring-1 ring-white/10">
+            <summary className="cursor-pointer text-2xs font-medium uppercase tracking-wider text-mist-500">
+              Worlds map
+            </summary>
+            <WorldsMap />
+          </details>
 
           {/* Task 4.3 (B2): ambient in-world Companion — distinct from the
               global dock (App.tsx hides ChatDock on /genre), no collision. */}
