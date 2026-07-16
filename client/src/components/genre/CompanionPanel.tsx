@@ -44,9 +44,7 @@ function welcomeFor(world: GenreWorld): Suggestion[] {
  * `welcomeSuggestions` — NOT a system prompt (useChat has none). Its
  * conversation is keyed under `GENRE_DOCK_CONVERSATION_KEY`, which is:
  *   - DISTINCT from the global `DOCK_CONVERSATION_KEY`, so it never collides
- *     with / clobbers the user's main ChatDock, and
- *   - CONSTANT (slug-independent), so navigating /genre/a → /genre/b keeps the
- *     same conversation — the in-flight stream is not aborted on slug remount.
+ *     with / clobbers the user's main ChatDock.
  *
  * The global ChatDock is hidden on /genre by App.tsx, so this is the only dock
  * on the page and there is no double-dock.

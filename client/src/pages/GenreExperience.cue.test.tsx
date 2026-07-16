@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { render, waitFor, act } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import GenreExperience from "./GenreExperience.js";
+import { SOUND_KEY } from "../lib/keys.js";
 
 // cuelume's engine touches Web Audio; isolate it so the mount cue is a
-// plain spy we can assert against.
-vi.mock("../lib/sound.js", () => ({
-  playCue: vi.fn(),
-}));
+// plain spy we can assert against. We do NOT mock sound.js — getSoundEnabled()
+// reads SOUND_KEY from localStorage, which is exactly the production path, so
+// driving localStorage is the real, deterministic gate (no mock-isolation flake).
 vi.mock("../lib/worldCue.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/worldCue.js")>();
   return { ...actual, playWorldCue: vi.fn(actual.playWorldCue) };
@@ -49,9 +49,24 @@ function renderAt(slug: string) {
 }
 
 describe("GenreExperience cue wiring", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default gate: sound OFF (no SOUND_KEY → getSoundEnabled() === false).
+    localStorage.clear();
+  });
 
-  it("plays the world's 'open' cue on mount", async () => {
+  it("does NOT play the world's 'open' cue on mount when sound is off", async () => {
+    // Ensure the gate is OFF via the real localStorage path.
+    localStorage.removeItem(SOUND_KEY);
+    await act(async () => {
+      renderAt("science-fiction");
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    expect(playWorldCue).not.toHaveBeenCalled();
+  });
+
+  it("plays the world's 'open' cue on mount when sound is enabled", async () => {
+    localStorage.setItem(SOUND_KEY, "1");
     renderAt("science-fiction");
     await waitFor(() =>
       expect(playWorldCue).toHaveBeenCalledWith(

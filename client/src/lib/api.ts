@@ -155,8 +155,12 @@ export const api = {
     }),
 
   /* insight & profile */
-  insight: (type: MediaType, tmdbId: number, refresh = false) =>
-    get<TitleInsight>(`/api/insight/${type}/${tmdbId}${refresh ? "?refresh=1" : ""}`),
+  insight: (type: MediaType, tmdbId: number, refresh = false, skipAnchorLog = false) =>
+    get<TitleInsight>(
+      `/api/insight/${type}/${tmdbId}${refresh ? "?refresh=1" : ""}${
+        skipAnchorLog ? (refresh ? "&" : "?") + "skipAnchorLog=1" : ""
+      }`,
+    ),
   recap: (libraryId: number, refresh = false) =>
     get<EpisodeRecap>(`/api/recap/${libraryId}${refresh ? "?refresh=1" : ""}`),
   deleteAllConversations: () =>

@@ -5,6 +5,7 @@ import { api } from "../lib/api.js";
 import { getGenreWorld } from "../lib/genreWorld.js";
 import { accentVar } from "../lib/metaphor.js";
 import { playWorldCue } from "../lib/worldCue.js";
+import { getSoundEnabled } from "../lib/sound.js";
 import { countryName, genreName, watchProviderNames } from "../lib/genreNames.js";
 import type { WatchProviders } from "../lib/types.js";
 import { Carousel } from "../components/Carousel.js";
@@ -34,7 +35,10 @@ export default function GenreExperience() {
   // Fire the world's "open" beat once per world entry (K5/B5 foundation:
   // consume register.cueBeatMap). Filter-driven "discover" beats are wired
   // in Phase 2 when the page owns the filter state.
+  // B5: gate the cue behind the user's sound preference — no audio autoplay
+  // until the user opts in (default OFF).
   useEffect(() => {
+    if (!getSoundEnabled()) return;
     playWorldCue(world, "open");
   }, [world?.slug]);
 
@@ -217,7 +221,7 @@ export default function GenreExperience() {
     Promise.all(
       data.items.map(async (it) => {
         try {
-          const insight = await api.insight(it.mediaType, it.tmdbId);
+          const insight = await api.insight(it.mediaType, it.tmdbId, false, true);
           if (cancelled) return;
           const counter = insight.comparisons?.[0];
           setLazyArguments((prev) => ({
@@ -319,31 +323,45 @@ export default function GenreExperience() {
   }, [slug]);
 
   if (isLoading) {
+    // C5 (remount race): CompanionPanel is position:fixed, so DOM order is
+    // irrelevant — render it FIRST (index 0) in every branch so its tree
+    // position is identical across loading/error/success and React never
+    // remounts it when the page refetches on slug change.
     return (
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        <div className="h-40 animate-pulse rounded-3xl bg-white/[0.04]" />
-      </div>
+      <>
+        <CompanionPanel world={world} />
+        <div className="mx-auto max-w-6xl px-4 py-10">
+          <div className="h-40 animate-pulse rounded-3xl bg-white/[0.04]" />
+        </div>
+      </>
     );
   }
 
   if (isError || !data) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-10 text-white/60">
-        Couldn&rsquo;t open this world right now.
-        <button
-          type="button"
-          aria-label="Retry loading this world"
-          onClick={() => refetch()}
-          className="mt-4 block rounded-lg bg-gold-400/90 px-4 py-2 text-sm font-medium text-ink-950"
-        >
-          Retry
-        </button>
-      </div>
+      <>
+        <CompanionPanel world={world} />
+        <div className="mx-auto max-w-6xl px-4 py-10 text-white/60">
+          Couldn&rsquo;t open this world right now.
+          <button
+            type="button"
+            aria-label="Retry loading this world"
+            onClick={() => refetch()}
+            className="mt-4 block rounded-lg bg-gold-400/90 px-4 py-2 text-sm font-medium text-ink-950"
+          >
+            Retry
+          </button>
+        </div>
+      </>
     );
   }
 
   return (
     <>
+      {/* C5 (remount race): CompanionPanel FIRST (index 0) so its tree
+          position is identical across loading/error/success → no remount
+          on slug change. position:fixed, so DOM order is visual-irrelevant. */}
+      <CompanionPanel world={world} />
       <a
         href="#world-main"
         onClick={(e) => {
@@ -638,8 +656,9 @@ export default function GenreExperience() {
           />
 
           {/* Task 4.3 (B2): ambient in-world Companion — distinct from the
-              global dock (App.tsx hides ChatDock on /genre), no collision. */}
-          <CompanionPanel world={world} />
+              global dock (App.tsx hides ChatDock on /genre), no collision.
+              Rendered FIRST (index 0) so its tree position matches the
+              loading/error branches (C5 remount fix). */}
         </>
       )}
       </main>

@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { getGenreWorld, type GenreWorld } from "../../lib/genreWorld.js";
 
 interface NeighborRailProps {
@@ -14,6 +14,7 @@ interface NeighborRailProps {
  */
 export function NeighborRail({ world }: NeighborRailProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const neighbors = world.register.adjacency ?? [];
 
   if (neighbors.length === 0) return null;
@@ -30,7 +31,7 @@ export function NeighborRail({ world }: NeighborRailProps) {
             <li key={slug}>
               <button
                 type="button"
-                onClick={() => navigate(`/genre/${slug}`)}
+                onClick={() => navigate(`/genre/${slug}${location.search}`)}
                 className="rounded-full bg-white/[0.05] px-3 py-1 text-sm text-mist-200 ring-1 ring-white/10 transition-colors hover:bg-white/[0.1] hover:text-mist-100"
               >
                 {neighbor.slug === slug ? neighborSlugLabel(slug) : slug}

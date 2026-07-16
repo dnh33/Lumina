@@ -86,7 +86,9 @@ describe("GenreExperience lazy argument enrichment (P2.2)", () => {
     // effects may re-run, so assert >= per-item, not exactly once).
     await waitFor(() => expect(insight.mock.calls.length).toBeGreaterThanOrEqual(items.length));
     items.forEach((it) => {
-      expect(insight).toHaveBeenCalledWith(it.mediaType, it.tmdbId);
+      // Bulk genre prefetch must pass skipAnchorLog=true so curation-time
+      // reads don't pollute the anchor log (K3 anti-fatigue guard).
+      expect(insight).toHaveBeenCalledWith(it.mediaType, it.tmdbId, false, true);
     });
 
     // The ArgumentPanels stream in with the fetched thesis.
