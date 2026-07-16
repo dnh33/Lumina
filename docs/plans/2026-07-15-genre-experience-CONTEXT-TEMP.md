@@ -236,3 +236,82 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
 - Server previously killed (port 4000 free). `.env` symlinked from primary repo (NOT committed).
 - CC quota 429 wall persists → direct `delegate_task` (sonnet/opus leaf) for TDD build.
 - No "Generated with" PR trailer. Human review (Daniel) required before merge.
+
+---
+
+## PHASE: DEEP 5-AXIS SPEC REVIEW + FIX PLAN (2026-07-16)
+
+### Why this phase exists
+Daniel demanded a meticulous 5-axis spec review (grill-with-docs) of ALL shipped Worlds-v2 work,
+with ALL findings in ONE file + a checklist, and doubted the first review completed under compaction.
+A FRESH 5-agent council ran (2 waves) and confirmed: the first pass was structurally incomplete
+(only ~7 of 33 shipped components reviewed). Full results consolidated in the single review file.
+
+### Single source of truth (READ THESE, don't trust chat memory)
+- **`docs/plans/2026-07-15-worlds-v2-5axis-review.md`** — THE review + fix plan. Contains:
+  §1-5 five-axis verdict table, §2 defect register, §6 fresh-team findings, §7 FINAL consolidated
+  defect register (HIGH/MED/MINOR), §8 checklist, §9 FIX PLAN (per-defect self-contained CC/subagent
+  briefs with root cause + file:line + TDD shape + gate). **This is the brief subagents receive.**
+- This CONTEXT-TEMP section is the RESUME-POINT summary only.
+
+### Review outcome (verified against code, not plan)
+- Build GREEN: client 240 tests, server 111 tests, both tsc clean, build clean. Branch 0 behind / 82 ahead.
+- **7 original blockers RE-CONFIRMED** by fresh team: K3 anchor storm, K1 guided no-op, C5 Companion
+  remount, B2 eject CTA, B5 sound autoplay, C2 libraryVersion orphaned, D7 topic unwired.
+- **7+ NEW defects found** (first pass missed): N8 NeighborRail drops ?mediaType=tv, B6a D1 zoom
+  reshaped, N7 MarathonBuilder includes watched, W4 accent hardcodes leak, N1 duplicate controls,
+  N9 CompareWorlds unverified, + N4/N5/N6 trivial.
+- **K2a counterpoint tmdbId RESOLVED** (actually wired end-to-end) — removed from defects.
+- Premise-audit: branch 0 behind confirmed; 26/33 components never opened by first review.
+
+### TWO DECISIONS RESOLVED (2026-07-16)
+1. **C2 libraryVersion → DROP.** 2-lens council (code-truth + UX) both DROP. Persisted blob
+   (`useGenreState.ts:21-25 PersistedBlob = {scrub,steer,dismissed}`) is 100% library-agnostic
+   steer state; live items come from react-query on mount, so it can't go stale. Wiring would nuke
+   user filters on a spurious version bump. Minimal change: delete `libraryVersion`+interface
+   (`libraryService.ts:489-511`) + `server/test/libraryService.version.test.ts`; correct design doc
+   §C2 (154-156, 125, 226-227) → DEFERRED. Gate: server green, no dangling refs.
+2. **B6a D1 decade zoom → IMPLEMENT real zoom.** Daniel decision. Decade must change layout/spine
+   emphasis BEYOND `data-zoomed` attr + add per-decade LLM era-thesis (lazy, graceful fallback to
+   deterministic string; cache per (slug,decade); guard skipAnchorLog if touches titleInsight).
+   Largest Wave C item — own subagent, sequenced LAST in Wave C.
+
+### FIX EXECUTION MODEL (locked)
+- Subagents via `delegate_task` leaf (CC/`claude-code-infra` quota-blocked 429). Same no-git rule:
+  subagents WRITE CODE ONLY; orchestrator commits explicit paths after independent re-verify.
+- Each subagent brief = self-contained (root cause + file:line + TDD shape + gate) from §9 of review file.
+- Orchestrator re-runs `npm run test` (client+server) + both `tsc --noEmit` + `npm run build` per wave
+  BEFORE signing off. No commit with `git add -A`.
+
+### WAVE ORDER (ready to dispatch)
+- **Wave A (HIGH, no open decisions):** K3 (anchor storm: misc.ts + api.ts:158 + GenreExperience.tsx:220
+  pass skipAnchorLog; server test 0 anchors), B5 (sound.ts:23 → default false + gate mount cue),
+  C5 (App.tsx:34 slug-stable /genre key + genre remount-race test + delete false CompanionPanel comment),
+  N8 (NeighborRail.tsx:33 preserve search params).
+- **Wave B (HIGH, no open decisions):** K1 (remove guided toggle + openGuided + guided.test.tsx, keep
+  mode:"self"), B2 (remove eject CTA GenreExperience.tsx:607-614). Couples with K1.
+- **Wave C (MEDIUM, decisions resolved):** D7 (onTopicSelect→GenreModules), N1 (consolidate dup
+  controls w/ K1), B5b (discover beat on filter change), N7 (MarathonBuilder exclude watched),
+  W4 (consume --world-accent in CredibilityStrip/GeoMap/WatchOrderSequencer), C2 (DROP per council),
+  B6a (IMPLEMENT real zoom — own subagent, LAST), N9 (CompareWorlds verify+test), N6/N4/N5 trivial.
+
+### RESUME POINT (if compacted mid-fix)
+1. Read `docs/plans/2026-07-15-worlds-v2-5axis-review.md` §9 for the exact brief of the next defect.
+2. `git status` — see which wave's files are uncommitted / which defects are done.
+3. Dispatch next wave's subagent(s) via `delegate_task` with the §9 brief pasted in.
+4. After subagent returns: independently re-run client+server test + tsc + build. If green, commit
+   explicit files (no -A). If red, the subagent's "green" is a false report → reproduce + fix.
+5. Update §8 checklist in the review file as items close. Update this CONTEXT-TEMP at wave boundaries.
+6. After all waves: live browser re-verify (boot server+client): no anchor storm on load, TV deep-link
+   survives genre hop, Companion survives slug change, topic click filters, sound silent on first load,
+   marathon excludes watched, decade zoom visibly re-emphasizes world.
+7. PR gated on Daniel's /npm run dev review — NO merge without Daniel, NO "Generated with" trailer.
+
+### Open items / notes
+- Hermes data lives at `C:/Users/Danie/AppData/Local/hermes/...` (NOT `~/.hermes` — that's MSYS /home,
+  empty). Delegation cache: `C:/Users/Danie/AppData/Local/hermes/profiles/runeforge-coder/cache/delegation/`.
+- `client/vout.txt` is an untracked stray (leftover from a vite run) — leave it, don't commit.
+- The review file is intentionally UNTRACKED (kept out of PR diff). Commit only CONTEXT-TEMP at wave
+  boundaries.
+
+
