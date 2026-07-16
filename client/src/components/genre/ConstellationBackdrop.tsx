@@ -63,7 +63,7 @@ export function ConstellationBackdrop({ accent }: Props) {
           />
         ))}
       </g>
-      <g fill={accent}>
+      <g fill={accent} className="constellation-web">
         {NODES.map((n, i) => (
           <circle key={`n-${i}`} cx={n.x} cy={n.y} r={i % 4 === 0 ? 0.9 : 0.5} />
         ))}

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { GENRE_WORLDS, getGenreWorld, MOOD_TO_SLUGS } from "../lib/genreWorld.js";
 import type { Genre } from "../lib/types.js";
+import { ConstellationBackdrop } from "../components/genre/ConstellationBackdrop.js";
 
 const PROOF_SLUGS = Object.keys(GENRE_WORLDS);
 
@@ -54,7 +55,13 @@ export default function GenrePicker() {
   );
 
   return (
-    <div className="mx-auto max-w-5xl space-y-10 px-4 py-10">
+    <div className="relative mx-auto max-w-5xl overflow-hidden px-4 py-10">
+      {/* Signature atmosphere: a faint gold constellation web (bespoke SVG
+          geometry, NOT the banned colored-orb aurora) + cinematic grain.
+          Both sit behind content (-z-10 / z-0); never opacity-gated. */}
+      <ConstellationBackdrop accent="#e8b84b" />
+      <div aria-hidden className="film-grain" />
+      <div className="relative z-10 space-y-10">
       <header>
         <h1 className="font-[var(--font-display)] text-3xl font-semibold tracking-tight text-white">
           Worlds
@@ -97,6 +104,7 @@ export default function GenrePicker() {
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }

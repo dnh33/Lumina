@@ -384,7 +384,19 @@ select:focus-visible {
   100% { opacity: 0;   transform: translateY(-14px); }
 }
 
+/* Constellation web — a slow, calm breath so the signature atmosphere is
+   alive, not dead (slop.md: "dead-looking is a fail"). Whole-web opacity
+   drift only; never gates content. Reduced-motion: frozen. */
+.constellation-web {
+  animation: constellation-breathe 9s ease-in-out infinite;
+}
+@keyframes constellation-breathe {
+  0%, 100% { opacity: 0.14; }
+  50%      { opacity: 0.24; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dust-mote { animation: none; opacity: 0.25; }
   .film-grain { opacity: 0.04; }
+  .constellation-web { animation: none; }
 }
