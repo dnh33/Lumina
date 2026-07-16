@@ -200,15 +200,14 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
   * PHASE 4 COMPLETE (4.4 bcc3f7b + 4.1 cd80825 + 4.3 02a3362). Differentiator engine shipped.
   * PHASE 5 COMPLETE (ae01384, 196 tests, build ok). Cross-world warp + decade zoom + density shipped.
   * PHASE 6 (deepenings) STARTED:
-    - Wave 6a DISPATCHED (deleg_6a7147e7, 3 parallel): 6.1 argument dialogue (D2),
-      6.3 critic deepen (D5), 6.4+6.5 maker index + topic axis (D6+D7, combined — both
-      GenreModules). Independent files → parallel-safe. No-commit rule.
-    - Wave 6b (after 6a): 6.8 export (C6, new ExportWorld), 6.2 geo/Frontier (D4, GeoMap),
-      6.6 watchorder+marathon (C7), 6.7 compare (C4, new CompareWorlds). Sequenced to avoid
-      GenreExperience.tsx / GenreModules.tsx collision with 6a.
-  * PHASE 7 (TV+a11y+polish): 7.1 TV genre (K1), 7.2 per-metaphor empty states, 7.3 a11y audit.
-    Then final verify + PR (gated on Daniel's /npm run dev review).
-  - PHASE 6 in flight (6.1/6.3/6.4/6.5). PHASES 7: pending (TV+a11y+polish). See wave breakdown above.
+    * PHASE 6 wave 6a DONE (orchestrator committed 40d1fdd; subagent 6.4+6.5 FALSE "214/217
+      flaky" claim — orchestrator showed 217/217). Client 217 tests. 6.1/6.3/6.4/6.5 shipped.
+    * PHASE 6 wave 6b DISPATCHED (deleg_42e78727, 2 parallel): SubA = 6.2 geo/Frontier (D4) +
+      6.6 watchorder+marathon (C7) + 6.8 export (C6) — combined page owner (avoid GenreExperience
+      collision). SubB = 6.7 compare (C4, new CompareWorlds page + route, independent). No-commit.
+    * PHASE 6 ENDS after 6b. Then PHASE 7 (TV+a11y+polish): 7.1 TV (K1), 7.2 per-metaphor empty
+      states, 7.3 a11y audit. Then final verify + PR (gated on Daniel's /npm run dev review).
+  - PHASE 6 in flight (6.2/6.6/6.8/6.7). PHASE 7: pending (TV+a11y+polish). See wave breakdown above.
 - RESILIENCE: at ~62% context — CONTEXT-TEMP is the compaction-survival doc; commit it often.
 - COMMITS so far (this workstream): `b2873b2` broader council, `1122d6e` design, `09ac32f` grill
   fold, `6ae2b78` scope resolve, `f51e110` plan. (Feature code commits land as subagents finish.)
