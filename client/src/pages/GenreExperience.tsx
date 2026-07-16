@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api.js";
 import { getGenreWorld } from "../lib/genreWorld.js";
@@ -63,7 +63,30 @@ export default function GenreExperience() {
   const setMediaType = (mt: "movie" | "tv") =>
     gs.setSteer({ mode: gs.steer.mode, mediaType: mt });
 
-  const { data, isLoading, isError } = useQuery({
+  // 7.1 (K1): the Movies/TV toggle is deep-linkable via the `?mediaType=tv`
+  // search param. `setMediaType` steers the server queries (queryKey); this
+  // wrapper additionally mirrors the choice into the URL (replace nav) so a
+  // TV world can be shared/bookmarked. 'movie' is the default and is omitted
+  // from the URL to keep links tidy.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const setMediaTypeParam = (mt: "movie" | "tv") => {
+    setMediaType(mt);
+    const next = new URLSearchParams(searchParams);
+    if (mt === "movie") next.delete("mediaType");
+    else next.set("mediaType", mt);
+    setSearchParams(next, { replace: true });
+  };
+
+  // On mount, honor a deep-linked `?mediaType=tv` (default 'movie'). This runs
+  // once so a TV world opened from a share link starts in TV mode.
+  useEffect(() => {
+    const mt = searchParams.get("mediaType");
+    if (mt === "tv") setMediaType("tv");
+    else if (mt === "movie") setMediaType("movie");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["genre-experience", slug, mode, mediaType],
     queryFn: () => api.genreExperience([slug], mode, mediaType, world.modules),
   });
@@ -286,6 +309,15 @@ export default function GenreExperience() {
 
   const isNiche = (data?.items.length ?? 0) < NICHE_THRESHOLD;
 
+  // 7.3 (C3): skip-link target. The skip link (rendered below) focuses this
+  // main landmark on activation; we also move focus here on slug change so a
+  // deep link / world switch lands keyboard + screen-reader users in content.
+  // Declared above the early returns so hook order is stable across renders.
+  const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    mainRef.current?.focus();
+  }, [slug]);
+
   if (isLoading) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-10">
@@ -298,15 +330,37 @@ export default function GenreExperience() {
     return (
       <div className="mx-auto max-w-6xl px-4 py-10 text-white/60">
         Couldn&rsquo;t open this world right now.
+        <button
+          type="button"
+          aria-label="Retry loading this world"
+          onClick={() => refetch()}
+          className="mt-4 block rounded-lg bg-gold-400/90 px-4 py-2 text-sm font-medium text-ink-950"
+        >
+          Retry
+        </button>
       </div>
     );
   }
 
   return (
-    <div
-      style={{ ["--world-accent" as any]: accentVar(world) }}
-      className="mx-auto max-w-6xl space-y-8 px-4 py-8"
-    >
+    <>
+      <a
+        href="#world-main"
+        onClick={(e) => {
+          e.preventDefault();
+          mainRef.current?.focus();
+        }}
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-gold-400 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ink-950"
+      >
+        Skip to world
+      </a>
+      <main
+        id="world-main"
+        tabIndex={-1}
+        ref={mainRef}
+        style={{ ["--world-accent" as any]: accentVar(world) }}
+        className="mx-auto max-w-6xl space-y-8 px-4 py-8 outline-none"
+      >
       <ExperienceHero
         slug={slug}
         world={world}
@@ -414,7 +468,7 @@ export default function GenreExperience() {
                     key={mt}
                     type="button"
                     aria-pressed={mediaType === mt}
-                    onClick={() => setMediaType(mt)}
+                    onClick={() => setMediaTypeParam(mt)}
                     className={`rounded-md px-2.5 py-1 text-2xs font-medium capitalize transition-colors ${
                       mediaType === mt
                         ? "bg-gold-400/90 text-ink-950"
@@ -443,7 +497,7 @@ export default function GenreExperience() {
                 data-preset="media-movie"
                 aria-label="Steering preset: Movies"
                 aria-pressed={mediaType === "movie"}
-                onClick={() => setMediaType("movie")}
+                onClick={() => setMediaTypeParam("movie")}
                 className={`rounded-full px-3 py-1 text-2xs font-medium ring-1 transition-colors ${
                   mediaType === "movie"
                     ? "bg-gold-400/90 text-ink-950 ring-gold-400/60"
@@ -457,7 +511,7 @@ export default function GenreExperience() {
                 data-preset="media-tv"
                 aria-label="Steering preset: TV"
                 aria-pressed={mediaType === "tv"}
-                onClick={() => setMediaType("tv")}
+                onClick={() => setMediaTypeParam("tv")}
                 className={`rounded-full px-3 py-1 text-2xs font-medium ring-1 transition-colors ${
                   mediaType === "tv"
                     ? "bg-gold-400/90 text-ink-950 ring-gold-400/60"
@@ -588,6 +642,7 @@ export default function GenreExperience() {
           <CompanionPanel world={world} />
         </>
       )}
-    </div>
+      </main>
+    </>
   );
 }

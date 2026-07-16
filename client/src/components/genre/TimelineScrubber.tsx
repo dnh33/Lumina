@@ -87,13 +87,13 @@ export function TimelineScrubber({ items, selectedDecade, onDecade, anchors, era
       aria-label="Timeline"
     >
       <div className="mb-4 flex items-baseline justify-between gap-3">
-        <h2 className="font-[var(--font-display)] text-lg font-semibold tracking-tight text-white/90">
+        <h2 id="timeline-heading" className="font-[var(--font-display)] text-lg font-semibold tracking-tight text-white/90">
           Timeline
         </h2>
         <span className="text-xs uppercase tracking-wider text-white/40">scrub by era</span>
       </div>
 
-      <div className="mb-5 flex flex-wrap items-center gap-2" role="tablist" aria-label="Decades">
+      <div className="mb-5 flex flex-wrap items-center gap-2" role="tablist" aria-labelledby="timeline-heading">
         <button
           type="button"
           aria-label="Previous decade"
@@ -108,11 +108,14 @@ export function TimelineScrubber({ items, selectedDecade, onDecade, anchors, era
         </button>
         {decades.map(([decade]) => {
           const active = decade === selected;
+          const tabId = `timeline-tab-${decade}`;
           return (
             <button
               key={decade}
+              id={tabId}
               role="tab"
               aria-selected={active}
+              aria-controls="timeline-rail"
               onClick={() => (controlled ? onDecade?.(decade) : setInternal(decade))}
               className={`rounded-full px-3 py-1 text-sm transition-colors ${
                 active
@@ -157,6 +160,7 @@ export function TimelineScrubber({ items, selectedDecade, onDecade, anchors, era
       )}
 
       <motion.ul
+        id="timeline-rail"
         className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
         initial={reduce ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
