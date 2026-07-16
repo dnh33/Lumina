@@ -124,17 +124,55 @@ export default function GenreExperience() {
   );
 
   // Task 5.2 (D1): a selected decade ZOOMS the world, not just filters. The
-  // deterministic, LLM-free era thesis is derived from the decade + the world's
-  // metaphor + how many titles live in that decade. No server endpoint is added
-  // (per grill): this is a pure client computation that the TimelineScrubber
-  // surfaces as the zoomed-era thesis line.
-  const eraThesis = useMemo(() => {
+  // deterministic, LLM-free era thesis is the *fallback* — derived from the
+  // decade + the world's metaphor + how many titles live in that decade. It
+  // paints immediately so the UI never blanks; a lazily-fetched LLM thesis
+  // (see below) replaces it once it streams in.
+  const deterministicEraThesis = useMemo(() => {
     if (decade == null) return undefined;
     const count = visibleItems.length;
     return count === 0
       ? `Era thesis for the ${decade}s: ${world.metaphor} territory, still unexplored.`
       : `Era thesis for the ${decade}s: ${world.metaphor} framed by ${count} ${count === 1 ? "title" : "titles"}.`;
   }, [decade, visibleItems, world.metaphor]);
+
+  // B6a (D1 real zoom): the resolved era-thesis. Starts at the deterministic
+  // fallback and is upgraded to an LLM-generated thesis for (slug, decade) once
+  // it arrives. Cached per (slug, decade) so re-selecting a decade is instant
+  // and we never double-hit the LLM. Non-blocking: the rails paint from the
+  // fallback first; the swap happens after paint.
+  const [eraThesis, setEraThesis] = useState<string | undefined>(deterministicEraThesis);
+  const eraThesisCache = useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    setEraThesis(deterministicEraThesis); // paint fallback immediately
+    if (decade == null) return;
+    const cacheKey = `${slug}:${decade}`;
+    const cached = eraThesisCache.current.get(cacheKey);
+    if (cached != null) {
+      setEraThesis(cached);
+      return;
+    }
+    const rep = visibleItems[0];
+    if (!rep) return; // empty decade — fallback stands
+    if (typeof api.insight !== "function") return; // no LLM transport: keep deterministic fallback
+    let cancelled = false;
+    api
+      .insight(rep.mediaType, rep.tmdbId, false, true) // skipAnchorLog: decade zoom must not double-count anchors
+      .then((insight) => {
+        if (cancelled) return;
+        const ll = (insight?.hook ?? insight?.text ?? "").trim();
+        if (!ll) return; // graceful: keep deterministic fallback
+        eraThesisCache.current.set(cacheKey, ll);
+        setEraThesis(ll);
+      })
+      .catch(() => {
+        /* graceful: deterministic fallback already painted */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decade, slug, deterministicEraThesis, visibleItems]);
 
   // P2.6: client-side discovery controls. `decade` narrows first (above via
   // visibleItems); then search / tag-filter / sort compose on top. None of
@@ -393,7 +431,7 @@ export default function GenreExperience() {
         tabIndex={-1}
         ref={mainRef}
         style={{ ["--world-accent" as any]: accentVar(world) }}
-        className="mx-auto max-w-6xl space-y-8 px-4 py-8 outline-none"
+        className={`mx-auto max-w-6xl space-y-8 px-4 py-8 outline-none${decade != null ? " zoomed-decade ring-1 ring-[var(--world-accent)]/30 rounded-3xl" : ""}`}
       >
       <ExperienceHero
         slug={slug}

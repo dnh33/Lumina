@@ -86,7 +86,10 @@ Pulled from `worlds-broader-council.md` (top of each list). Proposed MUST-CONSID
 ### Layer D — Deepenings (modules + metaphors)
 From `worlds-broader-council.md` (B-section). Highest-impact:
 - **D1 Timeline = World's spine + taste overlay** (anchors/watchlist on decade axis, per-decade
-  LLM era-thesis, decade *zooms* not just filters).
+  LLM era-thesis, decade *zooms* not just filters). **IMPLEMENTED (B6a, 2026-07-16):** selecting a
+  decade applies a layout-affecting `zoomed-decade` emphasis on `#world-main` AND swaps the
+  deterministic fallback thesis for a lazily-fetched LLM era-thesis (cached per `(slug, decade)`,
+  graceful fallback). No longer the visual-only / LLM-free reshaped version noted in the review.
 - **D2 Argument = dialogue** (counterpoint becomes real `/title` link; user annotation stored
   locally; surface pro/con/neutral from `insight.comparisons`).
 - **D3 Metaphor layouts** (B1 realized): **GRILL CORRECTION — Constellation node-map is a LARGE
