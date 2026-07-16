@@ -215,9 +215,16 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
     subagent left, verified 240/240 green). TV genre (K1, ?mediaType=tv deep-link) + a11y (C3,
     tablist/skip-link/retry) + per-metaphor empty states (7.2) all shipped.
     ALL PHASES 1-7 DONE. Client 240 tests, server 111, typecheck+build clean.
-  * FINAL VERIFY PENDING: grill re-gate (scope unchanged since plan → light) + LIVE server boot +
-    screenshot (Daniel's UI bar) + PR (gated on Daniel's /npm run dev review; NO merge without
-    states, 7.3 a11y audit. Then final verify + PR (gated on Daniel's /npm run dev review).
+  * FINAL VERIFY DONE (live): booted client (5173) + server (4000), browser-tested /genre/documentary:
+    hero + tone + origin line render; Timeline tablist (7.3 a11y) works; search/sort/genre/mode/
+    media-type controls present; Topic rail renders 20 titles; "Skip to world" link (7.3) present;
+    Companion CTA + World Map + Save note + Printable buttons render. Deep-link /genre/documentary
+    ?mediaType=tv returns REAL TV series (Cosmos, Planet Earth II, The Last Dance, Money Heist) —
+    K1 verified end-to-end. "Worlds map" (5.1 warp) collapsible lists 16 neighbor slugs. Export
+    (6.8) Save note/Printable present. VISUAL: polished dark editorial UI (vision model). Minor nit:
+    bottom feature block tall w/ empty space (non-blocking). Servers killed, ports 4000/5173 FREE.
+  * PR PENDING: branch 81 ahead of origin/main, 0 behind. Do NOT merge without Daniel. PR gated on
+    Daniel's /npm run dev review. No 'Generated with' trailer.
     - PHASE 7 DONE. FINAL VERIFY + PR pending (Daniel's /npm run dev review). See wave breakdown above.
 - RESILIENCE: at ~62% context — CONTEXT-TEMP is the compaction-survival doc; commit it often.
 - COMMITS so far (this workstream): `b2873b2` broader council, `1122d6e` design, `09ac32f` grill
