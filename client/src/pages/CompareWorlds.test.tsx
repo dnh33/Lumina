@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 
@@ -55,6 +55,46 @@ const B_EXP = {
   profileState: "rich" as const,
 };
 
+// Field-identity fixtures: deliberately DECOUPLE the anchor key (tmdbId) from
+// the title so a test can prove the diff keys on the right field.
+//   - "Anchor M" (tmdbId 100) ↔ "Anchor N, Different Title" (tmdbId 100):
+//     SAME tmdbId, DIFFERENT titles → must be a Shared anchor (keyed by tmdbId).
+//   - "Same Title Diff Id" in both, but tmdbId 200 (M) vs 300 (N):
+//     SAME title, DIFFERENT tmdbId → must NOT be a Shared anchor.
+//   - "Overlap Twin" in both with tmdbId 200 (M) vs 999 (N):
+//     SAME title, DIFFERENT tmdbId → must be an Overlapping title (keyed by title).
+const M_EXP = {
+  key: "m-world",
+  genres: ["m-world"],
+  mode: "self" as const,
+  intro: { hook: "M thesis.", tone: "curious", basedOn: [] },
+  items: [
+    makeItem(200, "Overlap Twin", { genreIds: [99] }),
+    makeItem(400, "Solo M", { genreIds: [99] }),
+  ],
+  anchorsUsed: [
+    { tmdbId: 100, mediaType: "movie" as const, title: "Anchor M", rating: 7.0, year: 2001 },
+    { tmdbId: 200, mediaType: "movie" as const, title: "Same Title Diff Id", rating: 6.0, year: 2002 },
+  ],
+  profileState: "rich" as const,
+};
+
+const N_EXP = {
+  key: "n-world",
+  genres: ["n-world"],
+  mode: "self" as const,
+  intro: { hook: "N thesis.", tone: "grounded", basedOn: [] },
+  items: [
+    makeItem(999, "Overlap Twin", { genreIds: [36] }),
+    makeItem(500, "Solo N", { genreIds: [36] }),
+  ],
+  anchorsUsed: [
+    { tmdbId: 100, mediaType: "movie" as const, title: "Anchor N, Different Title", rating: 7.5, year: 2005 },
+    { tmdbId: 300, mediaType: "movie" as const, title: "Same Title Diff Id", rating: 8.0, year: 2012 },
+  ],
+  profileState: "rich" as const,
+};
+
 // --- mock ------------------------------------------------------------------
 
 // Resolves the two worlds' experiences by slug. Returns undefined → throws so
@@ -62,6 +102,8 @@ const B_EXP = {
 const responses: Record<string, any> = {
   documentary: A_EXP,
   history: B_EXP,
+  "m-world": M_EXP,
+  "n-world": N_EXP,
 };
 
 vi.mock("../lib/api.js", () => ({
@@ -150,5 +192,32 @@ describe("CompareWorlds", () => {
       expect(screen.getByText(/could not be opened/i)).toBeInTheDocument(),
     );
     expect(api.genreExperience).toHaveBeenCalledTimes(2);
+  });
+
+  it("(d) keys shared anchors by tmdbId and overlaps by title — field-correctness", async () => {
+    // M_EXP / N_EXP deliberately DECOUPLE tmdbId from title:
+    //   - tmdbId 100 appears in both worlds as an anchor, but the titles
+    //     differ ("Anchor M" vs "Anchor N, Different Title") → must be a
+    //     Shared anchor (keyed by tmdbId), rendering M's title.
+    //   - "Same Title Diff Id" shares a title across both worlds but has
+    //     DIFFERENT tmdbId (200 vs 300) → must NOT be a Shared anchor.
+    //   - "Overlap Twin" shares a title but DIFFERENT tmdbId (200 vs 999)
+    //     → must be an Overlapping title (items keyed by title).
+    await renderCompare("m-world", "n-world");
+    await waitFor(() =>
+      expect(screen.getByText("Shared anchors")).toBeInTheDocument(),
+    );
+
+    const shared = screen.getByText("Shared anchors").closest("section")!;
+    expect(within(shared).getByText("Anchor M")).toBeInTheDocument();
+    expect(within(shared).queryByText("Anchor N, Different Title")).not.toBeInTheDocument();
+    expect(within(shared).queryByText("Same Title Diff Id")).not.toBeInTheDocument();
+
+    const overlap = screen.getByText("Overlapping titles").closest("section")!;
+    expect(within(overlap).getByText("Overlap Twin")).toBeInTheDocument();
+    // Unique-to-each titles must be excluded from the overlap set.
+    expect(within(overlap).queryByText("Solo M")).not.toBeInTheDocument();
+    expect(within(overlap).queryByText("Solo N")).not.toBeInTheDocument();
+    expect(within(overlap).queryByText("Same Title Diff Id")).not.toBeInTheDocument();
   });
 });

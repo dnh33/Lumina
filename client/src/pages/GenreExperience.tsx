@@ -28,9 +28,18 @@ import { WorldsMap } from "../components/genre/WorldsMap.js";
  *  tailored empty state instead of a thin rail. */
 const NICHE_THRESHOLD = 6;
 
+/** Toggle `tag` in a string[]: add if absent, remove if present. Pure — the
+ *  caller is responsible for committing the next array (gs.setActiveTags). */
+function toggleTagArr(tag: string, arr: string[]): string[] {
+  return arr.includes(tag) ? arr.filter((t) => t !== tag) : [...arr, tag];
+}
+
 export default function GenreExperience() {
   const { slug = "documentary" } = useParams<{ slug: string }>();
   const world = getGenreWorld(slug);
+  // B5b: suppress the very first "discover" cue (fired by the mount-equivalent
+  // run of the discover effect) so it doesn't double up with the "open" beat.
+  const firstCueRun = useRef(true);
 
   // Fire the world's "open" beat once per world entry (K5/B5 foundation:
   // consume register.cueBeatMap). Filter-driven "discover" beats are wired
@@ -78,14 +87,19 @@ export default function GenreExperience() {
     setSearchParams(next, { replace: true });
   };
 
-  // On mount, honor a deep-linked `?mediaType=tv` (default 'movie'). This runs
-  // once so a TV world opened from a share link starts in TV mode.
+  // B5b: fire the world's "discover" beat whenever the user changes a discovery
+  // control (search / sort / tag filter). Skipped on the initial mount run so
+  // it doesn't duplicate the "open" beat. Sound-gated behind the user pref.
   useEffect(() => {
-    const mt = searchParams.get("mediaType");
-    if (mt === "tv") setMediaType("tv");
-    else if (mt === "movie") setMediaType("movie");
+    if (firstCueRun.current) {
+      firstCueRun.current = false;
+      return;
+    }
+    if (!getSoundEnabled()) return;
+    playWorldCue(world, "discover");
+    // world is read from the closure; only the filter controls drive this beat.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [search, sort, activeTags]);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["genre-experience", slug, "self", mediaType],
@@ -187,6 +201,21 @@ export default function GenreExperience() {
     if (!lessKnown) return filtered;
     return filtered.filter((it) => (it.voteAverage ?? 0) < 8);
   }, [filtered, lessKnown]);
+
+  // B5b: fire the world's "warn" beat when the user's filters empty the
+  // *rendered* rail (no titles survive search/tag/sort). We watch `steered`
+  // (the actually-displayed set), NOT `visibleItems`, because visibleItems is
+  // only decade-filtered — a no-match search would leave visibleItems full
+  // while the rail the user sees is empty. Sound-gated; only after data has
+  // loaded so we don't cry "empty" during the loading state (where steered is
+  // transiently []). Declared after `steered` so it is in scope (no TDZ).
+  useEffect(() => {
+    if (!getSoundEnabled()) return;
+    if (isLoading || isError || !data) return;
+    if (steered.length === 0) playWorldCue(world, "warn");
+    // world/data/steered read from the closure; only the emptiness transition matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [steered.length, isLoading, isError]);
 
   const toggleTag = (tag: string) =>
     setActiveTags((prev) =>
@@ -377,7 +406,6 @@ export default function GenreExperience() {
           state. Sits above the rail so it frames what the user is seeing. */}
       <WhisperStrip
         decade={decade}
-        count={data.items.length}
         anchorCount={(data.anchorsUsed ?? []).length}
         unwatched={data.items.filter((it) => !it.inLibrary).length}
       />
@@ -465,7 +493,6 @@ export default function GenreExperience() {
                 ))}
               </div>
             </div>
-            </div>
 
             {/* P3.5 (C8): steering presets — distinct, additive chips that
               steer the rail via client state only (mode / mediaType / shuffle /
@@ -477,34 +504,6 @@ export default function GenreExperience() {
               className="flex flex-wrap items-center gap-1.5"
             >
               <span className="mr-1 text-2xs uppercase tracking-wider text-mist-500">Presets</span>
-              <button
-                type="button"
-                data-preset="media-movie"
-                aria-label="Steering preset: Movies"
-                aria-pressed={mediaType === "movie"}
-                onClick={() => setMediaTypeParam("movie")}
-                className={`rounded-full px-3 py-1 text-2xs font-medium ring-1 transition-colors ${
-                  mediaType === "movie"
-                    ? "bg-gold-400/90 text-ink-950 ring-gold-400/60"
-                    : "bg-white/[0.04] text-mist-300 ring-white/10 hover:bg-white/[0.08]"
-                }`}
-              >
-                Movies
-              </button>
-              <button
-                type="button"
-                data-preset="media-tv"
-                aria-label="Steering preset: TV"
-                aria-pressed={mediaType === "tv"}
-                onClick={() => setMediaTypeParam("tv")}
-                className={`rounded-full px-3 py-1 text-2xs font-medium ring-1 transition-colors ${
-                  mediaType === "tv"
-                    ? "bg-gold-400/90 text-ink-950 ring-gold-400/60"
-                    : "bg-white/[0.04] text-mist-300 ring-white/10 hover:bg-white/[0.08]"
-                }`}
-              >
-                TV
-              </button>
               <button
                 type="button"
                 data-preset="surprise"
@@ -532,6 +531,7 @@ export default function GenreExperience() {
                 Less well-known
               </button>
             </div>
+            </div>
 
           <GenreModules
             modules={world.modules}
@@ -546,6 +546,13 @@ export default function GenreExperience() {
             anchors={data.anchorsUsed}
             world={world}
             eraThesis={eraThesis}
+            onTopicSelect={(id) => {
+              // D7 (Topic-as-axis): turn a topic spine click into a client-side
+              // genre filter. The topic id is a genre id, but `activeTags`
+              // matches by genre NAME, so resolve the name before toggling.
+              const name = genreName(Number(id));
+              gs.setActiveTags(toggleTagArr(name, activeTags));
+            }}
           />
 
           {world.modules.includes("geo") && geoRegions.length > 0 && (

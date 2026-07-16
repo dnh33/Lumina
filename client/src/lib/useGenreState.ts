@@ -107,9 +107,16 @@ export function useGenreState(slug: string) {
     return persisted?.scrub.tags ?? [];
   });
 
-  const [steer, setSteer] = useState<GenreSteer>(
-    () => persisted?.steer ?? DEFAULT_STEER,
-  );
+  const [steer, setSteer] = useState<GenreSteer>(() => {
+    // N4 (deep-link mediaType): a `?mediaType=tv` share link must start in TV
+    // mode WITHOUT a post-mount setState flash, so read the URL param into the
+    // initial steer synchronously. The URL wins over a persisted localStorage
+    // blob; the page's toggle keeps both steer + URL in sync afterwards.
+    const urlMt = searchParams.get("mediaType");
+    const base = persisted?.steer ?? DEFAULT_STEER;
+    if (urlMt === "tv" || urlMt === "movie") return { ...base, mediaType: urlMt };
+    return base;
+  });
   const [dismissed, setDismissed] = useState<string[]>(
     () => persisted?.dismissed ?? [],
   );

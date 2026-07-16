@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { api } from "../lib/api.js";
@@ -79,7 +79,7 @@ describe("GenreExperience steering presets (3.5 / C8)", () => {
     await waitFor(() => expect(screen.getByRole("group", { name: /steering presets/i })).toBeTruthy());
   });
 
-  it("clicking the TV preset re-queries the server with mediaType 'tv'", async () => {
+  it("mediaType is driven by a single toggle surface (no duplicate preset writers)", async () => {
     await renderPage();
     await waitFor(() =>
       expect(api.genreExperience as any).toHaveBeenCalledWith(
@@ -87,7 +87,15 @@ describe("GenreExperience steering presets (3.5 / C8)", () => {
       ),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Steering preset: TV" }));
+    // N1: the `data-preset="media-*"` buttons were removed — the explicit
+    // Movies/TV toggle group is the one remaining surface that writes
+    // mediaType. Assert no media preset buttons remain in the DOM.
+    expect(screen.queryByRole("button", { name: "Steering preset: TV" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Steering preset: Movies" })).toBeNull();
+
+    // The single toggle surface still re-queries the server with 'tv'.
+    const mediaGroup = await screen.findByRole("group", { name: /media type/i });
+    fireEvent.click(within(mediaGroup).getByRole("button", { name: "TV" }));
 
     await waitFor(() => {
       const calls = (api.genreExperience as any).mock.calls;
