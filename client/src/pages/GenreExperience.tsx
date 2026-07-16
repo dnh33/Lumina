@@ -438,6 +438,7 @@ export default function GenreExperience() {
         world={world}
         anchorsUsed={data.anchorsUsed}
         profileState={data.profileState}
+        titleCount={(data.items ?? []).length}
       />
 
       {/* P3.6 (C5): deterministic, LLM-free whisper of the current filter

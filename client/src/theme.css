@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./fonts/fonts.css";
 
 @theme {
   --color-ink-950: #08080d;
@@ -29,8 +30,19 @@
   --color-tmdb-500: #01b4e4; /* TMDb cyan */
   --color-tmdb-600: #018bb0;
 
-  --font-display: "Fraunces", "Georgia", serif;
-  --font-sans: "Inter", system-ui, sans-serif;
+  /* ── Type registers (Instrument Ink: three voices, never trade jobs) ──
+     DISPLAY = what must be FELT (theses, verdicts)  → Cabinet Grotesk
+     SANS    = what must be UNDERSTOOD (prose, controls) → Geist
+     MONO    = what must be TRUSTED (numbers, provenance, era) → system mono
+     Faces self-hosted in ./fonts/fonts.css (no Google CDN, no slop shelf).
+     Cabinet Grotesk + Geist: neither appears on the anti-slop reject list. */
+  --font-display: "Cabinet Grotesk", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "IBM Plex Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+  /* The ONE rationed warm signal color — verified/active state only.
+     Gold is "fuel": never decoration, never a default glow. */
+  --signal: var(--color-gold-400);
 
   /* Motion easings (P13 / R16). --ease-out-expo = entrances, --ease-state = state changes. */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
@@ -79,9 +91,11 @@ html {
 
 body {
   @apply bg-ink-900 text-mist-200 font-sans antialiased;
+  /* Instrument Ink: near-black carbon, warmed slightly — NOT the cool blue-
+     charcoal slop default. A single faint warm gold emission from one source
+     (top-left), no purple, no blue, no second competing glow. */
   background-image:
-    radial-gradient(1100px 500px at 15% -10%, rgba(232, 184, 75, 0.055), transparent 60%),
-    radial-gradient(900px 600px at 110% 15%, rgba(90, 90, 180, 0.07), transparent 55%);
+    radial-gradient(1200px 620px at 12% -12%, rgba(232, 184, 75, 0.045), transparent 58%);
   background-attachment: fixed;
 }
 
@@ -263,4 +277,81 @@ select:focus-visible {
 .density-dimmed {
   opacity: 0.6;
   filter: grayscale(0.6);
+}
+
+/* ── Instrument Ink: bespoke geometry (the recurring silhouette) ──────
+   Corner registration ticks — like a crop mark on certificate paper. The
+   signature detail that beats a default rectangle. Place on a panel; the
+   ticks sit in the corners, hairline, in the signal color at low opacity. */
+.reg-ticks {
+  position: relative;
+}
+.reg-ticks::before,
+.reg-ticks::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: var(--signal);
+  border-style: solid;
+  border-width: 0;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.reg-ticks::before {
+  top: 10px;
+  left: 10px;
+  border-top-width: 1px;
+  border-left-width: 1px;
+}
+.reg-ticks::after {
+  bottom: 10px;
+  right: 10px;
+  border-bottom-width: 1px;
+  border-right-width: 1px;
+}
+
+/* Hairline etched rule — an etched bezel line, not a hard divider.
+   Rounded caps; tones from the surface, low contrast. Used to separate
+   Instrument Ink sections instead of a bare rule. */
+.etched-rule {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(205, 205, 217, 0.18) 12%,
+    rgba(205, 205, 217, 0.18) 88%,
+    transparent
+  );
+}
+
+/* Ghost numeral — a massive readout behind the text, like a watermark on
+   certificate paper. Set the size + content via inline style; this only
+   provides the treatment. Bone on carbon, very low opacity, hard-left. */
+.ghost-numeral {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  color: rgba(205, 205, 217, 0.05);
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+/* Mono provenance readout — the Instrument Ink "trusted" register.
+   Tracked wide, whispering in the margin. Used for era/decade + counts. */
+.readout {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-mist-400);
+  font-variant-numeric: tabular-nums;
 }

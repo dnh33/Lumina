@@ -1,0 +1,56 @@
+/* Self-hosted faces — no Google CDN, no slop shelf.
+   Display (felt)  = Cabinet Grotesk (characterful grotesque, NOT Inter/Fraunces)
+   Sans (understood)= Geist (Vercel; neutral, not on the anti-slop reject list)
+   Mono (trusted)   = system mono stack (real data only — see --font-mono in theme.css)
+   Per the anti-slop law: General Sans / Clash Display were rejected as generic. */
+
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("./cabinet-grotesk-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("./cabinet-grotesk-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("./cabinet-grotesk-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("./cabinet-grotesk-800.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist";
+  src: url("./geist-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist";
+  src: url("./geist-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist";
+  src: url("./geist-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}

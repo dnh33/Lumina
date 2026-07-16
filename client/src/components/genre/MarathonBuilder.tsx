@@ -64,7 +64,7 @@ export function MarathonBuilder({ slug, seasons = [], watchlist = [] }: Props) {
         <button
           type="button"
           onClick={build}
-          className="rounded-full bg-[var(--world-accent)]/90 px-4 py-1.5 text-2xs font-medium text-ink-950"
+          className="rounded-full bg-gold-400 px-4 py-1.5 text-2xs font-medium text-ink-950"
         >
           Build marathon
         </button>

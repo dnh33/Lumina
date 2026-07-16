@@ -9,9 +9,11 @@ interface Props {
   anchorsUsed?: GenreAnchor[];
   /** Taste profile density used to flavor the origin line. */
   profileState?: ProfileState;
+  /** Total title count — rendered as the ghost-numerial watermark (Instrument Ink). */
+  titleCount?: number;
 }
 
-export function ExperienceHero({ slug, world, anchorsUsed, profileState }: Props) {
+export function ExperienceHero({ slug, world, anchorsUsed, profileState, titleCount }: Props) {
   const name = slug.charAt(0).toUpperCase() + slug.slice(1);
 
   // World-origin line (C3): a subtle, deterministic summary of how this world
@@ -23,18 +25,29 @@ export function ExperienceHero({ slug, world, anchorsUsed, profileState }: Props
   return (
     <header
       style={{ ["--world-accent" as any]: accentVar(world) }}
-      className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-gradient-to-br from-[var(--world-accent)]/[0.08] via-white/[0.02] to-transparent p-6 sm:p-10"
+      className="reg-ticks relative overflow-hidden rounded-3xl border border-white/[0.06] bg-ink-850/60 p-6 sm:p-10"
     >
-      <p className="text-xs uppercase tracking-[0.2em] text-[var(--world-accent)]/70">{world.metaphor}</p>
-      <h1 className="mt-2 font-[var(--font-display)] text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-        {name}
-      </h1>
-      <p className="mt-3 max-w-xl font-[var(--font-sans)] text-base text-white/60">{world.register.tonePrompt}</p>
-      {originLine && (
-        <p data-testid="origin-line" className="mt-4 text-xs text-white/40">
-          {originLine}
-        </p>
+      {/* Ghost numeral — Instrument Ink watermark (certificate-paper readout).
+          Sits behind the text (z-0); text content is z-10. */}
+      {titleCount != null && (
+        <span aria-hidden className="ghost-numeral" style={{ fontSize: "22rem", justifyContent: "flex-end", paddingRight: "2rem" }}>
+          {titleCount}
+        </span>
       )}
+      <div className="relative z-10">
+        {/* metaphor carried as a mono provenance readout (the "trusted" register),
+            NOT a decorative accent kicker. Whispers in the margin. */}
+        <p className="readout">{world.metaphor}</p>
+        <h1 className="mt-2 font-[var(--font-display)] text-4xl font-semibold tracking-tight text-mist-100 sm:text-6xl">
+          {name}
+        </h1>
+        <p className="mt-3 max-w-xl font-[var(--font-sans)] text-base text-mist-300">{world.register.tonePrompt}</p>
+        {originLine && (
+          <p data-testid="origin-line" className="readout mt-4 opacity-70">
+            {originLine}
+          </p>
+        )}
+      </div>
     </header>
   );
 }

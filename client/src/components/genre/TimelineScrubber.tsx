@@ -90,7 +90,7 @@ export function TimelineScrubber({ items, selectedDecade, onDecade, anchors, era
         <h2 id="timeline-heading" className="font-[var(--font-display)] text-lg font-semibold tracking-tight text-white/90">
           Timeline
         </h2>
-        <span className="text-xs uppercase tracking-wider text-white/40">scrub by era</span>
+        <span className="readout">scrub by era</span>
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2" role="tablist" aria-labelledby="timeline-heading">
@@ -119,12 +119,18 @@ export function TimelineScrubber({ items, selectedDecade, onDecade, anchors, era
               onClick={() => (controlled ? onDecade?.(decade) : setInternal(decade))}
               className={`rounded-full px-3 py-1 text-sm transition-colors ${
                 active
-                  ? "bg-[var(--world-accent)]/90 text-ink-950 scale-[1.06] ring-2 ring-[var(--world-accent)]/60"
+                  ? "bg-ink-700 text-mist-100 ring-1 ring-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] scale-[1.04] relative"
                   : "border border-white/[0.08] text-white/60 hover:text-white/90"
               }`}
               data-zoom={active ? "true" : undefined}
             >
               {labelFor(decade)}
+              {active && (
+                <span
+                  aria-hidden
+                  className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-gold-400 shadow-[0_0_8px_rgba(232,184,75,0.6)]"
+                />
+              )}
               {anchorDecades.has(decade) && (
                 <span
                   data-testid={`anchor-${decade}`}
@@ -153,7 +159,7 @@ export function TimelineScrubber({ items, selectedDecade, onDecade, anchors, era
       {zoomed && eraThesis && (
         <p
           data-testid="era-thesis"
-          className="mb-4 rounded-xl border border-[var(--world-accent)]/30 bg-[var(--world-accent)]/[0.06] px-3 py-2 text-sm italic text-white/80"
+          className="mb-4 rounded-xl border border-white/[0.07] bg-ink-850/50 px-3 py-2 font-[var(--font-display)] text-sm italic text-mist-200"
         >
           {eraThesis}
         </p>
