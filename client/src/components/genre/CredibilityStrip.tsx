@@ -64,7 +64,7 @@ export function CredibilityStrip({ cred, item, userRating }: Props) {
     rows.push({
       key: "split",
       node: (
-        <span className="text-amber-300/80">
+        <span className="text-[var(--world-accent)]/80">
           Critics split · IMDb {imdb} · RT {rt}
         </span>
       ),
@@ -74,7 +74,7 @@ export function CredibilityStrip({ cred, item, userRating }: Props) {
   // D5b — viewer's own rating overlay.
   const you = cred.userRating ?? userRating ?? null;
   if (you != null) {
-    rows.push({ key: "you", node: <span className="text-emerald-300/90">You: {you}/10</span> });
+    rows.push({ key: "you", node: <span className="text-[var(--world-accent)]/90">You: {you}/10</span> });
   }
 
   // D5c — provider deep-link (explicit list first, else derived from item).

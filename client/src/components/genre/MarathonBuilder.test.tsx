@@ -49,4 +49,36 @@ describe("MarathonBuilder (Task 6.6 / C7)", () => {
     fireEvent.click(screen.getByRole("button", { name: /printable/i }));
     expect(screen.getByTestId("marathon-printable")).toBeTruthy();
   });
+
+  it("N7: excludes already-watched seasons from the marathon but keeps all when every season is watched", () => {
+    render(
+      <MarathonBuilder
+        slug="scifi"
+        seasons={[
+          { number: 1, name: "Watched S1", episodeCount: 6, watched: true },
+          { number: 2, name: "Unwatched S2", episodeCount: 4, watched: false },
+        ]}
+        watchlist={[]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /build marathon/i }));
+    const saved = JSON.parse(localStorage.getItem(KEY("scifi")) as string);
+    const titles = saved.entries.map((e: { title: string }) => e.title);
+    expect(titles).toContain("Unwatched S2");
+    expect(titles).not.toContain("Watched S1");
+
+    // When every season is watched, the marathon is NOT emptied.
+    cleanup();
+    localStorage.clear();
+    render(
+      <MarathonBuilder
+        slug="scifi"
+        seasons={[{ number: 1, name: "Watched S1", episodeCount: 6, watched: true }]}
+        watchlist={[]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /build marathon/i }));
+    const savedAll = JSON.parse(localStorage.getItem(KEY("scifi")) as string);
+    expect(savedAll.entries.map((e: { title: string }) => e.title)).toContain("Watched S1");
+  });
 });

@@ -39,8 +39,12 @@ export function MarathonBuilder({ slug, seasons = [], watchlist = [] }: Props) {
   const [printable, setPrintable] = useState(false);
 
   const build = () => {
+    // N7: skip seasons the user has already watched — unless that would empty
+    // the marathon, in which case keep everything so it's never blank.
+    const unwatchedSeasons = seasons.filter((s) => !s.watched);
+    const seasonsToUse = unwatchedSeasons.length > 0 ? unwatchedSeasons : seasons;
     const entries: PlaylistEntry[] = [
-      ...seasons.map((s) => ({ title: s.name, kind: "season" as const })),
+      ...seasonsToUse.map((s) => ({ title: s.name, kind: "season" as const })),
       ...watchlist.map((w) => ({ title: w.title, year: w.year, kind: "watchlist" as const })),
     ];
     localStorage.setItem(

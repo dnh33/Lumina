@@ -50,7 +50,7 @@ export function GeoMap({ regions, libraryCountries = [] }: Props) {
               </span>
               <span className="w-8 text-right text-xs text-white/40">{r.count}</span>
               <span
-                className={`text-2xs ${inLibrary ? "text-emerald-400/80" : "text-amber-300/80"}`}
+                className={`text-2xs ${inLibrary ? "text-[var(--world-accent)]/80" : "text-[var(--world-accent)]/60"}`}
                 title={inLibrary ? "In your library" : "New to you"}
               >
                 {inLibrary ? "in your library" : "new to you"}

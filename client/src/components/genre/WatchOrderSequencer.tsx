@@ -33,7 +33,7 @@ export function WatchOrderSequencer({ seasons, recommendedStart }: Props) {
             <span className="text-xs text-white/40">S{s.number}</span>
             <span className="flex-1 text-sm">{s.name}</span>
             <span className="text-xs text-white/40">{s.episodeCount} eps</span>
-            {s.watched && <span className="text-xs text-emerald-400">✓</span>}
+            {s.watched && <span className="text-xs text-[var(--world-accent)]">✓</span>}
             {s.number === recommendedStart && (
               <span className="text-xs font-medium text-[var(--world-accent)]">Start here</span>
             )}
