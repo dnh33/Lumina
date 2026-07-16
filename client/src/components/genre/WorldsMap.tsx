@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { SectionHead } from "./SectionHead.js";
 import { GENRE_WORLDS } from "../../lib/genreWorld.js";
 
 /**
@@ -45,9 +46,7 @@ export function WorldsMap() {
 
   return (
     <div className="rounded-2xl bg-white/[0.03] p-3 ring-1 ring-white/10">
-      <h2 className="mb-2 text-2xs font-medium uppercase tracking-wider text-mist-500">
-        Worlds map
-      </h2>
+      <SectionHead variant="readout">Worlds map</SectionHead>
       <svg
         role="img"
         aria-label="Map of all genre worlds; edges connect neighboring worlds. Click a node to warp to that world."

@@ -13,7 +13,7 @@ export function MakerSpotlight({ director }: Props) {
   if (!director) return null;
   return (
     <section aria-label="Maker" className="space-y-1">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-white/50">Maker</h3>
+      <h3 className="readout">Maker</h3>
       <p className="text-sm text-white/80">{director}</p>
     </section>
   );

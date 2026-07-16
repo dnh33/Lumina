@@ -1,4 +1,5 @@
 import type { CatalogItem } from "../../lib/types.js";
+import { SectionHead } from "./SectionHead.js";
 import { PosterCard } from "../PosterCard.js";
 
 export interface TopicSpine {
@@ -39,9 +40,7 @@ export function TopicCluster({ topics, onTopicSelect }: Props) {
               {t.label}
             </button>
           ) : (
-            <h3 className="mb-3 text-sm font-medium uppercase tracking-wide text-white/50">
-              {t.label}
-            </h3>
+            <SectionHead variant="title">{t.label}</SectionHead>
           )}
           <div className="flex gap-4 overflow-x-auto pb-2">
             {t.items.map((it) => (

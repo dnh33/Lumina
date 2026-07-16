@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { SectionHead } from "./SectionHead.js";
 import { getGenreWorld, type GenreWorld } from "../../lib/genreWorld.js";
 
 interface NeighborRailProps {
@@ -21,9 +22,7 @@ export function NeighborRail({ world }: NeighborRailProps) {
 
   return (
     <nav aria-label="Neighboring worlds" className="rounded-2xl bg-white/[0.03] p-3 ring-1 ring-white/10">
-      <h2 className="mb-2 text-2xs font-medium uppercase tracking-wider text-mist-500">
-        Neighboring worlds
-      </h2>
+      <SectionHead variant="readout">Neighboring worlds</SectionHead>
       <ul className="flex flex-wrap items-center gap-2">
         {neighbors.map((slug) => {
           const neighbor = getGenreWorld(slug);

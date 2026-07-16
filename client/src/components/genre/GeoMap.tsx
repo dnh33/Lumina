@@ -1,4 +1,5 @@
 import { countryName } from "../../lib/genreNames.js";
+import { SectionHead } from "./SectionHead.js";
 
 export interface GeoRegion {
   code: string;
@@ -32,9 +33,7 @@ export function GeoMap({ regions, libraryCountries = [] }: Props) {
   const libSet = new Set(libraryCountries);
   return (
     <section aria-label="Where it's from" className="space-y-2">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-white/50">
-        Where it&rsquo;s from
-      </h3>
+      <SectionHead variant="title">Where it&rsquo;s from</SectionHead>
       <ul className="space-y-1">
         {regions.map((r) => {
           const name = r.name || countryName(r.code);

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SectionHead } from "./SectionHead.js";
 
 export interface MarathonSeason {
   number: number;
@@ -58,9 +59,7 @@ export function MarathonBuilder({ slug, seasons = [], watchlist = [] }: Props) {
   return (
     <section aria-label="Marathon builder" className="space-y-3">
       <div className="flex items-center gap-3">
-        <h3 className="text-sm font-medium uppercase tracking-wide text-white/50">
-          Marathon
-        </h3>
+        <SectionHead variant="title" className="flex-1 mb-0">Marathon</SectionHead>
         <button
           type="button"
           onClick={build}

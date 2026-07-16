@@ -1,3 +1,5 @@
+import { SectionHead } from "./SectionHead.js";
+
 export interface WatchChapter {
   number: number;
   name: string;
@@ -19,9 +21,7 @@ export function WatchOrderSequencer({ seasons, recommendedStart }: Props) {
   if (!seasons.length) return null;
   return (
     <section aria-label="Watch order" className="space-y-2">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-white/50">
-        Watch order
-      </h3>
+      <SectionHead variant="title">Watch order</SectionHead>
       <ol className="space-y-1">
         {seasons.map((s) => (
           <li
