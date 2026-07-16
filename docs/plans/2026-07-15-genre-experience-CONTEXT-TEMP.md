@@ -191,16 +191,23 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
       client 158 tests. useGenreState + GENRE_STATE_KEY + libraryVersion (B4/W8). PASS.
   - Wave 4b DONE (orchestrator committed cd80825; subagent did NOT commit per rule). Client 174
     tests. metaphorLayout + ConstellationBackdrop + FrontierSpine + themed TitleCard. PASS.
-  * PHASE 4 wave 4c DISPATCHED (deleg_c1ee8083): 4.3 ambient Companion (B2) — CompanionPanel on
-  /genre, distinct GENRE_DOCK_CONVERSATION_KEY (constant → survives slug remount), world voice via
-  prefill+welcomeSuggestions. Do NOT touch useChat/App.tsx hide logic.
-  * PHASE 4 ENDS after 4.3. Then Phase 5 (structural nav: 5.1 warp C1, 5.2 decade zoom D1, 5.3
-  density B8) — the EXPENSIVE nav, sequenced LAST per option B.
-  * PHASE 5 (structural nav, LAST): 5.1 cross-world warp (C1), 5.2 decade zoom (D1), 5.3 density
-    (B8). PHASE 6 (deepenings): 6.1 argument dialogue (D2), 6.2 geo/Frontier (D4), 6.3 critic (D5),
+  - Wave 4c DONE (orchestrator committed 02a3362). CRITICAL: subagent's self-report "green"
+    was FALSE — its GenreExperience.tsx edit was a syntax error (split return early, orphaned
+    duplicate Carousel, stray </div>). Orchestrator caught via independent tsc + 16 failing tests.
+    FIX: restored page to clean 4.1 HEAD, re-applied import + CompanionPanel mount myself
+    (inside fragment). Verified: client 182 tests, typecheck clean, build ok. Lesson: never trust
+    subagent "green" — always re-run tsc + full test at orchestrator level.
+  * PHASE 4 COMPLETE (4.4 bcc3f7b + 4.1 cd80825 + 4.3 02a3362). Differentiator engine shipped.
+  * PHASE 5 (structural nav — EXPENSIVE, LAST per option B) STARTED:
+    - Wave 5a DISPATCHED (deleg_6435d63f, 3 parallel): 5.1 cross-world warp (C1,
+      genreWorld.adjacency + WorldsMap + NeighborRail), 5.2 decade zoom (D1,
+      TimelineScrubber zoom + deterministic era-thesis), 5.3 density (B8, PosterCard
+      inLibrary/ignored visuals). Independent files → parallel-safe. No-commit rule.
+    - Wave 5b (after 5a): none planned — Phase 5 is one wave.
+  * PHASE 6 (deepenings): 6.1 argument dialogue (D2), 6.2 geo/Frontier (D4), 6.3 critic (D5),
     6.4 compare (C4), 6.5 export (C6), 6.6 marathon (C7). PHASE 7: TV genre (K1) + a11y + final
     verify + PR (gated on Daniel's /npm run dev review).
-- PHASES 5-7: pending (structural nav, deepenings, TV+a11y). See wave breakdown above.
+- PHASE 5 in flight (5.1/5.2/5.3). PHASES 6-7: pending (deepenings, TV+a11y). See wave breakdown above.
 - VERIFIED GATE: re-run `npm run test` (server+client) + typecheck + build after each wave.
 - RESILIENCE: at ~62% context — CONTEXT-TEMP is the compaction-survival doc; commit it often.
 - COMMITS so far (this workstream): `b2873b2` broader council, `1122d6e` design, `09ac32f` grill
