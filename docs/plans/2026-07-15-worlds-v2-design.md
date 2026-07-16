@@ -122,7 +122,9 @@ sequencing, not by cutting. Everything ships in v2.
 4. **Differentiation engine:** B1 metaphor grammar (1–2 flagship bespoke + themed variants),
    W4 accent token (register.accent), B6 spatial spine (fold into B1/P4), B2 ambient Companion
    (distinct GENRE_DOCK_CONVERSATION_KEY, no remount-across-slug), B4 persistence (GENRE_STATE_KEY
-   + useGenreState + libraryVersion reconcile).
+   + useGenreState; libraryVersion reconcile DEFERRED — persisted blob is filter/steer-only and
+   library-agnostic, live items come from react-query, so no reconcile needed; revisit only if the
+   blob starts caching library-derived payload).
 5. **Structural nav (expensive, sequenced LAST):** C1 cross-world warp (adjacency + neighbor
    rail), D1 timeline becomes World's spine + decade zoom + taste overlay, B8 density-as-place.
 6. **Deepenings D2–D8:** Argument dialogue (server counterpoint.tmdbId), Geo fix + Frontier
@@ -151,9 +153,10 @@ sequencing, not by cutting. Everything ships in v2.
   params, no genre localStorage key (`keys.ts` has none). Must ADD `GENRE_STATE_KEY` +
   `useGenreState` serializing `{decade,q,sort,tags}`→URL and `{scrub,steer,dismissed}`→
   localStorage in ONE writer; react-query reads from it.
-- **C2 World-level reconcile missing** — **GRILL: no library-version signal exists.** Only
-  `PRAGMA user_version` (schema), not content. Must ADD `libraryVersion(db)` =
-  `MAX(updated_at)`+row count; stamp the persisted blob, compare on load.
+- **C2 World-level reconcile DEFERRED** — persisted blob is filter/steer-only and library-agnostic;
+  live items come from react-query, so no reconcile needed; revisit only if the blob starts caching
+  library-derived payload. (Originally scoped as `libraryVersion(db)` = `MAX(updated_at)`+row count
+  stamped on the blob and compared on load — dropped as an orphaned net-UX-regression risk.)
 - **C3 ×6 a11y surfaces** if all metaphors built bespoke. Cap B1 at 1–2 flagships; audit each.
 - **C4 Font lock caps immersion** — set expectation: payoff = "tasteful differentiation," not
   deep immersion, until font system unlocks.
@@ -223,9 +226,11 @@ cache-key vs moods/adjacency, AnchorFrame link.
    "Accent color immersion" is decoration until `register.accent` (CSS var) is added + consumed.
 5. **B1 Constellation = net-new layout engine** — scope to "node backdrop + themed TitleCard",
    not a full graph engine, or estimate separately.
-6. **C1/C2/C5 state architecture UNBUILT** — no serializer, no `libraryVersion` signal, ChatDock
-   key collision on slug-change remount. Must be built (GENRE_STATE_KEY, libraryVersion,
-   GENRE_DOCK_CONVERSATION_KEY + no remount-across-slug).
+6. **C1/C5 state architecture UNBUILT** — no serializer, ChatDock key collision on slug-change
+   remount. Must be built (GENRE_STATE_KEY, GENRE_DOCK_CONVERSATION_KEY + no remount-across-slug).
+   C2 reconcile is DEFERRED: persisted blob is filter/steer-only and library-agnostic, live items
+   come from react-query, so no reconcile needed; revisit only if the blob starts caching
+   library-derived payload.
 7. **C5 whisper strip must be a deterministic filter→string template**, NOT routed through the
    Companion persona (avoids double-narration with B2).
 
