@@ -303,6 +303,64 @@ A FRESH 5-agent council ran (2 waves) and confirmed: the first pass was structur
    explicit files (no -A). If red, the subagent's "green" is a false report → reproduce + fix.
 5. Update §8 checklist in the review file as items close. Update this CONTEXT-TEMP at wave boundaries.
 6. After all waves: live browser re-verify (boot server+client): no anchor storm on load, TV deep-link
+
+---
+
+## WAVE A RESUME — MID-FIX (2026-07-16, pre-compaction snapshot)
+
+### What happened
+Wave A was dispatched, then the session compacted MID-DISPATCH repeatedly. Subagent self-reports
+were lost (never arrived), so ALL Wave A on-disk edits were treated as UNVERIFIED and re-derived
+from the working tree by the orchestrator (diff + independent gate run). This is the ground truth.
+
+### Current uncommitted edits (git diff --stat, 11 files)
+- `client/src/App.tsx` (+8) — C5: genre route keyed stable "genre" (correct, necessary but NOT sufficient).
+- `client/src/components/genre/CompanionPanel.tsx` (+4) — C5: false comment deleted (correct).
+- `client/src/components/genre/NeighborRail.tsx` (+5) — **N8 DONE** (preserves ?mediaType=tv). Subagent landed before compaction.
+- `client/src/components/genre/NeighborRail.test.tsx` (+20) — N8 test added.
+- `client/src/lib/api.ts` (+8) — K3: `insight(type, tmdbId, refresh, skipAnchorLog)` param added. CORRECT.
+- `client/src/lib/sound.ts` (+16) — B5: `raw === null ? false` (default OFF) + gate. CORRECT.
+- `client/src/lib/sound.test.ts` (+27) — B5 test.
+- `client/src/pages/GenreExperience.cue.test.tsx` (+28) — B5 cue test (hardened by orchestrator).
+- `client/src/pages/GenreExperience.lazy.test.tsx` (+4) — touched (N8-related? verify).
+- `client/src/pages/GenreExperience.tsx` (+55, BROKEN) — K3 prefetch `skipAnchorLog:true` CORRECT;
+  C5 restructure IN-PROGRESS and currently has a JSX IMBALANCE (see below).
+- `server/src/routes/misc.ts` (+1) — K3: passes `skipAnchorLog: req.query.skipAnchorLog === "1"`. CORRECT.
+
+### VERIFIED-GOOD (do not re-touch): K3, B5, N8, App.tsx key, CompanionPanel comment
+- Server tests: 113 passing (was 111; K3 server test added). Client cue test green in isolation.
+
+### C5 STATUS: fix in progress, JSX BROKEN — REPAIR NEEDED POST-COMPACTION
+Root cause of C5 (the real one, missed by subagent): `GenreExperience.tsx` had `if (isLoading) return <spinner>`
+with NO CompanionPanel, and the panel sat at DIFFERENT tree positions in loading/error/success
+branches → on slug change (query refetches, isLoading flips) React REMOUNTED CompanionPanel →
+`open` reset → panel closed + `useChat unmounted mid-flight`. App.tsx stable key alone cannot fix this.
+
+Orchestrator's intended fix: render `companion = <CompanionPanel world={world}/>` ONCE, and return a
+SINGLE `<>{pageContent}{companion}</>` where `pageContent` is assigned per-branch (loading/error/success).
+This keeps `companion` at a STABLE last-child position → never remounts across slug change.
+
+**CURRENT BUG:** the success branch has a stray opening `<>` at line ~394 (the `isNiche ? <GenreEmptyState/> : (<>...` inner fragment) with NO matching `</>`. Balance is `<>`=3, `</>`=2. tsc errors at line 654.
+To repair: re-add the `</>` that closes the inner `<>` (394) — it must appear AFTER the inner content
+(AnchorFrame, controls, GenreModules, GeoMap, MarathonBuilder, ExportWorld) and BEFORE `</main>` (~654).
+Then the outer structure is: `<>`(357) `<a>` `<main>` [inner `<>`(394)…`</>`] `</main>`(654) `</>`(655) `)`(656) `;` `}` → `return <>{pageContent}{companion}</>`.
+
+### POST-COMPACTION PLAN (reason through with docs, don't guess)
+1. Restore CONTEXT-TEMP + review file §9 from this snapshot.
+2. REPAIR the JSX imbalance in GenreExperience.tsx (re-add the missing `</>` for the inner fragment at ~394).
+3. Run `npx tsc --noEmit -p tsconfig.json` (client) — must be 0 errors.
+4. Run `npx vitest run src/genreRemount.test.tsx` — the test (rewritten by orchestrator to assert
+   "panel stays open + addressed to new slug after /genre/a→/genre/b") must PASS. This proves C5 fixed.
+5. If still failing: consult React reconciliation docs (element position/type = remount key; stable
+   tree position prevents remount) and framer-motion AnimatePresence+key semantics. The fix is about
+   STABLE TREE POSITION + stable App key, NOT about ChatThread internals.
+6. Run FULL gate: client tsc + server tsc + `npm run test` (client+server) + `npm run build`.
+7. Only when FULLY GREEN: commit Wave A explicit files (no -A), update review §8 checklist, commit CONTEXT-TEMP.
+8. THEN run the spec review on Wave A (re-grep the 4 fixed files vs §9 briefs) → if good, dispatch Wave B.
+
+### Open reminder
+- `client/vout.txt` + `docs/plans/2026-07-15-worlds-v2-5axis-review.md` are intentionally untracked.
+- Hermes cache: `C:/Users/Danie/AppData/Local/hermes/profiles/runeforge-coder/cache/delegation/`.
    survives genre hop, Companion survives slug change, topic click filters, sound silent on first load,
    marathon excludes watched, decade zoom visibly re-emphasizes world.
 7. PR gated on Daniel's /npm run dev review — NO merge without Daniel, NO "Generated with" trailer.
