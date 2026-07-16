@@ -211,14 +211,14 @@ C6 per-metaphor empty states (generic empty state insufficient for bespoke layou
     795a30e, removed its broken new tests, KEPT 7.2 GenreEmptyState (green). Baseline re-verified
     234 tests. RE-DISPATCHED Phase 7 to ONE subagent (deleg_864eb70e) with strict guardrails:
     keep guided toggle, declare all refs, full suite+typecheck MUST pass, no-commit.
-  * 7.2 (per-metaphor empty states C6) DONE + verified by orchestrator — GenreEmptyState.tsx
-    parameterized by metaphor, 9 metaphor tests. (Its subagent claimed 236; baseline now 234 w/ it.)
-  * LESSON (logged): parallel subagents editing GenreExperience.tsx repeatedly ship RED. Single
-    owner + hard orchestrator gate required. Every Phase-7-attempt self-report was false.
-  * AFTER PHASE 7: grill re-gate (scope unchanged since plan → light) + FINAL verify (live server
-    boot + screenshot per Daniel's UI bar) + PR (gated on Daniel's /npm run dev review; NO merge
-    without Daniel; NO 'Generated with' trailer). This is the LAST build phase.
-  - PHASE 7 in flight (7.1/7.3/7.2). After: grill re-gate + final verify + PR. See wave breakdown above.
+  * PHASE 7 COMPLETE (committed fe55162 + 2a84c75; orchestrator fixed the 2 red tests the redo
+    subagent left, verified 240/240 green). TV genre (K1, ?mediaType=tv deep-link) + a11y (C3,
+    tablist/skip-link/retry) + per-metaphor empty states (7.2) all shipped.
+    ALL PHASES 1-7 DONE. Client 240 tests, server 111, typecheck+build clean.
+  * FINAL VERIFY PENDING: grill re-gate (scope unchanged since plan → light) + LIVE server boot +
+    screenshot (Daniel's UI bar) + PR (gated on Daniel's /npm run dev review; NO merge without
+    states, 7.3 a11y audit. Then final verify + PR (gated on Daniel's /npm run dev review).
+    - PHASE 7 DONE. FINAL VERIFY + PR pending (Daniel's /npm run dev review). See wave breakdown above.
 - RESILIENCE: at ~62% context — CONTEXT-TEMP is the compaction-survival doc; commit it often.
 - COMMITS so far (this workstream): `b2873b2` broader council, `1122d6e` design, `09ac32f` grill
   fold, `6ae2b78` scope resolve, `f51e110` plan. (Feature code commits land as subagents finish.)
