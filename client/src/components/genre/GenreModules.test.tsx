@@ -82,7 +82,8 @@ describe("GenreModules", () => {
     renderMods(["argument"], argItems, undefined, undefined, args, undefined, makers);
     expect(screen.getByText(/The argument/)).toBeDefined();
     expect(screen.getAllByText(/Climate change is solvable/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Counterpoint/)).toBeDefined();
+    // The counterpoint renders as a relation-labeled comparison row.
+    expect(screen.getByText(/Disagrees on cause/)).toBeDefined();
     // composed TitleCard renders per-item with director + rating enrichment
     expect(screen.getByText(/Dir\. Jane Doe/)).toBeDefined();
     expect(screen.getByText(/★ 8\.2/)).toBeDefined();

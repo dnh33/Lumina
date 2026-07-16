@@ -43,6 +43,11 @@ interface Props {
    *  flagships + a themed TitleCard variant for every world. Optional for
    *  backwards-compat with callers that don't pass it. */
   world?: GenreWorld;
+  /** D7 (Topic-as-axis): when provided, the topic spines rendered by the
+   *  `topic` module become clickable controls that emit their topic (genre)
+   *  id. The page threads this to a client-side filter (reusing the existing
+   *  tag-filter logic). Optional. */
+  onTopicSelect?: (topicId: number | string) => void;
 }
 
 /** Group items into topic spines by shared primary genre id. */
@@ -55,9 +60,33 @@ function buildTopics(items: CatalogItem[]): TopicSpine[] {
     byGenre.get(gid)!.push(it);
   }
   return [...byGenre.entries()].map(([gid, list]) => ({
+    id: gid,
     label: genreName(gid),
     items: list,
   }));
+}
+
+/**
+ * D6 (Maker index): aggregate recurring directors across the items via the
+ * `makers` map. A director is "recurring" when 2+ titles share them. Returns
+ * them sorted by count desc, then name, for a compact index block.
+ */
+function buildDirectorIndex(
+  items: CatalogItem[],
+  makers?: Props["makers"],
+): { name: string; count: number }[] {
+  if (!makers) return [];
+  const byDirector = new Map<string, number>();
+  for (const it of items) {
+    const m = makers[it.tmdbId];
+    if (m?.director) {
+      byDirector.set(m.director, (byDirector.get(m.director) ?? 0) + 1);
+    }
+  }
+  return [...byDirector.entries()]
+    .filter(([, count]) => count >= 2)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 /**
@@ -65,9 +94,10 @@ function buildTopics(items: CatalogItem[]): TopicSpine[] {
  * (per genreWorld.modules) over the experience's items. One component,
  * N configs — NOT N page variants (design §13.8).
  */
-export function GenreModules({ modules, items, credibility, watchOrder, arguments: args, geo, makers, selectedDecade, onDecade, anchors, world, eraThesis }: Props) {
+export function GenreModules({ modules, items, credibility, watchOrder, arguments: args, geo, makers, selectedDecade, onDecade, anchors, world, eraThesis, onTopicSelect }: Props) {
   const layout = metaphorLayout(world);
   const accent = accentVar(world);
+  const directorIndex = buildDirectorIndex(items, makers);
   // Nothing to render (no backdrop, no enabled modules) -> render nothing so
   // the host page doesn't get a stray empty wrapper element.
   if (layout.backdrop === "none" && modules.length === 0) return null;
@@ -78,7 +108,23 @@ export function GenreModules({ modules, items, credibility, watchOrder, argument
       {modules.includes("timeline") && (
         <TimelineScrubber items={items} selectedDecade={selectedDecade} onDecade={onDecade} anchors={anchors} eraThesis={eraThesis} />
       )}
-      {modules.includes("topic") && <TopicCluster topics={buildTopics(items)} />}
+      {modules.includes("topic") && <TopicCluster topics={buildTopics(items)} onTopicSelect={onTopicSelect} />}
+      {directorIndex.length > 0 && (
+        <section className="mt-6 rounded-lg border border-white/10 bg-white/5 p-4" aria-label="Director index">
+          <h3 className="mb-2 text-sm font-medium uppercase tracking-wide text-white/50">Filmmakers in this world</h3>
+          <ul className="flex flex-wrap gap-2">
+            {directorIndex.map(({ name, count }) => (
+              <li
+                key={name}
+                className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70"
+                data-testid="director-index-chip"
+              >
+                {`Director: ${name} (${count} titles)`}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {modules.includes("critic") &&
         credibility &&
         items.map((it) => (
