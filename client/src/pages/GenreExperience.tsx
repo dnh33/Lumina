@@ -16,6 +16,7 @@ import { GenreModules } from "../components/genre/GenreModules.js";
 import { GenreEmptyState } from "../components/genre/GenreEmptyState.js";
 import { decadeOf } from "../components/genre/TimelineScrubber.js";
 import { useGenreState } from "../lib/useGenreState.js";
+import { CompanionPanel } from "../components/genre/CompanionPanel.js";
 
 /** Niche-genre gate (design R6 / metric 9): below this many titles, show a
  *  tailored empty state instead of a thin rail. */
@@ -492,6 +493,10 @@ export default function GenreExperience() {
               Explore with the Companion
             </button>
           )}
+
+          {/* Task 4.3 (B2): ambient in-world Companion — distinct from the
+              global dock (App.tsx hides ChatDock on /genre), no collision. */}
+          <CompanionPanel world={world} />
         </>
       )}
     </div>
