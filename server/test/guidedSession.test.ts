@@ -37,8 +37,12 @@ vi.mock("../src/services/libraryService.js", async (importOriginal) => {
 });
 
 import { memoryDb } from "./helpers.js";
+import { getSetting } from "../src/llm/openrouter.js";
+import { createConversation } from "../src/llm/chatService.js";
 import {
   getOrCreateGuidedSession,
+  getGuidedSession,
+  peekGuidedSessionProgress,
   answerGuidedBeat,
   resetGuidedSession,
   rankForGuided,
@@ -53,6 +57,11 @@ import {
   syncGuidedWatchlistFromChat,
   type GuidedRankable,
 } from "../src/services/guidedSessionService.js";
+import {
+  assertKnownWorldSlug,
+  parseGenreQueryParam,
+  sanitizeGenreSlug,
+} from "../src/services/worldSlug.js";
 
 describe("guidedSessionService", () => {
   it("creates a fresh active session on first get", () => {
@@ -63,6 +72,62 @@ describe("guidedSessionService", () => {
     expect(s.picks).toEqual([]);
     const again = getOrCreateGuidedSession(db, "documentary", "movie");
     expect(again.createdAt).toBe(s.createdAt);
+  });
+
+  it("getGuidedSession / peek do not create empty settings rows", () => {
+    const db = memoryDb();
+    expect(getGuidedSession(db, "horror", "movie")).toBeNull();
+    expect(peekGuidedSessionProgress(db, "horror")).toBeNull();
+    expect(getSetting(db, "guided-session:horror:movie")).toBeNull();
+    expect(getSetting(db, "guided-session:horror:tv")).toBeNull();
+
+    getOrCreateGuidedSession(db, "horror", "movie");
+    expect(getSetting(db, "guided-session:horror:movie")).toBeTruthy();
+    expect(getGuidedSession(db, "horror", "movie")?.slug).toBe("horror");
+  });
+
+  it("peek prefers movie progress then surfaces TV-only tours", () => {
+    const db = memoryDb();
+    answerGuidedBeat(db, "anime", "tv", "tempo", "kinetic");
+    const peeked = peekGuidedSessionProgress(db, "anime");
+    expect(peeked?.mediaType).toBe("tv");
+    expect(peeked?.answers.tempo).toBe("kinetic");
+  });
+
+  it("rejects unknown / hostile world slugs before persist", () => {
+    const db = memoryDb();
+    expect(() => getOrCreateGuidedSession(db, "not-a-world", "movie")).toThrow(
+      /invalid world slug/,
+    );
+    expect(() => assertKnownWorldSlug("evil\nslug")).toThrow();
+    expect(sanitizeGenreSlug("ok-slug")).toBe("ok-slug");
+    expect(sanitizeGenreSlug("x".repeat(80))).toBeNull();
+    expect(getSetting(db, "guided-session:not-a-world:movie")).toBeNull();
+  });
+
+  it("parseGenreQueryParam caps count and drops hostile tokens", () => {
+    const many = Array.from({ length: 20 }, (_, i) => `genre-${i}`).join(",");
+    expect(parseGenreQueryParam(many)).toHaveLength(8);
+    expect(parseGenreQueryParam("horror,<script>,romance")).toEqual([
+      "horror",
+      "romance",
+    ]);
+  });
+
+  it("act rejects non-positive / non-integer tmdbId", async () => {
+    const db = memoryDb();
+    getOrCreateGuidedSession(db, "documentary", "movie");
+    for (const bad of [0, -1, 1.5, NaN]) {
+      await expect(
+        actOnGuidedPick(db, {
+          slug: "documentary",
+          mediaType: "movie",
+          tmdbId: bad,
+          titleMediaType: "movie",
+          action: "open",
+        }),
+      ).rejects.toMatchObject({ statusCode: 400 });
+    }
   });
 
   it("answers beats and completes after all three", () => {
@@ -326,11 +391,14 @@ describe("guidedSessionService", () => {
 
   it("links conversation and finds session for RAG", () => {
     const db = memoryDb();
+    const conversationId = createConversation(db, "tour");
     answerGuidedBeat(db, "documentary", "movie", "tempo", "slow");
     answerGuidedBeat(db, "documentary", "movie", "era", "now");
-    const linked = linkGuidedConversation(db, "documentary", "movie", 42);
-    expect(linked.conversationId).toBe(42);
-    expect(findGuidedSessionByConversation(db, 42)?.slug).toBe("documentary");
+    const linked = linkGuidedConversation(db, "documentary", "movie", conversationId);
+    expect(linked.conversationId).toBe(conversationId);
+    expect(findGuidedSessionByConversation(db, conversationId)?.slug).toBe(
+      "documentary",
+    );
     expect(findGuidedSessionByConversation(db, 99)).toBeNull();
 
     const text = renderGuidedSessionContext(linked);
@@ -339,9 +407,23 @@ describe("guidedSessionService", () => {
     expect(text).toMatch(/Tour beats/);
   });
 
+  it("link rejects missing conversation ids", () => {
+    const db = memoryDb();
+    getOrCreateGuidedSession(db, "documentary", "movie");
+    expect(() => linkGuidedConversation(db, "documentary", "movie", 404)).toThrow(
+      /Conversation not found/,
+    );
+    try {
+      linkGuidedConversation(db, "documentary", "movie", 404);
+    } catch (err) {
+      expect((err as { statusCode?: number }).statusCode).toBe(404);
+    }
+  });
+
   it("syncGuidedWatchlistFromChat mirrors shelf inLibrary on linked chat", () => {
     const db = memoryDb();
-    linkGuidedConversation(db, "documentary", "movie", 7);
+    const conversationId = createConversation(db, "sync");
+    linkGuidedConversation(db, "documentary", "movie", conversationId);
     refreshGuidedPicks(db, "documentary", "movie", [
       {
         tmdbId: 900,
@@ -353,7 +435,7 @@ describe("guidedSessionService", () => {
         inLibrary: false,
       },
     ]);
-    const synced = syncGuidedWatchlistFromChat(db, 7, 900, "movie");
+    const synced = syncGuidedWatchlistFromChat(db, conversationId, 900, "movie");
     expect(synced?.picks[0]?.inLibrary).toBe(true);
     expect(synced?.acted.some((a) => a.action === "watchlist" && a.tmdbId === 900)).toBe(
       true,

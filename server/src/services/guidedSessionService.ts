@@ -2,6 +2,7 @@ import type { DB } from "../db/connection.js";
 import { getSetting, setSetting } from "../llm/openrouter.js";
 import { addToLibrary } from "./libraryService.js";
 import type { MediaType } from "../tmdb/types.js";
+import { assertKnownWorldSlug, KNOWN_WORLD_SLUGS, sanitizeGenreSlug } from "./worldSlug.js";
 
 export type GuidedBeatId = "tempo" | "era" | "risk";
 export type GuidedChoiceId = string;
@@ -333,15 +334,58 @@ function saveSession(db: DB, session: GuidedSession): GuidedSession {
   return next;
 }
 
+/**
+ * Read-only session lookup — never persists.
+ * Hub Resume peeks must use this (or peekGuidedSessionProgress) so empty
+ * atlas doors do not write `guided-session:*` shells.
+ */
+export function getGuidedSession(
+  db: DB,
+  slug: string,
+  mediaType: MediaType,
+): GuidedSession | null {
+  const world = assertKnownWorldSlug(slug);
+  return parseSession(getSetting(db, sessionKey(world, mediaType)), world, mediaType);
+}
+
+/** True when a session has real tour progress (not a fresh empty shell). */
+export function guidedSessionHasProgress(session: GuidedSession): boolean {
+  if (session.status === "complete") return true;
+  if (Object.keys(session.answers).length > 0) return true;
+  if (session.acted.length > 0) return true;
+  return false;
+}
+
+/**
+ * Hub peek: movie then tv — first mediaType with progress wins.
+ * Never creates settings rows.
+ */
+export function peekGuidedSessionProgress(
+  db: DB,
+  slug: string,
+): GuidedSession | null {
+  const world = assertKnownWorldSlug(slug);
+  for (const mediaType of ["movie", "tv"] as const) {
+    const session = getGuidedSession(db, world, mediaType);
+    if (session && guidedSessionHasProgress(session)) return session;
+  }
+  return null;
+}
+
 export function getOrCreateGuidedSession(
   db: DB,
   slug: string,
   mediaType: MediaType,
 ): GuidedSession {
-  const existing = parseSession(getSetting(db, sessionKey(slug, mediaType)), slug, mediaType);
+  const world = assertKnownWorldSlug(slug);
+  const existing = parseSession(
+    getSetting(db, sessionKey(world, mediaType)),
+    world,
+    mediaType,
+  );
   if (existing) return existing;
-  const created = emptySession(slug, mediaType);
-  setSetting(db, sessionKey(slug, mediaType), JSON.stringify(created));
+  const created = emptySession(world, mediaType);
+  setSetting(db, sessionKey(world, mediaType), JSON.stringify(created));
   return created;
 }
 
@@ -352,12 +396,13 @@ export function answerGuidedBeat(
   beatId: GuidedBeatId,
   choiceId: GuidedChoiceId,
 ): GuidedSession {
-  const beat = beatsForSlug(slug).find((b) => b.id === beatId);
+  const world = assertKnownWorldSlug(slug);
+  const beat = beatsForSlug(world).find((b) => b.id === beatId);
   if (!beat) throw Object.assign(new Error(`Unknown beat: ${beatId}`), { statusCode: 400 });
   if (!beat.choices.some((c) => c.id === choiceId)) {
     throw Object.assign(new Error(`Unknown choice: ${choiceId}`), { statusCode: 400 });
   }
-  const session = getOrCreateGuidedSession(db, slug, mediaType);
+  const session = getOrCreateGuidedSession(db, world, mediaType);
   return saveSession(db, {
     ...session,
     answers: { ...session.answers, [beatId]: choiceId },
@@ -369,8 +414,9 @@ export function resetGuidedSession(
   slug: string,
   mediaType: MediaType,
 ): GuidedSession {
-  const fresh = emptySession(slug, mediaType);
-  setSetting(db, sessionKey(slug, mediaType), JSON.stringify(fresh));
+  const world = assertKnownWorldSlug(slug);
+  const fresh = emptySession(world, mediaType);
+  setSetting(db, sessionKey(world, mediaType), JSON.stringify(fresh));
   return fresh;
 }
 
@@ -581,7 +627,24 @@ export async function actOnGuidedPick(
     posterPath?: string | null;
   },
 ): Promise<GuidedSession> {
-  const session = getOrCreateGuidedSession(db, opts.slug, opts.mediaType);
+  if (!Number.isInteger(opts.tmdbId) || opts.tmdbId <= 0) {
+    throw Object.assign(new Error("tmdbId must be a positive integer"), {
+      statusCode: 400,
+    });
+  }
+  const world = assertKnownWorldSlug(opts.slug);
+  const session = getOrCreateGuidedSession(db, world, opts.mediaType);
+  // When Tonight shelf exists, only allow acts on shelf titles (closer to /library rigor).
+  if (session.picks.length > 0) {
+    const onShelf = session.picks.some(
+      (p) => p.tmdbId === opts.tmdbId && p.mediaType === opts.titleMediaType,
+    );
+    if (!onShelf) {
+      throw Object.assign(new Error("tmdbId not in guided picks"), {
+        statusCode: 400,
+      });
+    }
+  }
   const act: GuidedAct = {
     tmdbId: opts.tmdbId,
     mediaType: opts.titleMediaType,
@@ -642,10 +705,17 @@ export function linkGuidedConversation(
   mediaType: MediaType,
   conversationId: number,
 ): GuidedSession {
-  if (!Number.isFinite(conversationId) || conversationId <= 0) {
+  if (!Number.isInteger(conversationId) || conversationId <= 0) {
     throw Object.assign(new Error("conversationId required"), { statusCode: 400 });
   }
-  const session = getOrCreateGuidedSession(db, slug, mediaType);
+  const exists = db
+    .prepare("SELECT id FROM conversations WHERE id = ?")
+    .get(conversationId) as { id: number } | undefined;
+  if (!exists) {
+    throw Object.assign(new Error("Conversation not found"), { statusCode: 404 });
+  }
+  const world = assertKnownWorldSlug(slug);
+  const session = getOrCreateGuidedSession(db, world, mediaType);
   if (session.conversationId === conversationId) return session;
   return saveSession(db, { ...session, conversationId });
 }
@@ -666,9 +736,12 @@ export function findGuidedSessionByConversation(
       if (!parsed.slug || (parsed.mediaType !== "movie" && parsed.mediaType !== "tv")) {
         continue;
       }
+      const world = sanitizeGenreSlug(parsed.slug);
+      if (!world || !KNOWN_WORLD_SLUGS.has(world)) continue;
       return {
-        ...emptySession(parsed.slug, parsed.mediaType),
+        ...emptySession(world, parsed.mediaType),
         ...parsed,
+        slug: world,
         answers: parsed.answers ?? {},
         picks: parsed.picks ?? [],
         acted: parsed.acted ?? [],
@@ -685,13 +758,15 @@ export function findGuidedSessionByConversation(
  * Companion tools still own library mutations; this is read-side awareness.
  */
 export function renderGuidedSessionContext(session: GuidedSession): string {
-  const metaphor = metaphorForSlug(session.slug);
+  // Allowlist before RAG injection — corrupt/unknown slugs never reach the prompt.
+  const world = assertKnownWorldSlug(session.slug);
+  const metaphor = metaphorForSlug(world);
   const lines: string[] = [
-    `Active guided tour · ${metaphor} · world "${session.slug}" · ${session.mediaType} · status ${session.status}.`,
+    `Active guided tour · ${metaphor} · world "${world}" · ${session.mediaType} · status ${session.status}.`,
   ];
 
   const answerBits: string[] = [];
-  for (const beat of beatsForSlug(session.slug)) {
+  for (const beat of beatsForSlug(world)) {
     const choiceId = session.answers[beat.id];
     if (!choiceId) {
       answerBits.push(`${beat.id}: unanswered`);

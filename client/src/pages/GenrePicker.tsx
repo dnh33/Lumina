@@ -224,14 +224,15 @@ function WorldDoor({
   count,
   status,
   index,
-  hasGuidedSession,
+  resumeMediaType,
 }: {
   slug: string;
   world: GenreWorld;
   count: number;
   status: ShelfStatus;
   index: number;
-  hasGuidedSession: boolean;
+  /** When set, mist Resume chip links into that mediaType tour. */
+  resumeMediaType?: "movie" | "tv";
 }) {
   const accent = accentVar(world);
   const name = displayName(slug);
@@ -280,9 +281,9 @@ function WorldDoor({
       <div className="relative z-10 mt-3 flex items-center justify-between gap-2 border-t border-white/[0.05] pt-2.5 pl-2 text-xs text-mist-300">
         <span className="pointer-events-none">{countLabel}</span>
         <span className="inline-flex items-center gap-2">
-          {hasGuidedSession ? (
+          {resumeMediaType ? (
             <Link
-              to={genreGuidedResumePath(slug)}
+              to={genreGuidedResumePath(slug, resumeMediaType)}
               data-testid={`resume-tour-${slug}`}
               aria-label={`Resume ${name} guided tour`}
               className="pointer-events-auto inline-flex min-h-8 items-center rounded-md border border-white/[0.1] bg-white/[0.03] px-2 text-[11px] text-mist-200 transition-[border-color,background-color,color] duration-200 hover:border-white/20 hover:bg-white/[0.06] hover:text-mist-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400/60"
@@ -351,21 +352,27 @@ export default function GenrePicker() {
     queryFn: () => api.library(),
   });
 
-  /** Minimal per-world guided peek — Resume chip only when progress exists. */
+  /**
+   * Read-only peek (peek=1) — movie then any-TV via server peek without mediaType.
+   * Never calls getOrCreate; Resume chip only when real progress exists.
+   */
   const guidedSessionQueries = useQueries({
     queries: ATLAS_SLUGS.map((slug) => ({
-      queryKey: ["guided-session", slug, "movie"] as const,
-      queryFn: () => api.guidedSession(slug, "movie"),
+      queryKey: ["guided-session-peek", slug] as const,
+      queryFn: () => api.guidedSessionPeek(slug),
       staleTime: 60_000,
     })),
   });
 
-  const guidedResumeBySlug: Record<string, boolean> = {};
+  /** Per-slug resume mediaType when progress exists (movie preferred if both). */
+  const guidedResumeBySlug: Record<string, "movie" | "tv" | undefined> = {};
   for (let i = 0; i < ATLAS_SLUGS.length; i++) {
     const session = guidedSessionQueries[i]?.data?.session;
-    guidedResumeBySlug[ATLAS_SLUGS[i]] = session
-      ? hasGuidedSessionProgress(session)
-      : false;
+    const slug = ATLAS_SLUGS[i]!;
+    if (session && hasGuidedSessionProgress(session)) {
+      guidedResumeBySlug[slug] =
+        session.mediaType === "tv" ? "tv" : "movie";
+    }
   }
 
   const atlas = useMemo(() => {
@@ -437,7 +444,7 @@ export default function GenrePicker() {
                     count={door.count}
                     status={door.status}
                     index={i}
-                    hasGuidedSession={!!guidedResumeBySlug[door.slug]}
+                    resumeMediaType={guidedResumeBySlug[door.slug]}
                   />
                 </div>
               ))}

@@ -8,7 +8,12 @@ import { EASE_OUT_EXPO } from "../../lib/motion.js";
 import { playWorldCue } from "../../lib/worldCue.js";
 import { getSoundEnabled } from "../../lib/sound.js";
 import type { GenreWorld } from "../../lib/genreWorld.js";
-import type { GuidedBeatId, GuidedPick, MediaType } from "../../lib/types.js";
+import type {
+  GuidedBeatId,
+  GuidedPick,
+  GuidedSessionPayload,
+  MediaType,
+} from "../../lib/types.js";
 import {
   actFeedback,
   actOutcomeWhisper,
@@ -235,10 +240,48 @@ export function GuidedTour({
     prevBagLen.current = len;
   }, [data]);
 
+  const applyGuidedSession = (payload: GuidedSessionPayload) => {
+    qc.setQueryData<GuidedSessionPayload>(
+      ["guided-session", slug, mediaType],
+      payload,
+    );
+    const pickKeys = new Set(
+      payload.session.picks.map((p) => `${p.mediaType}:${p.tmdbId}`),
+    );
+    setShelfActiveKey((prev) => (prev && pickKeys.has(prev) ? prev : null));
+  };
+
   const invalidateWorld = () => {
     void qc.invalidateQueries({ queryKey: ["guided-session", slug, mediaType] });
     void qc.invalidateQueries({ queryKey: ["genre-experience", slug, "guided", mediaType] });
     void qc.invalidateQueries({ queryKey: ["genre-intro", slug, "guided", mediaType] });
+  };
+
+  /**
+   * Dial answers only persist choices — shelf reweight lives in
+   * genre-experience (`refreshGuidedPicks`). Parallel invalidate races:
+   * guided-session can refetch BEFORE picks persist, leaving stale peers
+   * that fail act with 400. Sequence: rail first, then session picks.
+   */
+  const syncShelfAfterDial = async (payload: GuidedSessionPayload) => {
+    applyGuidedSession(payload);
+    await qc.fetchQuery({
+      queryKey: ["genre-experience", slug, "guided", mediaType],
+      queryFn: () =>
+        api.genreExperience([slug], "guided", mediaType, world.modules),
+    });
+    const fresh = await api.guidedSession(slug, mediaType);
+    applyGuidedSession({
+      ...payload,
+      session: {
+        ...payload.session,
+        picks: fresh.session.picks,
+        updatedAt: fresh.session.updatedAt,
+      },
+    });
+    void qc.invalidateQueries({
+      queryKey: ["genre-intro", slug, "guided", mediaType],
+    });
   };
 
   const answerMut = useMutation({
@@ -249,9 +292,9 @@ export function GuidedTour({
         beatId: args.beatId,
         choiceId: args.choiceId,
       }),
-    onSuccess: (_payload, vars) => {
+    onSuccess: async (payload, vars) => {
       setEditingBeatId(null);
-      invalidateWorld();
+      await syncShelfAfterDial(payload);
       setShelfPulse((n) => n + 1);
       flash(rankFeedback(vars.beatId, vars.choiceLabel));
       pushOutcomeCue(outcomeWhisper(vars.beatId, vars.choiceLabel));
@@ -271,8 +314,14 @@ export function GuidedTour({
       year?: number | null;
       posterPath?: string | null;
     }) => api.guidedAct({ slug, mediaType, ...args }),
-    onSuccess: (_payload, vars) => {
-      invalidateWorld();
+    onSuccess: (payload, vars) => {
+      applyGuidedSession(payload);
+      void qc.invalidateQueries({
+        queryKey: ["genre-experience", slug, "guided", mediaType],
+      });
+      void qc.invalidateQueries({
+        queryKey: ["genre-intro", slug, "guided", mediaType],
+      });
       setShelfPulse((n) => n + 1);
       flash(actFeedback(vars.action, vars.title ?? "Title"));
       const cue = actOutcomeWhisper(vars.action, vars.title ?? "Title");
@@ -285,8 +334,9 @@ export function GuidedTour({
 
   const resetMut = useMutation({
     mutationFn: () => api.resetGuided({ slug, mediaType }),
-    onSuccess: () => {
+    onSuccess: (payload) => {
       setEditingBeatId(null);
+      applyGuidedSession(payload);
       invalidateWorld();
       onSteerEra?.(null);
       flash("Tour reframed - dials cleared, shelf waiting.");

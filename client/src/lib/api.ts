@@ -74,6 +74,14 @@ export const api = {
     get<GuidedSessionPayload>(
       `/api/discover/guided-session?slug=${encodeURIComponent(slug)}&mediaType=${mediaType}`,
     ),
+  /** Hub Resume peek — read-only; never creates an empty session. */
+  guidedSessionPeek: (slug: string, mediaType?: MediaType) => {
+    const q = new URLSearchParams({ slug, peek: "1" });
+    if (mediaType) q.set("mediaType", mediaType);
+    return get<{ session: GuidedSessionPayload["session"] | null; beats: GuidedSessionPayload["beats"] }>(
+      `/api/discover/guided-session?${q}`,
+    );
+  },
   answerGuided: (body: {
     slug: string;
     mediaType?: MediaType;

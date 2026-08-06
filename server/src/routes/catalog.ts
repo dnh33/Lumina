@@ -14,12 +14,19 @@ import { buildGenreExperience, buildGenreIntro } from "../services/genreExperien
 import {
   beatsForSlug,
   getOrCreateGuidedSession,
+  getGuidedSession,
+  peekGuidedSessionProgress,
   answerGuidedBeat,
   actOnGuidedPick,
   resetGuidedSession,
   linkGuidedConversation,
   type GuidedBeatId,
 } from "../services/guidedSessionService.js";
+import {
+  assertKnownWorldSlug,
+  parseGenreQueryParam,
+  parseModulesQueryParam,
+} from "../services/worldSlug.js";
 import {
   fetchDetailsFromTmdb,
   getEntryByTmdb,
@@ -135,36 +142,53 @@ catalogRouter.get("/discover/for-you", async (_req, res) => {
 });
 
 catalogRouter.get("/discover/genre-experience", async (req, res) => {
-  const genres = String(req.query.genres ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const genres = parseGenreQueryParam(req.query.genres);
   const mode = req.query.mode === "guided" ? "guided" : "self";
   const mediaType = req.query.mediaType === "tv" ? "tv" : "movie";
-  const modules = req.query.modules
-    ? String(req.query.modules).split(",").map((s) => s.trim()).filter(Boolean)
-    : [];
+  const modules = parseModulesQueryParam(req.query.modules);
   const result = await buildGenreExperience(getDb(), { genres, mediaType, mode, modules });
   res.json(result);
 });
 
 // P1.1/2.3: standalone curator intro so the rails don't block on the LLM.
 catalogRouter.get("/discover/genre-intro", async (req, res) => {
-  const genres = String(req.query.genres ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const genres = parseGenreQueryParam(req.query.genres);
   const mode = req.query.mode === "guided" ? "guided" : "self";
   const mediaType = req.query.mediaType === "tv" ? "tv" : "movie";
-  const modules = req.query.modules
-    ? String(req.query.modules).split(",").map((s) => s.trim()).filter(Boolean)
-    : [];
+  const modules = parseModulesQueryParam(req.query.modules);
   const result = await buildGenreIntro(getDb(), { genres, mediaType, mode, modules });
   res.json(result);
 });
 
 // ── Guided tour session (Worlds G1) ──────────────────────────────────
 catalogRouter.get("/discover/guided-session", (req, res) => {
-  const slug = String(req.query.slug ?? "").trim();
-  if (!slug) {
+  const rawSlug = String(req.query.slug ?? "").trim();
+  if (!rawSlug) {
     res.status(400).json({ error: "slug required" });
     return;
   }
+  let slug: string;
+  try {
+    slug = assertKnownWorldSlug(rawSlug);
+  } catch (err) {
+    const status = (err as { statusCode?: number }).statusCode ?? 400;
+    res.status(status).json({ error: (err as Error).message });
+    return;
+  }
+  const peek = req.query.peek === "1" || req.query.peek === "true";
   const mediaType = req.query.mediaType === "tv" ? "tv" : "movie";
+  // Hub Resume: read-only peek (no create). Optional mediaType; omit → any with progress.
+  if (peek) {
+    const session =
+      req.query.mediaType === "movie" || req.query.mediaType === "tv"
+        ? getGuidedSession(getDb(), slug, mediaType)
+        : peekGuidedSessionProgress(getDb(), slug);
+    res.json({
+      session,
+      beats: session ? beatsForSlug(slug) : [],
+    });
+    return;
+  }
   const session = getOrCreateGuidedSession(getDb(), slug, mediaType);
   res.json({ session, beats: beatsForSlug(slug) });
 });
@@ -180,7 +204,7 @@ catalogRouter.post("/discover/guided-session/answer", (req, res) => {
   const mediaType = req.body?.mediaType === "tv" ? "tv" : "movie";
   try {
     const session = answerGuidedBeat(getDb(), slug, mediaType, beatId, choiceId);
-    res.json({ session, beats: beatsForSlug(slug) });
+    res.json({ session, beats: beatsForSlug(session.slug) });
   } catch (err) {
     const status = (err as { statusCode?: number }).statusCode ?? 500;
     res.status(status).json({ error: (err as Error).message });
@@ -191,7 +215,12 @@ catalogRouter.post("/discover/guided-session/act", async (req, res) => {
   const slug = String(req.body?.slug ?? "").trim();
   const tmdbId = Number(req.body?.tmdbId);
   const action = String(req.body?.action ?? "") as "watchlist" | "dismiss" | "open";
-  if (!slug || !Number.isFinite(tmdbId) || !["watchlist", "dismiss", "open"].includes(action)) {
+  if (
+    !slug ||
+    !Number.isInteger(tmdbId) ||
+    tmdbId <= 0 ||
+    !["watchlist", "dismiss", "open"].includes(action)
+  ) {
     res.status(400).json({ error: "slug, tmdbId, action required" });
     return;
   }
@@ -208,7 +237,7 @@ catalogRouter.post("/discover/guided-session/act", async (req, res) => {
       year: req.body?.year ?? null,
       posterPath: req.body?.posterPath ?? null,
     });
-    res.json({ session, beats: beatsForSlug(slug) });
+    res.json({ session, beats: beatsForSlug(session.slug) });
   } catch (err) {
     const status = (err as { statusCode?: number }).statusCode ?? 500;
     res.status(status).json({ error: (err as Error).message });
@@ -222,21 +251,26 @@ catalogRouter.post("/discover/guided-session/reset", (req, res) => {
     return;
   }
   const mediaType = req.body?.mediaType === "tv" ? "tv" : "movie";
-  const session = resetGuidedSession(getDb(), slug, mediaType);
-  res.json({ session, beats: beatsForSlug(slug) });
+  try {
+    const session = resetGuidedSession(getDb(), slug, mediaType);
+    res.json({ session, beats: beatsForSlug(session.slug) });
+  } catch (err) {
+    const status = (err as { statusCode?: number }).statusCode ?? 500;
+    res.status(status).json({ error: (err as Error).message });
+  }
 });
 
 catalogRouter.post("/discover/guided-session/link", (req, res) => {
   const slug = String(req.body?.slug ?? "").trim();
   const conversationId = Number(req.body?.conversationId);
-  if (!slug || !Number.isFinite(conversationId) || conversationId <= 0) {
+  if (!slug || !Number.isInteger(conversationId) || conversationId <= 0) {
     res.status(400).json({ error: "slug, conversationId required" });
     return;
   }
   const mediaType = req.body?.mediaType === "tv" ? "tv" : "movie";
   try {
     const session = linkGuidedConversation(getDb(), slug, mediaType, conversationId);
-    res.json({ session, beats: beatsForSlug(slug) });
+    res.json({ session, beats: beatsForSlug(session.slug) });
   } catch (err) {
     const status = (err as { statusCode?: number }).statusCode ?? 500;
     res.status(status).json({ error: (err as Error).message });

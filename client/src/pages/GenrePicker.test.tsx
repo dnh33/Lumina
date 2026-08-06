@@ -10,6 +10,7 @@ vi.mock("../lib/api.js", () => ({
     genres: vi.fn(async () => []),
     library: vi.fn(async () => []),
     guidedSession: vi.fn(),
+    guidedSessionPeek: vi.fn(),
   },
 }));
 
@@ -32,11 +33,15 @@ function emptySession(slug: string): GuidedSessionPayload {
   };
 }
 
-function progressSession(slug: string): GuidedSessionPayload {
+function progressSession(
+  slug: string,
+  mediaType: "movie" | "tv" = "movie",
+): GuidedSessionPayload {
   return {
     ...emptySession(slug),
     session: {
       ...emptySession(slug).session,
+      mediaType,
       status: "complete",
       answers: { tempo: "slow", era: "classic", risk: "stretch" },
     },
@@ -60,9 +65,19 @@ describe("GenrePicker Hub Resume chip", () => {
   beforeEach(() => {
     vi.mocked(api.genres).mockResolvedValue([]);
     vi.mocked(api.library).mockResolvedValue([]);
-    vi.mocked(api.guidedSession).mockImplementation(async (slug: string) =>
-      slug === "horror" ? progressSession("horror") : emptySession(slug),
-    );
+    vi.mocked(api.guidedSession).mockReset();
+    vi.mocked(api.guidedSessionPeek).mockImplementation(async (slug: string) => {
+      if (slug === "horror") return progressSession("horror", "movie");
+      if (slug === "anime") return progressSession("anime", "tv");
+      return { session: null, beats: [] };
+    });
+  });
+
+  it("uses read-only peek (not getOrCreate) for Resume", async () => {
+    renderPicker();
+    await screen.findByTestId("resume-tour-horror");
+    expect(api.guidedSessionPeek).toHaveBeenCalled();
+    expect(api.guidedSession).not.toHaveBeenCalled();
   });
 
   it("keeps Enter on Self and shows Resume tour only when Guided progress exists", async () => {
@@ -81,6 +96,15 @@ describe("GenrePicker Hub Resume chip", () => {
     expect(screen.getByTestId("enter-romance")).toHaveAttribute(
       "href",
       "/genre/romance?mode=self",
+    );
+  });
+
+  it("Resume for TV-only tours includes mediaType=tv", async () => {
+    renderPicker();
+    const resumeAnime = await screen.findByTestId("resume-tour-anime");
+    expect(resumeAnime).toHaveAttribute(
+      "href",
+      "/genre/anime?mode=guided&mediaType=tv",
     );
   });
 });

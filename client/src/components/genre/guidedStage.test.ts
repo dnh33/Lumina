@@ -5,6 +5,7 @@ import {
   genreGuidedResumePath,
   genreSelfEnterPath,
   hasGuidedSessionProgress,
+  preferredEraOnGuidedEnter,
   resolveGuidedEraChoice,
 } from "./guidedStage.js";
 
@@ -41,6 +42,19 @@ describe("genre enter / resume paths", () => {
   it("cold Enter stays Self; Resume is explicit Guided", () => {
     expect(genreSelfEnterPath("horror")).toBe("/genre/horror?mode=self");
     expect(genreGuidedResumePath("horror")).toBe("/genre/horror?mode=guided");
+    expect(genreGuidedResumePath("horror", "tv")).toBe(
+      "/genre/horror?mode=guided&mediaType=tv",
+    );
+  });
+});
+
+describe("preferredEraOnGuidedEnter", () => {
+  it("maps Self decade / lastSelf into era band for URL resume entry", () => {
+    expect(preferredEraOnGuidedEnter({ decade: 1980 })).toBe("classic");
+    expect(
+      preferredEraOnGuidedEnter({ decade: null, lastSelfDecade: 2000 }),
+    ).toBe("turn");
+    expect(preferredEraOnGuidedEnter({ decade: null })).toBeUndefined();
   });
 });
 

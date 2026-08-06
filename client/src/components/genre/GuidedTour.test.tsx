@@ -79,6 +79,7 @@ vi.mock("../../lib/api.js", () => ({
     answerGuided: vi.fn(),
     guidedAct: vi.fn(),
     resetGuided: vi.fn(),
+    genreExperience: vi.fn(),
   },
 }));
 
@@ -110,6 +111,7 @@ describe("GuidedTour", () => {
     vi.mocked(api.answerGuided).mockReset();
     vi.mocked(api.guidedAct).mockReset();
     vi.mocked(api.resetGuided).mockReset();
+    vi.mocked(api.genreExperience).mockReset();
     vi.mocked(api.guidedSession).mockResolvedValue(sessionPayload);
     vi.mocked(api.answerGuided).mockResolvedValue({
       ...sessionPayload,
@@ -120,6 +122,14 @@ describe("GuidedTour", () => {
     });
     vi.mocked(api.guidedAct).mockResolvedValue(sessionPayload);
     vi.mocked(api.resetGuided).mockResolvedValue(sessionPayload);
+    vi.mocked(api.genreExperience).mockResolvedValue({
+      key: "test",
+      genres: ["documentary"],
+      mode: "guided",
+      items: [],
+      anchorsUsed: [],
+      profileState: "thin",
+    });
   });
 
   it("renders tour desk and metaphor-flavored beat choices", async () => {
@@ -699,5 +709,151 @@ describe("GuidedTour", () => {
     const libLink = screen.getByRole("link", { name: /Open in Library/i });
     expect(libLink.getAttribute("href")).toBe(libraryWatchlistPath());
     expect(screen.getByRole("button", { name: /Stay on shelf/i })).toBeTruthy();
+  });
+
+  it("after dial reweight replaces stale shelf peers before act (no Aliens→400)", async () => {
+    const { api } = await import("../../lib/api.js");
+    const aliens = {
+      tmdbId: 679,
+      mediaType: "movie" as const,
+      title: "Aliens",
+      year: 1986,
+      posterPath: "/a.jpg",
+      voteAverage: 8,
+      inLibrary: false,
+    };
+    const caliber = {
+      tmdbId: 11645,
+      mediaType: "movie" as const,
+      title: "Caliber 9",
+      year: 1972,
+      posterPath: "/c.jpg",
+      voteAverage: 7.4,
+      inLibrary: false,
+    };
+    const rosemary = {
+      tmdbId: 805,
+      mediaType: "movie" as const,
+      title: "Rosemary's Baby",
+      year: 1968,
+      posterPath: "/r.jpg",
+      voteAverage: 7.8,
+      inLibrary: false,
+    };
+
+    const beforeRisk: GuidedSessionPayload = {
+      ...sessionPayload,
+      session: {
+        ...sessionPayload.session,
+        status: "active",
+        answers: { tempo: "slow", era: "classic" },
+        picks: [aliens, rosemary],
+      },
+    };
+    // answer endpoint updates answers only — picks still stale until rail refresh
+    const answerPayload: GuidedSessionPayload = {
+      ...beforeRisk,
+      session: {
+        ...beforeRisk.session,
+        status: "complete",
+        answers: { tempo: "slow", era: "classic", risk: "stretch" },
+        picks: [aliens, rosemary],
+      },
+    };
+    const afterReweight: GuidedSessionPayload = {
+      ...answerPayload,
+      session: {
+        ...answerPayload.session,
+        picks: [rosemary, caliber],
+      },
+    };
+
+    vi.mocked(api.guidedSession).mockResolvedValue(beforeRisk);
+    vi.mocked(api.answerGuided).mockResolvedValue(answerPayload);
+    // genre-experience side-effect: refreshGuidedPicks persists new shelf
+    vi.mocked(api.genreExperience).mockImplementation(async () => {
+      vi.mocked(api.guidedSession).mockResolvedValue(afterReweight);
+      return {
+        key: "test",
+        genres: ["documentary"],
+        mode: "guided" as const,
+        items: [],
+        anchorsUsed: [],
+        profileState: "thin" as const,
+      };
+    });
+    vi.mocked(api.guidedAct).mockImplementation(async (body) => {
+      const onShelf = afterReweight.session.picks.some(
+        (p) => p.tmdbId === body.tmdbId,
+      );
+      if (!onShelf) {
+        throw Object.assign(new Error("tmdbId not in guided picks"), {
+          statusCode: 400,
+        });
+      }
+      return {
+        ...afterReweight,
+        session: {
+          ...afterReweight.session,
+          acted: [
+            {
+              tmdbId: body.tmdbId,
+              mediaType: "movie",
+              action: body.action,
+              at: "2026-08-06T12:00:00.000Z",
+            },
+          ],
+          picks: afterReweight.session.picks.map((p) =>
+            p.tmdbId === body.tmdbId ? { ...p, inLibrary: body.action === "watchlist" } : p,
+          ),
+        },
+      };
+    });
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={qc}>
+          <GuidedTour slug="documentary" mediaType="movie" world={world} />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId("guided-tour");
+    expect(screen.getByText("Aliens")).toBeTruthy();
+
+    // Activate stale peer so actions would target Aliens if shelf desyncs
+    fireEvent.click(screen.getByRole("button", { name: /^Aliens/ }));
+    expect(
+      screen.getByRole("button", { name: /Add Aliens to watchlist/i }),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("radio", { name: /Fringe dossier/i }));
+
+    await waitFor(() => {
+      expect(api.answerGuided).toHaveBeenCalled();
+      expect(api.genreExperience).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("Aliens")).toBeNull();
+      expect(screen.getByText("Caliber 9")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Caliber 9/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Add Caliber 9 to watchlist/i }),
+    );
+
+    await waitFor(() => {
+      expect(api.guidedAct).toHaveBeenCalledWith(
+        expect.objectContaining({ action: "watchlist", tmdbId: 11645 }),
+      );
+    });
+    expect(api.guidedAct).not.toHaveBeenCalledWith(
+      expect.objectContaining({ tmdbId: 679 }),
+    );
   });
 });

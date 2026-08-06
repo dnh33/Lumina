@@ -190,7 +190,7 @@ describe("WorldsMap — territory atlas", () => {
     renderMap({
       variant: "hub",
       defaultFocus: "horror",
-      guidedResumeBySlug: { horror: true },
+      guidedResumeBySlug: { horror: "movie" },
     });
     const resume = await screen.findByTestId("resume-tour-horror");
     expect(resume).toHaveAttribute("href", "/genre/horror?mode=guided");
@@ -201,11 +201,24 @@ describe("WorldsMap — territory atlas", () => {
     );
   });
 
+  it("Resume path inherits TV mediaType from hub peek", async () => {
+    renderMap({
+      variant: "hub",
+      defaultFocus: "anime",
+      guidedResumeBySlug: { anime: "tv" },
+    });
+    const resume = await screen.findByTestId("resume-tour-anime");
+    expect(resume).toHaveAttribute(
+      "href",
+      "/genre/anime?mode=guided&mediaType=tv",
+    );
+  });
+
   it("hides Resume tour when Guided progress is absent", async () => {
     renderMap({
       variant: "hub",
       defaultFocus: "horror",
-      guidedResumeBySlug: { horror: false },
+      guidedResumeBySlug: { horror: undefined },
     });
     await screen.findByTestId("enter-horror");
     expect(screen.queryByTestId("resume-tour-horror")).not.toBeInTheDocument();

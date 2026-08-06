@@ -124,9 +124,25 @@ export function genreSelfEnterPath(slug: string): string {
 /**
  * Hub Resume chip — explicit Guided re-entry.
  * Never used by Enter; cold Enter stays Self.
+ * Pass mediaType when the tour progressed on TV (or non-default axis).
  */
-export function genreGuidedResumePath(slug: string): string {
-  return `/genre/${slug}?mode=guided`;
+export function genreGuidedResumePath(
+  slug: string,
+  mediaType: "movie" | "tv" = "movie",
+): string {
+  const base = `/genre/${slug}?mode=guided`;
+  return mediaType === "tv" ? `${base}&mediaType=tv` : base;
+}
+
+/**
+ * Self decade → Guided preferred era band (URL/resume entry + mode strip).
+ * Session answers.era still wins via resolveGuidedEraChoice.
+ */
+export function preferredEraOnGuidedEnter(args: {
+  decade: number | null | undefined;
+  lastSelfDecade?: number | null | undefined;
+}): EraBandId | undefined {
+  return eraBandFromDecade(args.decade ?? args.lastSelfDecade ?? null);
 }
 
 /**

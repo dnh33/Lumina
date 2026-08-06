@@ -21,10 +21,10 @@ import { CompanionPanel } from "../components/genre/CompanionPanel.js";
 import { NeighborRail } from "../components/genre/NeighborRail.js";
 import { GuidedTour } from "../components/genre/GuidedTour.js";
 import {
-  eraBandFromDecade,
   eraBandLabel,
   eraDialShortName,
   filterItemsToEraBand,
+  preferredEraOnGuidedEnter,
   resolveGuidedEraChoice,
   type EraBandId,
   type GuidedHudStage,
@@ -238,9 +238,12 @@ export default function GenreExperience() {
       // Self → Guided: decade → preferred era band (session answers still win).
       pendingEraInherit.current = undefined;
       setSelfInheritAnnounce(null);
-      const d = decade ?? lastSelfDecadeRef.current;
-      const band = eraBandFromDecade(d);
+      const band = preferredEraOnGuidedEnter({
+        decade,
+        lastSelfDecade: lastSelfDecadeRef.current,
+      });
       setPreferredEraFromSelf(band);
+      const d = decade ?? lastSelfDecadeRef.current;
       const dial = band ? eraDialShortName(band) : null;
       setGuidedInheritAnnounce(
         band != null && d != null && dial
@@ -249,6 +252,26 @@ export default function GenreExperience() {
       );
     }
   };
+
+  /**
+   * URL / hub Resume `?mode=guided` never calls setModeParam — seed the same
+   * Self→era preferred band so GuidedTour continuity matches the mode strip.
+   */
+  useEffect(() => {
+    if (mode !== "guided") return;
+    const band = preferredEraOnGuidedEnter({
+      decade,
+      lastSelfDecade: lastSelfDecadeRef.current,
+    });
+    setPreferredEraFromSelf(band);
+    const d = decade ?? lastSelfDecadeRef.current;
+    const dial = band ? eraDialShortName(band) : null;
+    setGuidedInheritAnnounce(
+      band != null && d != null && dial ? `Guided · ${dial} from ${d}s` : null,
+    );
+    // Only on Guided entry / world change — not every decade scrub mid-tour.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, slug]);
 
   useEffect(() => {
     widenIntentRef.current = false;

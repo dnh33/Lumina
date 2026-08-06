@@ -153,8 +153,8 @@ interface WorldsMapProps {
    * denser fold packing so Enter stays in the first viewport.
    */
   variant?: "standalone" | "hub";
-  /** Per-slug Guided progress — mist Resume chip on the Enter strip. */
-  guidedResumeBySlug?: Record<string, boolean>;
+  /** Per-slug Guided progress — mist Resume chip; value is resume mediaType. */
+  guidedResumeBySlug?: Record<string, "movie" | "tv" | undefined>;
 }
 
 function resolveFocusSlug(slug: string | undefined): string | null {
@@ -340,6 +340,7 @@ export function WorldsMap({
             bySlug={bySlug}
             compact={isHub}
             canResume={!!guidedResumeBySlug?.[active.slug]}
+            resumeMediaType={guidedResumeBySlug?.[active.slug]}
           />
         )}
 
@@ -670,12 +671,14 @@ function FocusStrip({
   bySlug,
   compact = false,
   canResume = false,
+  resumeMediaType = "movie",
 }: {
   world: MapWorld;
   neighbors: string[];
   bySlug: Map<string, MapWorld>;
   compact?: boolean;
   canResume?: boolean;
+  resumeMediaType?: "movie" | "tv";
 }) {
   const name = displayName(world.slug);
   const accent = accentVar(world.world);
@@ -715,7 +718,7 @@ function FocusStrip({
             </span>
             {canResume ? (
               <Link
-                to={genreGuidedResumePath(world.slug)}
+                to={genreGuidedResumePath(world.slug, resumeMediaType)}
                 data-testid={`resume-tour-${world.slug}`}
                 aria-label={`Resume ${name} guided tour`}
                 className="inline-flex min-h-11 items-center rounded-lg border border-white/[0.1] bg-white/[0.03] px-3.5 text-sm font-medium text-mist-200 transition-[border-color,background-color,color] duration-200 hover:border-white/20 hover:bg-white/[0.06] hover:text-mist-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400/60"
