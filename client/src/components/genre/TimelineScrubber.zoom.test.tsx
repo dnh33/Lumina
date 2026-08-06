@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { TimelineScrubber } from "./TimelineScrubber.js";
 import type { CatalogItem } from "../../lib/types.js";
 
@@ -12,12 +13,14 @@ const items: CatalogItem[] = [
 /** Helper that renders in controlled mode with a deterministic era-thesis. */
 function renderZoomed(selectedDecade: number | null, eraThesis?: string) {
   return render(
-    <TimelineScrubber
-      items={items}
-      selectedDecade={selectedDecade}
-      onDecade={() => {}}
-      eraThesis={eraThesis}
-    />,
+    <MemoryRouter>
+      <TimelineScrubber
+        items={items}
+        selectedDecade={selectedDecade}
+        onDecade={() => {}}
+        eraThesis={eraThesis}
+      />
+    </MemoryRouter>,
   );
 }
 
@@ -27,17 +30,16 @@ describe("TimelineScrubber decade zoom (D1)", () => {
     const section = container.querySelector("section")!;
     expect(section).toHaveAttribute("data-zoomed", "true");
 
-    const tab = screen.getByRole("tab", { name: "2010s" });
+    const tab = screen.getByRole("tab", { name: /2010s/ });
     expect(tab).toHaveAttribute("data-zoom", "true");
-    // non-selected tabs must NOT be in the zoomed state
-    expect(screen.getByRole("tab", { name: "1990s" })).not.toHaveAttribute("data-zoom", "true");
+    expect(screen.getByRole("tab", { name: /1990s/ })).not.toHaveAttribute("data-zoom", "true");
   });
 
-  it("renders the deterministic era-thesis line for the selected decade", () => {
-    renderZoomed(1990, "Era thesis for the 1990s: Constellation framed by 1 title.");
+  it("renders the deterministic era-thesis line without decade echo", () => {
+    renderZoomed(1990, "1 title in the Constellation.");
     const thesis = screen.getByTestId("era-thesis");
-    expect(thesis.textContent).toContain("1990s");
     expect(thesis.textContent).toContain("Constellation");
+    expect(thesis.textContent).not.toMatch(/1990s/);
   });
 
   it("removes zoom + era-thesis when the decade is cleared (null)", () => {
@@ -46,7 +48,9 @@ describe("TimelineScrubber decade zoom (D1)", () => {
     expect(screen.queryByTestId("era-thesis")).not.toBeNull();
 
     rerender(
-      <TimelineScrubber items={items} selectedDecade={null} onDecade={() => {}} eraThesis={undefined} />,
+      <MemoryRouter>
+        <TimelineScrubber items={items} selectedDecade={null} onDecade={() => {}} eraThesis={undefined} />
+      </MemoryRouter>,
     );
     expect(container.querySelector("section")!).toHaveAttribute("data-zoomed", "false");
     expect(screen.queryByTestId("era-thesis")).toBeNull();
@@ -55,13 +59,17 @@ describe("TimelineScrubber decade zoom (D1)", () => {
   it("keeps existing filter behavior: clicking a tab still reports via onDecade", () => {
     let picked: number | null = null;
     render(
-      <TimelineScrubber
-        items={items}
-        selectedDecade={1990}
-        onDecade={(d) => { picked = d; }}
-      />,
+      <MemoryRouter>
+        <TimelineScrubber
+          items={items}
+          selectedDecade={1990}
+          onDecade={(d) => {
+            picked = d;
+          }}
+        />
+      </MemoryRouter>,
     );
-    fireEvent.click(screen.getByRole("tab", { name: "2000s" }));
+    fireEvent.click(screen.getByRole("tab", { name: /2000s/ }));
     expect(picked).toBe(2000);
   });
 });

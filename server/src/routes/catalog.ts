@@ -12,6 +12,15 @@ import {
 } from "../services/discoverService.js";
 import { buildGenreExperience, buildGenreIntro } from "../services/genreExperienceService.js";
 import {
+  beatsForSlug,
+  getOrCreateGuidedSession,
+  answerGuidedBeat,
+  actOnGuidedPick,
+  resetGuidedSession,
+  linkGuidedConversation,
+  type GuidedBeatId,
+} from "../services/guidedSessionService.js";
+import {
   fetchDetailsFromTmdb,
   getEntryByTmdb,
   libraryTmdbIds,
@@ -146,6 +155,92 @@ catalogRouter.get("/discover/genre-intro", async (req, res) => {
     : [];
   const result = await buildGenreIntro(getDb(), { genres, mediaType, mode, modules });
   res.json(result);
+});
+
+// ── Guided tour session (Worlds G1) ──────────────────────────────────
+catalogRouter.get("/discover/guided-session", (req, res) => {
+  const slug = String(req.query.slug ?? "").trim();
+  if (!slug) {
+    res.status(400).json({ error: "slug required" });
+    return;
+  }
+  const mediaType = req.query.mediaType === "tv" ? "tv" : "movie";
+  const session = getOrCreateGuidedSession(getDb(), slug, mediaType);
+  res.json({ session, beats: beatsForSlug(slug) });
+});
+
+catalogRouter.post("/discover/guided-session/answer", (req, res) => {
+  const slug = String(req.body?.slug ?? "").trim();
+  const beatId = String(req.body?.beatId ?? "") as GuidedBeatId;
+  const choiceId = String(req.body?.choiceId ?? "");
+  if (!slug || !beatId || !choiceId) {
+    res.status(400).json({ error: "slug, beatId, choiceId required" });
+    return;
+  }
+  const mediaType = req.body?.mediaType === "tv" ? "tv" : "movie";
+  try {
+    const session = answerGuidedBeat(getDb(), slug, mediaType, beatId, choiceId);
+    res.json({ session, beats: beatsForSlug(slug) });
+  } catch (err) {
+    const status = (err as { statusCode?: number }).statusCode ?? 500;
+    res.status(status).json({ error: (err as Error).message });
+  }
+});
+
+catalogRouter.post("/discover/guided-session/act", async (req, res) => {
+  const slug = String(req.body?.slug ?? "").trim();
+  const tmdbId = Number(req.body?.tmdbId);
+  const action = String(req.body?.action ?? "") as "watchlist" | "dismiss" | "open";
+  if (!slug || !Number.isFinite(tmdbId) || !["watchlist", "dismiss", "open"].includes(action)) {
+    res.status(400).json({ error: "slug, tmdbId, action required" });
+    return;
+  }
+  const mediaType = req.body?.mediaType === "tv" ? "tv" : "movie";
+  const titleMediaType = req.body?.titleMediaType === "tv" ? "tv" : "movie";
+  try {
+    const session = await actOnGuidedPick(getDb(), {
+      slug,
+      mediaType,
+      tmdbId,
+      titleMediaType,
+      action,
+      title: req.body?.title,
+      year: req.body?.year ?? null,
+      posterPath: req.body?.posterPath ?? null,
+    });
+    res.json({ session, beats: beatsForSlug(slug) });
+  } catch (err) {
+    const status = (err as { statusCode?: number }).statusCode ?? 500;
+    res.status(status).json({ error: (err as Error).message });
+  }
+});
+
+catalogRouter.post("/discover/guided-session/reset", (req, res) => {
+  const slug = String(req.body?.slug ?? "").trim();
+  if (!slug) {
+    res.status(400).json({ error: "slug required" });
+    return;
+  }
+  const mediaType = req.body?.mediaType === "tv" ? "tv" : "movie";
+  const session = resetGuidedSession(getDb(), slug, mediaType);
+  res.json({ session, beats: beatsForSlug(slug) });
+});
+
+catalogRouter.post("/discover/guided-session/link", (req, res) => {
+  const slug = String(req.body?.slug ?? "").trim();
+  const conversationId = Number(req.body?.conversationId);
+  if (!slug || !Number.isFinite(conversationId) || conversationId <= 0) {
+    res.status(400).json({ error: "slug, conversationId required" });
+    return;
+  }
+  const mediaType = req.body?.mediaType === "tv" ? "tv" : "movie";
+  try {
+    const session = linkGuidedConversation(getDb(), slug, mediaType, conversationId);
+    res.json({ session, beats: beatsForSlug(slug) });
+  } catch (err) {
+    const status = (err as { statusCode?: number }).statusCode ?? 500;
+    res.status(status).json({ error: (err as Error).message });
+  }
 });
 
 catalogRouter.get("/discover/because", async (_req, res) => {

@@ -112,35 +112,37 @@ export function useGenreState(slug: string) {
     // mode WITHOUT a post-mount setState flash, so read the URL param into the
     // initial steer synchronously. The URL wins over a persisted localStorage
     // blob; the page's toggle keeps both steer + URL in sync afterwards.
+    // Mode: URL explicit only. Hub Enter / bare `/genre/:slug` = Self cold
+    // browse — never silently resume Guided from localStorage (roast2 P1).
     const urlMt = searchParams.get("mediaType");
-    const base = persisted?.steer ?? DEFAULT_STEER;
-    if (urlMt === "tv" || urlMt === "movie") return { ...base, mediaType: urlMt };
-    return base;
+    const urlMode = searchParams.get("mode");
+    let next: GenreSteer = {
+      mode: "self",
+      mediaType: persisted?.steer.mediaType ?? DEFAULT_STEER.mediaType,
+    };
+    if (urlMt === "tv" || urlMt === "movie") next = { ...next, mediaType: urlMt };
+    if (urlMode === "guided" || urlMode === "self") next = { ...next, mode: urlMode };
+    return next;
   });
   const [dismissed, setDismissed] = useState<string[]>(
     () => persisted?.dismissed ?? [],
   );
 
-  // Sync the URL (replace, not push) from the latest filter state. Driven by
-  // an effect (not imperatively in each setter) so a burst of changes within
-  // one render still collapses into a single addressable URL and never reads
-  // a stale params closure.
+  // Sync the URL (replace, not push) from the latest filter + steer state.
+  // Rebuild from state — do NOT clone searchParams. Cloning raced with
+  // GenreExperience setModeParam/setMediaTypeParam and could drop
+  // `mode=guided` when decade/scrub wrote, flipping the tour off mid-session.
   useEffect(() => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams();
     const dec = decadeToParam(decade);
     if (dec) params.set("decade", dec);
-    else params.delete("decade");
     if (search) params.set("q", search);
-    else params.delete("q");
     if (sort && sort !== "default") params.set("sort", sort);
-    else params.delete("sort");
     if (activeTags.length) params.set("tags", activeTags.join(","));
-    else params.delete("tags");
+    if (steer.mode === "guided") params.set("mode", "guided");
+    if (steer.mediaType === "tv") params.set("mediaType", "tv");
     setSearchParams(params, { replace: true });
-    // searchParams intentionally excluded: we rebuild the full URL from state,
-    // so a URL write never re-triggers this effect.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [decade, search, sort, activeTags, setSearchParams]);
+  }, [decade, search, sort, activeTags, steer.mode, steer.mediaType, setSearchParams]);
 
   const setActiveTags = (
     tags: string[] | ((prev: string[]) => string[]),

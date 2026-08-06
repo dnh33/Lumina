@@ -85,7 +85,8 @@ export function ExportWorld({ slug, hook, titles, annotations = {} }: Props) {
         <button
           type="button"
           onClick={save}
-          className="rounded-full bg-gold-400 px-4 py-1.5 text-2xs font-medium text-ink-950"
+          data-testid="export-save-note"
+          className="world-accent-fill rounded-full px-4 py-1.5 text-2xs font-medium text-ink-950"
         >
           Save note
         </button>
@@ -99,7 +100,7 @@ export function ExportWorld({ slug, hook, titles, annotations = {} }: Props) {
       </div>
 
       {saved && (
-        <p className="text-2xs text-emerald-400/80" data-testid="export-saved">
+        <p className="text-2xs text-[var(--world-accent)]/80" data-testid="export-saved">
           Note saved to {NOTES_KEY}.
         </p>
       )}

@@ -52,3 +52,35 @@ export function setSetting(db: DB, key: string, value: string): void {
 export function currentModel(db: DB): string {
   return getSetting(db, "openrouter_model") ?? env.openRouterModel;
 }
+
+/**
+ * Turn OpenRouter / SDK failures into an actionable companion error.
+ * Names the model in use and where to change it — never echoes API keys.
+ */
+export function formatChatLlmError(err: unknown, model: string): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  const status =
+    typeof err === "object" &&
+    err !== null &&
+    "status" in err &&
+    typeof (err as { status?: unknown }).status === "number"
+      ? (err as { status: number }).status
+      : undefined;
+
+  const looksUnavailable =
+    status === 404 ||
+    /model.*(unavailable|not found|does not exist)/i.test(raw) ||
+    /404/.test(raw);
+
+  if (looksUnavailable) {
+    return (
+      `OpenRouter rejected model "${model}"` +
+      (status ? ` (${status})` : "") +
+      `. Set OPENROUTER_MODEL in .env or Settings → Chat model ` +
+      `(needs a live slug with tool-calling; :free models often vanish). ` +
+      `Raw: ${raw}`
+    );
+  }
+
+  return raw || "The AI companion is unavailable.";
+}

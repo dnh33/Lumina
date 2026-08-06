@@ -85,7 +85,7 @@ export function companionEventForSse(
 
 export function useChat(
   conversationId: number | null,
-  onConversationChange: (id: number) => void,
+  onConversationChange: (id: number) => void | Promise<void>,
 ) {
   const qc = useQueryClient();
   const [stream, setStream] = useState<StreamState | null>(null);
@@ -172,7 +172,7 @@ export function useChat(
           const created = await api.createConversation();
           convId = created.id;
           playCue("droplet");
-          onConversationChange(convId);
+          await Promise.resolve(onConversationChange(convId));
         } else {
           // self-heal: a stored conversation may have been deleted elsewhere
           try {
@@ -180,7 +180,7 @@ export function useChat(
           } catch {
             const created = await api.createConversation();
             convId = created.id;
-            onConversationChange(convId);
+            await Promise.resolve(onConversationChange(convId));
           }
         }
       } catch (e) {
@@ -226,6 +226,16 @@ export function useChat(
               setFailedText(content);
               return;
             }
+            // Push deltas OUTSIDE setState — React Strict Mode double-invokes
+            // updaters in DEV, which would duplicate every token in the buffer
+            // (visible as "GoodGood evening evening" shards mid-stream).
+            if (e.type === "delta") {
+              tokenBuffer.push(e.text);
+            }
+            if (e.type === "tool_done" && WRITE_TOOLS.has(e.name)) {
+              wroteToLibrary = true;
+            }
+
             setStream((s) => {
               if (!s) return s;
               switch (e.type) {
@@ -237,9 +247,6 @@ export function useChat(
                   return { ...s, contextNote: note };
                 }
                 case "delta":
-                  // Authoritative accumulator (used for scroll + final persist).
-                  // Also feed the token buffer for a smoothed, flicker-free paint.
-                  tokenBuffer.push(e.text);
                   return {
                     ...s,
                     assistantText: s.assistantText + e.text,
@@ -260,7 +267,6 @@ export function useChat(
                     ],
                   };
                 case "tool_done": {
-                  if (WRITE_TOOLS.has(e.name)) wroteToLibrary = true;
                   const label = e.summary ?? TOOL_LABELS[e.name] ?? e.name;
                   return {
                     ...s,

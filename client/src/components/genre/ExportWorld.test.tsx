@@ -46,4 +46,13 @@ describe("ExportWorld (Task 6.8 / C6)", () => {
     fireEvent.click(screen.getByRole("button", { name: /printable|preview/i }));
     expect(screen.getByTestId("export-printable")).toBeTruthy();
   });
+
+  it("Save note uses world-accent fill, not brand gold", () => {
+    render(
+      <ExportWorld slug="horror" titles={[{ title: "Film A" }]} />,
+    );
+    const save = screen.getByTestId("export-save-note");
+    expect(save.className).toMatch(/world-accent-fill/);
+    expect(save.className).not.toMatch(/bg-gold-400/);
+  });
 });

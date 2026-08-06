@@ -37,7 +37,7 @@ describe("TopicCluster axis (D7)", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    screen.getByRole("button", { name: "Documentary" }).click();
+    screen.getByRole("button", { name: /Documentary \(2\)/ }).click();
     expect(onTopicSelect).toHaveBeenCalledTimes(1);
     expect(onTopicSelect).toHaveBeenCalledWith(99);
   });
@@ -51,11 +51,11 @@ describe("TopicCluster axis (D7)", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    screen.getByRole("button", { name: "Science Fiction" }).click();
+    screen.getByRole("button", { name: /Science Fiction \(1\)/ }).click();
     expect(onTopicSelect).toHaveBeenCalledWith(878);
   });
 
-  it("renders non-clickable headings when onTopicSelect is omitted", () => {
+  it("renders non-clickable chips when onTopicSelect is omitted", () => {
     const onTopicSelect = vi.fn();
     render(
       <QueryClientProvider client={qc}>
@@ -64,9 +64,8 @@ describe("TopicCluster axis (D7)", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    expect(screen.queryByRole("button", { name: "Documentary" })).toBeNull();
-    expect(screen.getByText("Documentary")).toBeDefined();
-    // no callbacks fired when there's no handler
+    expect(screen.queryByRole("button", { name: /Documentary/ })).toBeNull();
+    expect(screen.getByText(/Documentary \(2\)/)).toBeDefined();
     expect(onTopicSelect).not.toHaveBeenCalled();
   });
 
@@ -84,7 +83,7 @@ describe("TopicCluster axis (D7)", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    screen.getByRole("button", { name: "Documentary" }).click();
+    screen.getByRole("button", { name: /Documentary \(2\)/ }).click();
     expect(onTopicSelect).toHaveBeenCalledWith(99);
   });
 });

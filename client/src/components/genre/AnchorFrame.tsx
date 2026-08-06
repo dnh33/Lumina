@@ -11,7 +11,7 @@ export function AnchorFrame({ anchors, world }: Props) {
   if (anchors.length === 0) return null;
   return (
     <section className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6" aria-label="From your library">
-      <h2 className="font-[var(--font-display)] text-lg font-semibold tracking-tight text-white/90">
+      <h2 className="font-display text-lg font-semibold tracking-tight text-white/90">
         Closest in your library
       </h2>
       <p className="mb-3 text-xs uppercase tracking-wider text-white/40">{world.register.lexicon[0] ?? "your taste"}</p>

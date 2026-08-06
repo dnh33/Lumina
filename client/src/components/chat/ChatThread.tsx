@@ -114,7 +114,7 @@ function AssistantTurn({
         <SparkAvatar state={companionState} hideWhisper />
       </div>
       <div className="min-w-0 flex-1 space-y-1.5">
-        <p className="flex items-baseline gap-2 text-2xs text-mist-400">
+        <p className="flex items-baseline gap-2 text-2xs text-mist-300">
           <span className="font-display text-[0.8rem] font-semibold text-mist-300">
             Lumina
           </span>
@@ -122,7 +122,7 @@ function AssistantTurn({
         </p>
 
         {contextNote && (
-          <p className="flex items-center gap-1 text-2xs italic text-mist-400">
+          <p className="flex items-center gap-1 text-2xs italic text-mist-300">
             <Sparkles className="h-2.5 w-2.5 shrink-0 text-gold-400/70" />
             <span className="truncate">{contextNote}</span>
           </p>
@@ -131,7 +131,7 @@ function AssistantTurn({
         <ToolRibbon steps={steps} />
 
         {thinking && !content ? (
-          <p className="text-[0.8rem] italic text-mist-400">Thinking…</p>
+          <p className="text-[0.8rem] italic text-mist-300">Thinking…</p>
         ) : (
           <MessageBubble
             role="assistant"
@@ -142,7 +142,7 @@ function AssistantTurn({
         )}
 
         <Receipts items={receipts} />
-        {stopped && <p className="text-2xs italic text-mist-400">stopped by you</p>}
+        {stopped && <p className="text-2xs italic text-mist-300">stopped by you</p>}
       </div>
     </div>
   );
@@ -181,7 +181,7 @@ function persistedTurnProps(m: ChatMessageRow, onChip?: (c: string) => void): Tu
 
 interface Props {
   conversationId: number | null;
-  onConversationChange: (id: number) => void;
+  onConversationChange: (id: number) => void | Promise<void>;
   prefill?: string;
   compact?: boolean;
   /** Dormant-user rediscovery nudge (P13): show a "memory constellation" line. */
@@ -292,7 +292,7 @@ export function ChatThread({
         <h3 className="font-display text-lg font-semibold text-mist-200">
           Wake your companion
         </h3>
-        <p className="mt-2 max-w-sm text-sm leading-relaxed text-mist-400">
+        <p className="mt-2 max-w-sm text-sm leading-relaxed text-mist-300">
           Add an OpenRouter API key as OPENROUTER_API_KEY in the .env file at
           the repo root, restart Lumina, and this becomes a conversation with
           someone who knows your entire viewing history.
@@ -315,7 +315,7 @@ export function ChatThread({
             onClick={async () => {
               const created = await api.createConversation();
               playCue("droplet");
-              onConversationChange(created.id);
+              await Promise.resolve(onConversationChange(created.id));
             }}
           >
             Start fresh
@@ -385,7 +385,7 @@ export function ChatThread({
               )}
               {dormant && <MemoryConstellation className="mt-3" />}
 
-              <p className="mt-3 max-w-md text-sm leading-relaxed text-mist-400">
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-mist-300">
                 I know every title, rating and note in your archive, and I never
                 spoil. What are we looking for?
               </p>
@@ -431,7 +431,7 @@ export function ChatThread({
                     className="space-y-6 [content-visibility:auto]"
                   >
                     {sep && (
-                      <p className="text-center text-2xs font-semibold uppercase tracking-wider text-mist-400/80">
+                      <p className="text-center text-2xs font-semibold uppercase tracking-wider text-mist-300/80">
                         {dayLabel(m.created_at)}
                       </p>
                     )}

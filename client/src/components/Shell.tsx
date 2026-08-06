@@ -1,14 +1,24 @@
 import type { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
-import { Compass, LibraryBig, Settings, Sparkles } from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
+import { Compass, Globe, LibraryBig, MessageCircle, Settings } from "lucide-react";
 
 const NAV = [
   { to: "/", label: "Discover", icon: Compass, end: true },
   { to: "/library", label: "Library", icon: LibraryBig, end: false },
-  { to: "/genre", label: "Worlds", icon: Sparkles, end: false },
-  { to: "/chat", label: "Companion", icon: Sparkles, end: false },
+  { to: "/genre", label: "Worlds", icon: Globe, end: false },
+  { to: "/chat", label: "Companion", icon: MessageCircle, end: false },
   { to: "/settings", label: "Settings", icon: Settings, end: false },
 ];
+
+/** `/genre` hub + `/genre/:slug` — Shell gold yields so Enter / world accent own fuel. */
+function isGenreSurface(pathname: string): boolean {
+  return pathname === "/genre" || pathname.startsWith("/genre/");
+}
+
+/** In-world only (`/genre/:slug`) — hub keeps Companion; FAB owns Deepen/Talk. */
+function isGenreWorldRoute(pathname: string): boolean {
+  return pathname.startsWith("/genre/") && pathname.length > "/genre/".length;
+}
 
 function Logo() {
   return (
@@ -26,7 +36,33 @@ function Logo() {
   );
 }
 
+function navActiveClass(isActive: boolean, genreSurface: boolean, desktop: boolean) {
+  if (!isActive) {
+    return desktop
+      ? "text-mist-300 hover:bg-white/[0.05] hover:text-mist-200"
+      : "text-mist-300";
+  }
+  // Worlds hub + in-world: mist active — Enter (hub) / world-accent verbs own gold fuel.
+  if (genreSurface) {
+    return desktop
+      ? "bg-white/[0.06] text-mist-200 ring-1 ring-white/10"
+      : "text-mist-200";
+  }
+  return desktop
+    ? "bg-gold-400/[0.12] text-gold-300 ring-1 ring-gold-400/20"
+    : "text-gold-300";
+}
+
+function navLabel(to: string, label: string, inWorld: boolean): string {
+  if (inWorld && to === "/chat") return "Archive chat";
+  return label;
+}
+
 export function Shell({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  const genreSurface = isGenreSurface(pathname);
+  const inWorld = isGenreWorldRoute(pathname);
+
   return (
     <div className="min-h-screen">
       <div className="grain" aria-hidden />
@@ -42,19 +78,19 @@ export function Shell({ children }: { children: ReactNode }) {
               end={end}
               data-cuelume-toggle="tick"
               className={({ isActive }) =>
-                `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.92rem] font-medium transition-all duration-200 ${
-                  isActive
-                    ? "bg-gold-400/[0.12] text-gold-300 ring-1 ring-gold-400/20"
-                    : "text-mist-400 hover:bg-white/[0.05] hover:text-mist-200"
-                }`
+                `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.92rem] font-medium transition-[background-color,color,box-shadow] duration-200 ${navActiveClass(
+                  isActive,
+                  genreSurface,
+                  true,
+                )}`
               }
             >
-              <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
-              {label}
+              <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden />
+              {navLabel(to, label, inWorld)}
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto px-3 text-2xs leading-relaxed text-mist-400">
+        <div className="mt-auto px-3 text-2xs leading-relaxed text-mist-300">
           Your private cinematic memory.
           <br />
           Stored locally, always yours.
@@ -75,13 +111,15 @@ export function Shell({ children }: { children: ReactNode }) {
             end={end}
             data-cuelume-toggle="tick"
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.65rem] font-medium transition-colors ${
-                isActive ? "text-gold-300" : "text-mist-400"
-              }`
+              `flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.65rem] font-medium transition-colors ${navActiveClass(
+                isActive,
+                genreSurface,
+                false,
+              )}`
             }
           >
-            <Icon className="h-5 w-5" strokeWidth={1.8} />
-            {label}
+            <Icon className="h-5 w-5" strokeWidth={1.8} aria-hidden />
+            {navLabel(to, label, inWorld)}
           </NavLink>
         ))}
       </nav>

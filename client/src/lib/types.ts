@@ -347,3 +347,53 @@ export interface GenreExperienceIntro {
   tone: string;
   basedOn: string[];
 }
+
+/* ── Guided tour (Worlds G1) ─────────────────────────────────────────── */
+
+export type GuidedBeatId = "tempo" | "era" | "risk";
+
+export interface GuidedBeatChoice {
+  id: string;
+  label: string;
+  hint: string;
+}
+
+export interface GuidedBeat {
+  id: GuidedBeatId;
+  prompt: string;
+  choices: GuidedBeatChoice[];
+}
+
+export interface GuidedAct {
+  tmdbId: number;
+  mediaType: MediaType;
+  action: "watchlist" | "dismiss" | "open";
+  at: string;
+}
+
+export interface GuidedPick {
+  tmdbId: number;
+  mediaType: MediaType;
+  title: string;
+  year: number | null;
+  posterPath: string | null;
+  voteAverage: number | null;
+  inLibrary: boolean;
+}
+
+export interface GuidedSession {
+  slug: string;
+  mediaType: MediaType;
+  status: "active" | "complete" | "abandoned";
+  answers: Partial<Record<GuidedBeatId, string>>;
+  picks: GuidedPick[];
+  acted: GuidedAct[];
+  conversationId: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GuidedSessionPayload {
+  session: GuidedSession;
+  beats: GuidedBeat[];
+}

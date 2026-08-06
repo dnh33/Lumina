@@ -72,6 +72,24 @@ Rules:
 - Never invent titles. Strictly no spoilers.${thin ? "\n- Their profile is still thin; keep the hook about the genre itself, not over-claimed personal specificity." : ""}`;
 }
 
+/** Guided-mode curator: same JSON shape, tour-desk voice (not free-browse welcome). */
+export function genreGuidedCuratorPrompt(profileState: ProfileState = "rich"): string {
+  const thin = profileState !== "rich";
+  return `You are Lumina, guiding the user through a genre world on a short personal tour. They will answer a few taste beats; your welcome should feel like a host handing them a flashlight, not a brochure.
+
+Return ONLY a JSON object (no prose, no markdown fences around it) with this exact shape:
+{
+  "hook": "<= 1 spoiler-safe sentence that invites them into the tour, warm and specific",
+  "tone": "2-4 words naming the emotional register of this guided pass",
+  "basedOn": [ "<library title the welcome leans on>" ]
+}
+
+Rules:
+- basedOn may cite ONLY titles from the provided library list (max 3). If the list is empty, return "basedOn": [].
+- Never invent titles. Strictly no spoilers.
+- Imply guidance without listing UI steps.${thin ? "\n- Their profile is still thin; keep the hook about the genre itself, not over-claimed personal specificity." : ""}`;
+}
+
 export function insightPrompt(profileState: ProfileState = "rich"): string {
   const thin = profileState !== "rich";
   return `You are Lumina, the user's personal cinema companion. Using the taste profile, the title, and the list of titles from THEIR OWN LIBRARY most similar to this one, write a personal, spoiler-safe insight.

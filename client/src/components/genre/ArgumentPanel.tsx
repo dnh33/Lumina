@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { Link } from "react-router-dom";
+import { stripInlineMarkdown, normalizeInsightThesis } from "../../lib/insightThesis.js";
 
 export interface Counterpoint {
   title: string;
@@ -88,11 +89,16 @@ export function ArgumentPanel({ thesis, counterpoint, comparisons, tmdbId }: Pro
   }, [annotation, annotationKey]);
 
   const annotationId = useId();
+  const safeThesis =
+    normalizeInsightThesis(thesis) ??
+    (typeof thesis === "string" && thesis.trim() && !thesis.trim().startsWith("{")
+      ? stripInlineMarkdown(thesis)
+      : "Thesis unavailable for this title — try another pick from the timeline.");
 
   return (
     <section aria-label="The argument" className="rounded-2xl bg-white/[0.03] p-5">
-      <h3 className="text-xs tracking-tight text-mist-400">The argument</h3>
-      <p className="text-sm leading-relaxed text-white/80">{thesis}</p>
+      <h3 className="text-xs tracking-tight text-mist-300">The argument</h3>
+      <p className="text-sm leading-relaxed text-white/80">{safeThesis}</p>
 
       {rows.length > 0 && (
         <ul className="mt-3 space-y-2 border-t border-white/10 pt-3">

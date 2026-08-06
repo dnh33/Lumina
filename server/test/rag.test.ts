@@ -5,9 +5,14 @@ import {
   computeTasteProfile,
   renderTasteProfile,
 } from "../src/rag/tasteProfile.js";
-import { buildChatContext } from "../src/rag/contextBuilder.js";
+import { buildChatContext, renderContextBlock } from "../src/rag/contextBuilder.js";
 import { indexMessage, retrieveMemory } from "../src/rag/memory.js";
 import { createConversation, persistMessage } from "../src/llm/chatService.js";
+import {
+  answerGuidedBeat,
+  linkGuidedConversation,
+  refreshGuidedPicks,
+} from "../src/services/guidedSessionService.js";
 
 describe("FTS query builder", () => {
   it("builds prefix OR queries and strips dangerous tokens", () => {
@@ -144,5 +149,44 @@ describe("RAG context builder", () => {
     expect(ctx.libraryText.length).toBeLessThanOrEqual(2400);
     expect(ctx.meta.libraryMatches).toContain("Dune");
     expect(ctx.meta.librarySize).toBe(1);
+    expect(ctx.guidedText).toBe("");
+    expect(ctx.meta.guidedWorld).toBeNull();
+  });
+
+  it("injects linked guided session into context", () => {
+    const db = memoryDb();
+    answerGuidedBeat(db, "documentary", "movie", "tempo", "slow");
+    answerGuidedBeat(db, "documentary", "movie", "era", "classic");
+    answerGuidedBeat(db, "documentary", "movie", "risk", "stretch");
+    refreshGuidedPicks(db, "documentary", "movie", [
+      {
+        tmdbId: 11,
+        mediaType: "movie",
+        title: "Shoah",
+        year: 1985,
+        posterPath: null,
+        voteAverage: 8.5,
+        inLibrary: false,
+      },
+    ]);
+    const c = createConversation(db, "Worlds companion");
+    linkGuidedConversation(db, "documentary", "movie", c);
+
+    const ctx = buildChatContext(db, "what should I watch tonight", c);
+    const block = renderContextBlock(ctx);
+    expect(ctx.meta.guidedWorld).toBe("documentary");
+    expect(ctx.guidedText).toMatch(/Patient cut/);
+    expect(ctx.guidedText).toMatch(/Shoah/);
+    expect(block).toMatch(/Active Worlds guided tour/);
+    expect(block).toMatch(/Tonight shelf/);
+  });
+
+  it("omits guided layer when conversation is not linked", () => {
+    const db = memoryDb();
+    answerGuidedBeat(db, "horror", "movie", "tempo", "kinetic");
+    const c = createConversation(db);
+    const ctx = buildChatContext(db, "scary night", c);
+    expect(ctx.guidedText).toBe("");
+    expect(renderContextBlock(ctx)).not.toMatch(/guided tour/i);
   });
 });

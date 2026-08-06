@@ -5,6 +5,7 @@ import {
   runChatTurn,
   type ChatEvent,
 } from "../llm/chatService.js";
+import { currentModel, formatChatLlmError } from "../llm/openrouter.js";
 
 export const chatRouter = Router();
 
@@ -89,9 +90,10 @@ chatRouter.post("/conversations/:id/messages", async (req, res) => {
     await runChatTurn(getDb(), conversationId, content, send, ac.signal);
   } catch (err) {
     if (!ac.signal.aborted) {
+      const db = getDb();
       send({
         type: "error",
-        message: (err as Error).message || "The AI companion is unavailable.",
+        message: formatChatLlmError(err, currentModel(db)),
       });
     }
   } finally {

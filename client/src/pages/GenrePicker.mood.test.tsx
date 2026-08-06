@@ -3,7 +3,19 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import GenrePicker from "./GenrePicker.js";
-import { GENRE_WORLDS, MOOD_TO_SLUGS } from "../lib/genreWorld.js";
+import { MOOD_TO_SLUGS } from "../lib/genreWorld.js";
+
+/** Mirrors GenrePicker HUB_MOODS — Wave 3 soup quarantine (≤8). */
+const HUB_MOODS = [
+  "dread",
+  "uneasy",
+  "wondrous",
+  "contemplative",
+  "tender",
+  "restless",
+  "playful",
+  "curious",
+] as const;
 
 vi.mock("../lib/api.js", () => ({
   api: {
@@ -13,6 +25,7 @@ vi.mock("../lib/api.js", () => ({
       { id: 27, name: "Horror" },
       { id: 18, name: "Drama" },
     ]),
+    library: vi.fn(async () => []),
   },
 }));
 
@@ -37,33 +50,38 @@ describe("GenrePicker mood entry (C2)", () => {
     ).toBeDefined();
   });
 
-  it("renders a chip for every mood declared by the worlds", () => {
+  it("renders at most 8 high-signal mood doors (soup quarantine)", () => {
     renderPicker();
-    const allMoods = Array.from(
-      new Set(Object.values(GENRE_WORLDS).flatMap((w) => w.register.moods)),
-    );
-    for (const mood of allMoods) {
+    const region = screen.getByRole("region", { name: /browse by mood/i });
+    const links = region.querySelectorAll("a");
+    expect(links.length).toBe(HUB_MOODS.length);
+    expect(links.length).toBeLessThanOrEqual(8);
+    for (const mood of HUB_MOODS) {
       const link = screen.getByText(new RegExp(`^${mood}$`, "i")).closest("a");
-      expect(link, `missing mood chip: ${mood}`).toBeDefined();
+      expect(link, `missing mood door: ${mood}`).toBeDefined();
     }
   });
 
-  it("links each mood chip to the first mapped genre's /genre/:slug", () => {
+  it("links each hub mood to the first mapped genre's /genre/:slug", () => {
     renderPicker();
-    for (const [mood, slugs] of Object.entries(MOOD_TO_SLUGS)) {
+    for (const mood of HUB_MOODS) {
+      const slugs = MOOD_TO_SLUGS[mood];
+      expect(slugs?.length).toBeGreaterThan(0);
       const link = screen.getByText(new RegExp(`^${mood}$`, "i")).closest("a");
-      expect(link, `missing mood chip: ${mood}`).toBeDefined();
+      expect(link, `missing mood door: ${mood}`).toBeDefined();
       expect(link?.getAttribute("href")).toContain(`/genre/${slugs[0]}`);
     }
   });
 
-  it("gives every mood chip an accessible label", () => {
+  it("gives every mood door an accessible label", () => {
     renderPicker();
     const region = screen.getByRole("region", { name: /browse by mood/i });
     const chips = region.querySelectorAll("a[aria-label]");
-    expect(chips.length).toBeGreaterThan(0);
+    expect(chips.length).toBe(HUB_MOODS.length);
     for (const chip of Array.from(chips)) {
-      expect((chip as HTMLElement).getAttribute("aria-label")).toMatch(/browse .* worlds/i);
+      expect((chip as HTMLElement).getAttribute("aria-label")).toMatch(
+        /enter .+ through .+/i,
+      );
     }
   });
 });

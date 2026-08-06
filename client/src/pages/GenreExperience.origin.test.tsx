@@ -75,6 +75,7 @@ describe("GenreExperience world-origin line (3.2 / C3)", () => {
     await waitFor(() => expect(screen.getByTestId("origin-line")).toBeTruthy());
 
     const line = screen.getByTestId("origin-line");
+    expect(line.getAttribute("aria-hidden")).toBe("true");
     expect(line.textContent).toContain("Blade Runner");
     expect(line.textContent).toContain("Arrival");
     // subtle, capped at first 3 anchors

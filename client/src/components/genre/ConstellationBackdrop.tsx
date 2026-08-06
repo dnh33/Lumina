@@ -1,6 +1,8 @@
 interface Props {
   /** Accent color (hex) used to faintly tint the node lines + dots. */
   accent: string;
+  /** Override stacking — hub/page uses -z-10; in-panel heroes use z-0. */
+  className?: string;
 }
 
 // Deterministic pseudo-random node positions (0..100) so the backdrop is
@@ -43,12 +45,15 @@ const EDGES: Array<[number, number]> = [
  * cards — it is NOT a graph engine (design §92 correction): no data, no
  * links, no interactivity. Decorative only.
  */
-export function ConstellationBackdrop({ accent }: Props) {
+export function ConstellationBackdrop({
+  accent,
+  className = "pointer-events-none absolute inset-0 -z-10 h-full w-full opacity-[0.18]",
+}: Props) {
   return (
     <svg
       aria-hidden="true"
       data-testid="constellation-backdrop"
-      className="pointer-events-none absolute inset-0 -z-10 h-full w-full opacity-[0.18]"
+      className={className}
       preserveAspectRatio="xMidYMid slice"
       viewBox="0 0 100 100"
     >

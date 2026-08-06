@@ -9,6 +9,8 @@ import type {
   ForYou,
   GenreExperience,
   GenreExperienceIntro,
+  GuidedSessionPayload,
+  GuidedBeatId,
   Genre,
   Health,
   IgnoredTitle,
@@ -66,6 +68,36 @@ export const api = {
   // don't block on the LLM. GenreExperience reads the hook from this on mount.
   genreIntro: (genres: string[], mode: "self" | "guided" = "self", mediaType: "movie" | "tv" = "movie", modules: string[] = []) =>
     get<GenreExperienceIntro | null>(`/api/discover/genre-intro?genres=${encodeURIComponent(genres.join(","))}&mode=${mode}&mediaType=${mediaType}${modules.length ? `&modules=${encodeURIComponent(modules.join(","))}` : ""}`),
+
+  /* guided tour (Worlds G1) */
+  guidedSession: (slug: string, mediaType: MediaType = "movie") =>
+    get<GuidedSessionPayload>(
+      `/api/discover/guided-session?slug=${encodeURIComponent(slug)}&mediaType=${mediaType}`,
+    ),
+  answerGuided: (body: {
+    slug: string;
+    mediaType?: MediaType;
+    beatId: GuidedBeatId;
+    choiceId: string;
+  }) => send<GuidedSessionPayload>("POST", "/api/discover/guided-session/answer", body),
+  guidedAct: (body: {
+    slug: string;
+    mediaType?: MediaType;
+    tmdbId: number;
+    titleMediaType: MediaType;
+    action: "watchlist" | "dismiss" | "open";
+    title?: string;
+    year?: number | null;
+    posterPath?: string | null;
+  }) => send<GuidedSessionPayload>("POST", "/api/discover/guided-session/act", body),
+  resetGuided: (body: { slug: string; mediaType?: MediaType }) =>
+    send<GuidedSessionPayload>("POST", "/api/discover/guided-session/reset", body),
+  linkGuided: (body: {
+    slug: string;
+    mediaType?: MediaType;
+    conversationId: number;
+  }) => send<GuidedSessionPayload>("POST", "/api/discover/guided-session/link", body),
+
   because: () => get<Because>("/api/discover/because"),
   upNext: () => get<UpNextItem[]>("/api/discover/up-next"),
   encore: () => get<LibraryEntry[]>("/api/discover/encore"),

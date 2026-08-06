@@ -136,7 +136,7 @@ describe("useGenreState (Task 4.4 — world persistence)", () => {
     );
   });
 
-  it("(f) falls back to a persisted localStorage blob when URL is empty", () => {
+  it("(f) restores scrub from localStorage but never silent-resumes Guided", () => {
     localStorage.setItem(
       KEY("documentary"),
       JSON.stringify({
@@ -151,6 +151,22 @@ describe("useGenreState (Task 4.4 — world persistence)", () => {
     expect(screen.getByTestId("decade").textContent).toBe("1990");
     expect(screen.getByTestId("search").textContent).toBe("legacy");
     expect(screen.getByTestId("sort").textContent).toBe("rating");
+    // Hub Enter / bare path: Self cold browse — Guided only via ?mode=guided.
+    expect(screen.getByTestId("steer").textContent).toBe("self:movie");
+  });
+
+  it("(g) ?mode=guided still resumes Guided explicitly", () => {
+    localStorage.setItem(
+      KEY("documentary"),
+      JSON.stringify({
+        scrub: { decade: null, search: "", sort: "default", tags: [] },
+        steer: { mode: "self", mediaType: "movie" },
+        dismissed: [],
+      }),
+    );
+
+    renderAt("documentary", "/genre/documentary?mode=guided");
+
     expect(screen.getByTestId("steer").textContent).toBe("guided:movie");
   });
 });

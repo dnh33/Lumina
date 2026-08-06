@@ -512,9 +512,9 @@ export default function Settings() {
               </p>
             )}
             <p className="mt-2 text-2xs text-mist-400">
-              Try anthropic/claude-sonnet-5 for the finest conversation, or a
-              cheaper slug for casual browsing. Heads-up: the chat needs a
-              model with tool-calling support.
+              Try anthropic/claude-sonnet-5 for solid tool-calling, or another
+              live OpenRouter slug. Avoid stale `:free` models — they often
+              404 overnight. Override beats OPENROUTER_MODEL in .env.
             </p>
           </div>
 

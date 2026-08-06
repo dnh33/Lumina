@@ -8,12 +8,148 @@ import { retrieveLibrary } from "../rag/retrieval.js";
 import { computeTasteProfile } from "../rag/tasteProfile.js";
 import { profileStateOf, type ProfileState } from "../llm/insightService.js";
 import { currentModel, getLlm, getSetting, setSetting } from "../llm/openrouter.js";
-import { genreCuratorPrompt } from "../llm/prompts.js";
+import { genreCuratorPrompt, genreGuidedCuratorPrompt } from "../llm/prompts.js";
 import { ensureRatings } from "./ratingsService.js";
 import { fetchDetailsFromTmdb } from "./libraryService.js";
+import {
+  getOrCreateGuidedSession,
+  rankForGuided,
+  refreshGuidedPicks,
+} from "./guidedSessionService.js";
+import {
+  ERA_MAX_PER_DECADE,
+  ERA_RAIL_LIMIT,
+  decadeOfYear,
+  selectEraBalancedRail,
+} from "./eraRailQuality.js";
 
 interface Paged {
   results?: RawTmdbItem[];
+  page?: number;
+  total_pages?: number;
+}
+
+/**
+ * Pages of TMDB discover to merge per genre world (~20/page → ~100).
+ * Quality selection below always trims the union to ERA_RAIL_LIMIT.
+ */
+const DISCOVER_PAGES = 5;
+
+/** Decades we try to keep stocked when popularity discover starves them. */
+const BACKFILL_DECADES = [1960, 1970, 1980, 1990, 2000, 2010, 2020];
+
+/**
+ * Backfill trigger — MUST be higher than rail soft-min.
+ * Soft-min alone left decades with exactly 2 popularity hits un-backfilled
+ * forever (Horror 1970s/1980s stuck at 2). Aim for a dense decade zoom.
+ */
+const BACKFILL_TARGET_PER_DECADE = Math.max(8, Math.floor(ERA_MAX_PER_DECADE / 2));
+
+/** Vote-sorted pages per starved decade (~20/page). */
+const BACKFILL_PAGES = 2;
+
+/**
+ * Discover ranking choice (era density):
+ * - sort: popularity.desc — spreads across decades better than vote_average.desc
+ *   (prestige classics otherwise monopolize page 1).
+ * - vote_count floor: movie 250 / tv 100 (was 500 / 200) — still filters junk,
+ *   less starvation of thinner eras.
+ * Keyword path keeps a softer floor (80 / 40) because keyword worlds are sparse.
+ */
+function discoverVoteFloor(mediaType: MediaType, keywordPath: boolean): number {
+  if (keywordPath) return mediaType === "movie" ? 80 : 40;
+  return mediaType === "movie" ? 250 : 100;
+}
+
+/**
+ * Fetch discover pages 1..n, concatenate, dedupe by TMDB id (first page wins).
+ * Exported for unit tests.
+ */
+export async function fetchDiscoverPages(
+  path: string,
+  baseParams: Record<string, string | number>,
+  pages = DISCOVER_PAGES,
+): Promise<RawTmdbItem[]> {
+  const seen = new Set<number>();
+  const out: RawTmdbItem[] = [];
+  for (let page = 1; page <= pages; page++) {
+    const data = await tmdbGet<Paged>(path, { ...baseParams, page });
+    for (const item of data.results ?? []) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      out.push(item);
+    }
+    // Stop early if TMDB has fewer pages than requested.
+    if (data.total_pages != null && page >= data.total_pages) break;
+  }
+  return out;
+}
+
+function decadeDateParams(
+  mediaType: MediaType,
+  decade: number,
+): Record<string, string> {
+  const gte = `${decade}-01-01`;
+  const lte = `${decade + 9}-12-31`;
+  if (mediaType === "tv") {
+    return { "first_air_date.gte": gte, "first_air_date.lte": lte };
+  }
+  return { "primary_release_date.gte": gte, "primary_release_date.lte": lte };
+}
+
+/**
+ * Popularity multi-page often starves older decades. For each backfill decade
+ * under BACKFILL_TARGET, fetch vote-sorted pages bounded to that decade, then
+ * merge. Quality trim still decides what survives.
+ */
+export async function backfillSparseDecades(
+  mediaType: MediaType,
+  baseParams: Record<string, string | number>,
+  existing: { year: number | null }[],
+  target = BACKFILL_TARGET_PER_DECADE,
+): Promise<RawTmdbItem[]> {
+  const counts = new Map<number, number>();
+  for (const it of existing) {
+    const d = decadeOfYear(it.year);
+    counts.set(d, (counts.get(d) ?? 0) + 1);
+  }
+  const needy = BACKFILL_DECADES.filter((d) => (counts.get(d) ?? 0) < target);
+  if (!needy.length) return [];
+
+  const batches = await Promise.all(
+    needy.flatMap((decade) =>
+      Array.from({ length: BACKFILL_PAGES }, (_, i) =>
+        tmdbGet<Paged>(`/discover/${mediaType}`, {
+          ...baseParams,
+          ...decadeDateParams(mediaType, decade),
+          sort_by: "vote_average.desc",
+          page: i + 1,
+        }).catch(() => ({ results: [] as RawTmdbItem[] })),
+      ),
+    ),
+  );
+
+  const seen = new Set<number>();
+  const out: RawTmdbItem[] = [];
+  for (const batch of batches) {
+    for (const item of batch.results ?? []) {
+      if (!item?.id || seen.has(item.id)) continue;
+      seen.add(item.id);
+      out.push(item);
+    }
+  }
+  return out;
+}
+
+function mergeRawById(primary: RawTmdbItem[], extra: RawTmdbItem[]): RawTmdbItem[] {
+  const seen = new Set(primary.map((r) => r.id));
+  const out = [...primary];
+  for (const item of extra) {
+    if (!item?.id || seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push(item);
+  }
+  return out;
 }
 
 export type GenreItem = CatalogItemWithFlags;
@@ -87,6 +223,15 @@ const SLUG_ALIASES: Record<string, string> = {
   "animation": "animation",
 };
 
+/** Slugs that are moods / eras / styles, not TMDB genre list entries.
+ *  Resolved via /search/keyword → discover `with_keywords` when genre ids miss. */
+const KEYWORD_FIRST_SLUGS = new Set(["film-noir"]);
+
+function slugQueryName(slug: string): string {
+  const s = slug.toLowerCase();
+  return SLUG_ALIASES[s] ?? s.replace(/-/g, " ");
+}
+
 /** Resolve genre slugs to TMDB genre ids; unknown slugs are dropped. */
 export async function genreSlugsToIds(
   genres: string[],
@@ -95,11 +240,37 @@ export async function genreSlugsToIds(
   const map = await genreMap(mediaType);
   return genres
     .map((slug) => {
-      const s = slug.toLowerCase();
-      const name = SLUG_ALIASES[s] ?? s;
+      const name = slugQueryName(slug);
       return map.get(name) ?? map.get(name.replace(/-/g, " "));
     })
     .filter((x): x is number => !!x);
+}
+
+/**
+ * Resolve world slugs to TMDB keyword ids (e.g. film-noir → "film noir").
+ * Used when the slug is not a TMDB genre — without this, discover returns []
+ * and Threshold worlds stay permanently empty.
+ */
+export async function genreSlugsToKeywordIds(genres: string[]): Promise<number[]> {
+  const ids: number[] = [];
+  for (const slug of genres) {
+    const query = slugQueryName(slug);
+    try {
+      const data = await tmdbGet<{ results?: { id: number; name: string }[] }>(
+        "/search/keyword",
+        { query },
+      );
+      const needle = query.toLowerCase();
+      const exact = (data.results ?? []).find(
+        (k) => k.name.toLowerCase() === needle,
+      );
+      const pick = exact ?? data.results?.[0];
+      if (pick?.id) ids.push(pick.id);
+    } catch {
+      // Keyword search failed — caller falls through to empty rail.
+    }
+  }
+  return [...new Set(ids)];
 }
 
 /**
@@ -189,6 +360,7 @@ async function curatorIntro(
   genres: string[],
   anchors: GenreAnchor[],
   profileState: ProfileState,
+  mode: ExperienceMode = "self",
 ): Promise<GenreExperienceIntro | null> {
   try {
     const llm = getLlm();
@@ -197,10 +369,14 @@ async function curatorIntro(
           .map((a) => `- ${a.title} (rated ${a.rating ?? "unrated"}/10)`)
           .join("\n")
       : "None yet.";
+    const system =
+      mode === "guided"
+        ? genreGuidedCuratorPrompt(profileState)
+        : genreCuratorPrompt(profileState);
     const completion = await llm.chat.completions.create({
       model: currentModel(db),
       messages: [
-        { role: "system", content: genreCuratorPrompt(profileState) },
+        { role: "system", content: system },
         {
           role: "user",
           content: `Genres: ${genres.join(" + ")}\n\nTheir library titles closest to this world:\n${anchorBlock}`,
@@ -233,7 +409,8 @@ export async function buildGenreExperience(
   opts: GenreExperienceOpts,
 ): Promise<GenreExperience> {
   const mode: ExperienceMode = opts.mode ?? "self";
-  const key = `${opts.mediaType}:${mode}:${opts.genres.join("+")}:${(opts.modules ?? []).sort().join(",")}`;
+  // v7: denser rails (5 discover pages, backfill target 8/2pp, max 14/decade, limit 84).
+  const key = `v7:${opts.mediaType}:${mode}:${opts.genres.join("+")}:${(opts.modules ?? []).sort().join(",")}`;
 
   const cachedRaw = getSetting(db, `genre-exp:${key}`);
   if (cachedRaw) {
@@ -244,30 +421,94 @@ export async function buildGenreExperience(
       };
       if (Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
         // Re-flag on read (G2): exclusions may have changed since caching.
-        return { ...cached.exp, items: flag(db, cached.exp.items) };
+        let items = flag(db, cached.exp.items);
+        // Guided: re-rank against the live session so beat answers are not
+        // stuck behind a mode-only cache key.
+        if (mode === "guided") {
+          const slug = opts.genres[0] ?? "documentary";
+          const session = getOrCreateGuidedSession(db, slug, opts.mediaType);
+          const anchorSeeds = (cached.exp.anchorsUsed ?? []).map((a) => ({
+            tmdbId: a.tmdbId,
+            mediaType: a.mediaType,
+          }));
+          items = rankForGuided(items, session, { slug, seeds: anchorSeeds });
+          refreshGuidedPicks(db, slug, opts.mediaType, items);
+        }
+        return { ...cached.exp, mode, items };
       }
     } catch {
       // Corrupt cache entry: fall through and rebuild.
     }
   }
 
-  const ids = await genreSlugsToIds(opts.genres, opts.mediaType);
+  const keywordFirst = opts.genres.some((g) => KEYWORD_FIRST_SLUGS.has(g.toLowerCase()));
+  const ids = keywordFirst ? [] : await genreSlugsToIds(opts.genres, opts.mediaType);
+  const worldSlug = (opts.genres[0] ?? "documentary").toLowerCase();
 
   let items: GenreItem[] = [];
   if (ids.length) {
-    const data = await tmdbGet<Paged>(`/discover/${opts.mediaType}`, {
+    const baseParams: Record<string, string | number> = {
       with_genres: ids.join("|"),
-      sort_by: "vote_average.desc",
-      "vote_count.gte": opts.mediaType === "movie" ? 500 : 200,
+      sort_by: "popularity.desc",
+      "vote_count.gte": discoverVoteFloor(opts.mediaType, false),
       include_adult: "false",
-    });
+    };
+    let raw = await fetchDiscoverPages(`/discover/${opts.mediaType}`, baseParams);
+    // Quality: seed starved decades (e.g. Documentary 1970s) before trim.
+    const backfill = await backfillSparseDecades(
+      opts.mediaType,
+      {
+        with_genres: ids.join("|"),
+        "vote_count.gte": discoverVoteFloor(opts.mediaType, false),
+        include_adult: "false",
+      },
+      normalizeList(raw, opts.mediaType),
+    );
+    raw = mergeRawById(raw, backfill);
     // GATE G2: flag() is the single chokepoint that drops ignored titles
     // and excluded genres. Never bare filterCatalog here.
-    items = flag(db, normalizeList(data.results, opts.mediaType));
+    items = flag(db, normalizeList(raw, opts.mediaType));
+  }
+  // Keyword path: non-genre worlds (film-noir) OR genre discover returned nothing
+  // for an unknown slug. Prefer existing TMDB search/discover stack — no second catalog.
+  if (!items.length) {
+    const keywordIds = await genreSlugsToKeywordIds(opts.genres);
+    if (keywordIds.length) {
+      const baseParams: Record<string, string | number> = {
+        with_keywords: keywordIds.join("|"),
+        sort_by: "popularity.desc",
+        "vote_count.gte": discoverVoteFloor(opts.mediaType, true),
+        include_adult: "false",
+      };
+      let raw = await fetchDiscoverPages(`/discover/${opts.mediaType}`, baseParams);
+      const backfill = await backfillSparseDecades(
+        opts.mediaType,
+        {
+          with_keywords: keywordIds.join("|"),
+          "vote_count.gte": discoverVoteFloor(opts.mediaType, true),
+          include_adult: "false",
+        },
+        normalizeList(raw, opts.mediaType),
+      );
+      raw = mergeRawById(raw, backfill);
+      items = flag(db, normalizeList(raw, opts.mediaType));
+    }
   }
 
-  // Enrich per enabled modules (drives real module data). No-op when no
-  // enrichment-driving modules are enabled.
+  // ---------------------------------------------------------------------------
+  // QUALITY / ERA BALANCE (complement to DISCOVER_PAGES above)
+  // Larger popularity pool → integrity score + per-decade caps. Featured (client
+  // vote pick among steered) and Guided (rankForGuided) re-order this curated
+  // set — they stay sharp because junk never enters the rail.
+  // ---------------------------------------------------------------------------
+  if (items.length) {
+    items = selectEraBalancedRail(items, {
+      slug: worldSlug,
+      limit: ERA_RAIL_LIMIT,
+    });
+  }
+
+  // Enrich AFTER quality trim so we do not detail-fetch titles the rail drops.
   const moduleSet = new Set(opts.modules ?? []);
   if (items.length && moduleSet.size) {
     items = await enrichGenreItems(db, items, moduleSet, opts.mediaType);
@@ -275,7 +516,20 @@ export async function buildGenreExperience(
 
   const profile = computeTasteProfile(db);
   const profileState = profileStateOf(profile);
+  // Anchors before Guided rank so "Seeded by…" titles can inject onto Tonight shelf.
   const anchorsUsed = selectAnchors(db, opts.genres.join(" "));
+
+  // Guided: session answers re-rank the quality-trimmed rail + Tonight shelf.
+  // Self keeps era-balanced integrity order (client Featured still vote-picks).
+  if (mode === "guided") {
+    const slug = opts.genres[0] ?? "documentary";
+    const session = getOrCreateGuidedSession(db, slug, opts.mediaType);
+    items = rankForGuided(items, session, {
+      slug,
+      seeds: anchorsUsed.map((a) => ({ tmdbId: a.tmdbId, mediaType: a.mediaType })),
+    });
+    refreshGuidedPicks(db, slug, opts.mediaType, items);
+  }
 
   // NOTE (P1.1/2.3): the curator intro is split into its own call
   // (buildGenreIntro + GET /discover/genre-intro) so the rails can paint
@@ -330,7 +584,7 @@ export async function buildGenreIntro(
     const profile = computeTasteProfile(db);
     const profileState = profileStateOf(profile);
     const anchorsUsed = selectAnchors(db, opts.genres.join(" "));
-    const intro = await curatorIntro(db, opts.genres, anchorsUsed, profileState);
+    const intro = await curatorIntro(db, opts.genres, anchorsUsed, profileState, mode);
     setSetting(
       db,
       `genre-exp-intro:${key}`,

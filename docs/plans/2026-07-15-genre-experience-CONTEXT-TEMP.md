@@ -2,6 +2,8 @@
 
 > Living ground-truth for the immersive genre-experience feature. **FEATURE-COMPLETE + LIVE-VERIFIED (2026-07-15).**
 > Branch: `immersive-curated-genre-specific-experie` · Worktree: `.worktrees/immersive-curated-genre-specific-experie`
+>
+> **SUPERSEDED for ship status (2026-08-05):** Mid-fix / Wave A “JSX broken” notes in this file are **stale**. Authoritative ship path = `docs/plans/2026-08-05-worlds-finish-plan.md` + `docs/plans/2026-08-05-worlds-daniel-ship-runbook.md`. **G1 = A** (ship-ready → live QA → PR → merge).
 
 ## What shipped
 Standalone "genre world" experience at `/genre/:slug` + `/genre` picker. Genre-seeded
