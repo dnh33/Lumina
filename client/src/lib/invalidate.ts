@@ -19,6 +19,9 @@ export function invalidateLibraryData(qc: QueryClient): void {
     "top-rated",
     "title",
     "ignored",
+    "genre-experience",
+    "genre-intro",
+    "genre-empty-suggest",
   ]) {
     qc.invalidateQueries({ queryKey: [key] });
   }

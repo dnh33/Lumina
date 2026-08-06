@@ -7,6 +7,10 @@ import type {
   EpisodeRecap,
   EpisodeRow,
   ForYou,
+  GenreExperience,
+  GenreExperienceIntro,
+  GuidedSessionPayload,
+  GuidedBeatId,
   Genre,
   Health,
   IgnoredTitle,
@@ -58,6 +62,50 @@ export const api = {
       `/api/tmdb/title/${type}/${tmdbId}`,
     ),
   forYou: () => get<ForYou>("/api/discover/for-you"),
+  genreExperience: (genres: string[], mode: "self" | "guided" = "self", mediaType: "movie" | "tv" = "movie", modules: string[] = []) =>
+    get<GenreExperience>(`/api/discover/genre-experience?genres=${encodeURIComponent(genres.join(","))}&mode=${mode}&mediaType=${mediaType}${modules.length ? `&modules=${encodeURIComponent(modules.join(","))}` : ""}`),
+  // P1.1/2.3: the curator intro is split into its own endpoint so the rails
+  // don't block on the LLM. GenreExperience reads the hook from this on mount.
+  genreIntro: (genres: string[], mode: "self" | "guided" = "self", mediaType: "movie" | "tv" = "movie", modules: string[] = []) =>
+    get<GenreExperienceIntro | null>(`/api/discover/genre-intro?genres=${encodeURIComponent(genres.join(","))}&mode=${mode}&mediaType=${mediaType}${modules.length ? `&modules=${encodeURIComponent(modules.join(","))}` : ""}`),
+
+  /* guided tour (Worlds G1) */
+  guidedSession: (slug: string, mediaType: MediaType = "movie") =>
+    get<GuidedSessionPayload>(
+      `/api/discover/guided-session?slug=${encodeURIComponent(slug)}&mediaType=${mediaType}`,
+    ),
+  /** Hub Resume peek — read-only; never creates an empty session. */
+  guidedSessionPeek: (slug: string, mediaType?: MediaType) => {
+    const q = new URLSearchParams({ slug, peek: "1" });
+    if (mediaType) q.set("mediaType", mediaType);
+    return get<{ session: GuidedSessionPayload["session"] | null; beats: GuidedSessionPayload["beats"] }>(
+      `/api/discover/guided-session?${q}`,
+    );
+  },
+  answerGuided: (body: {
+    slug: string;
+    mediaType?: MediaType;
+    beatId: GuidedBeatId;
+    choiceId: string;
+  }) => send<GuidedSessionPayload>("POST", "/api/discover/guided-session/answer", body),
+  guidedAct: (body: {
+    slug: string;
+    mediaType?: MediaType;
+    tmdbId: number;
+    titleMediaType: MediaType;
+    action: "watchlist" | "dismiss" | "open";
+    title?: string;
+    year?: number | null;
+    posterPath?: string | null;
+  }) => send<GuidedSessionPayload>("POST", "/api/discover/guided-session/act", body),
+  resetGuided: (body: { slug: string; mediaType?: MediaType }) =>
+    send<GuidedSessionPayload>("POST", "/api/discover/guided-session/reset", body),
+  linkGuided: (body: {
+    slug: string;
+    mediaType?: MediaType;
+    conversationId: number;
+  }) => send<GuidedSessionPayload>("POST", "/api/discover/guided-session/link", body),
+
   because: () => get<Because>("/api/discover/because"),
   upNext: () => get<UpNextItem[]>("/api/discover/up-next"),
   encore: () => get<LibraryEntry[]>("/api/discover/encore"),
@@ -147,8 +195,12 @@ export const api = {
     }),
 
   /* insight & profile */
-  insight: (type: MediaType, tmdbId: number, refresh = false) =>
-    get<TitleInsight>(`/api/insight/${type}/${tmdbId}${refresh ? "?refresh=1" : ""}`),
+  insight: (type: MediaType, tmdbId: number, refresh = false, skipAnchorLog = false) =>
+    get<TitleInsight>(
+      `/api/insight/${type}/${tmdbId}${refresh ? "?refresh=1" : ""}${
+        skipAnchorLog ? (refresh ? "&" : "?") + "skipAnchorLog=1" : ""
+      }`,
+    ),
   recap: (libraryId: number, refresh = false) =>
     get<EpisodeRecap>(`/api/recap/${libraryId}${refresh ? "?refresh=1" : ""}`),
   deleteAllConversations: () =>

@@ -43,8 +43,14 @@ export function useTokenBuffer(
     if (bufferRef.current.length === 0) return;
     const joined = bufferFlush(bufferRef.current);
     bufferRef.current = [];
-    setText(joined);
-    onFlushRef.current?.(joined);
+    // Append this cadence's batch onto prior flushed text — never replace.
+    // Replacing made ChatThread's `streamedText || assistantText` flash only
+    // the latest ~24ms shard (letters/symbols) until the persisted reply landed.
+    setText((prev) => {
+      const next = prev + joined;
+      onFlushRef.current?.(next);
+      return next;
+    });
   }, []);
 
   const ensureTimer = useCallback(() => {

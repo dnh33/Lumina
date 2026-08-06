@@ -52,6 +52,8 @@ export interface TitleDetails extends CatalogItem {
   /** YouTube key of the best official trailer/teaser */
   trailerKey: string | null;
   watchProviders: WatchProviders | null;
+  /** TMDB keyword tags (movie: keywords; tv: keywords.results) — powers genre topic-threading */
+  keywords: { id: number; name: string }[];
   nextEpisodeToAir: {
     season: number;
     episode: number;
@@ -65,6 +67,8 @@ export interface TitleDetails extends CatalogItem {
   /** Critics scores, populated lazily from OMDb. Null until fetched. */
   imdbRating?: number | null;
   rtRating?: number | null;
+  /** ISO 3166-1 production-country codes (["US"]) — geo module */
+  originCountry?: string[];
 }
 
 export interface SeasonSummary {
@@ -124,6 +128,10 @@ export interface RawTmdbItem {
 export interface RawTmdbDetails extends RawTmdbItem {
   tagline?: string;
   genres?: { id: number; name: string }[];
+  /** TMDB keyword tags — movie: `keywords`; tv: `keywords.results` */
+  keywords?: { id: number; name: string }[] | { results?: { id: number; name: string }[] };
+  /** Production country codes (ISO 3166-1), e.g. ["US"] — powers geo module */
+  origin_country?: string[];
   runtime?: number;
   episode_run_time?: number[];
   number_of_seasons?: number;

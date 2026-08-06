@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./fonts/fonts.css";
 
 @theme {
   --color-ink-950: #08080d;
@@ -29,8 +30,19 @@
   --color-tmdb-500: #01b4e4; /* TMDb cyan */
   --color-tmdb-600: #018bb0;
 
-  --font-display: "Fraunces", "Georgia", serif;
-  --font-sans: "Inter", system-ui, sans-serif;
+  /* ── Type registers (Instrument Ink: three voices, never trade jobs) ──
+     DISPLAY = what must be FELT (theses, verdicts)  → Cabinet Grotesk
+     SANS    = what must be UNDERSTOOD (prose, controls) → Geist
+     MONO    = what must be TRUSTED (numbers, provenance, era) → system mono
+     Faces self-hosted in ./fonts/fonts.css (no Google CDN, no slop shelf).
+     Cabinet Grotesk + Geist: neither appears on the anti-slop reject list. */
+  --font-display: "Cabinet Grotesk", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "IBM Plex Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+  /* The ONE rationed warm signal color — verified/active state only.
+     Gold is "fuel": never decoration, never a default glow. */
+  --signal: var(--color-gold-400);
 
   /* Motion easings (P13 / R16). --ease-out-expo = entrances, --ease-state = state changes. */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
@@ -79,9 +91,11 @@ html {
 
 body {
   @apply bg-ink-900 text-mist-200 font-sans antialiased;
+  /* Instrument Ink: near-black carbon, warmed slightly — NOT the cool blue-
+     charcoal slop default. A single faint warm gold emission from one source
+     (top-left), no purple, no blue, no second competing glow. */
   background-image:
-    radial-gradient(1100px 500px at 15% -10%, rgba(232, 184, 75, 0.055), transparent 60%),
-    radial-gradient(900px 600px at 110% 15%, rgba(90, 90, 180, 0.07), transparent 55%);
+    radial-gradient(1200px 620px at 12% -12%, rgba(232, 184, 75, 0.045), transparent 58%);
   background-attachment: fixed;
 }
 
@@ -165,7 +179,7 @@ select:focus-visible {
 }
 
 .pill {
-  @apply rounded-xl px-3.5 py-2.5 text-sm font-medium transition cursor-pointer bg-white/[0.04] text-mist-400 ring-1 ring-white/[0.08] hover:text-mist-200;
+  @apply rounded-xl px-3.5 py-2.5 text-sm font-medium transition cursor-pointer bg-white/[0.04] text-mist-300 ring-1 ring-white/[0.08] hover:text-mist-200;
 }
 .pill-active {
   @apply bg-gold-400/[0.12] text-gold-300 ring-1 ring-gold-400/30 hover:text-gold-300;
@@ -176,7 +190,7 @@ select:focus-visible {
 }
 
 .icon-btn {
-  @apply flex items-center justify-center rounded-lg p-1.5 text-mist-400 transition hover:bg-white/[0.06] hover:text-mist-200 cursor-pointer;
+  @apply flex items-center justify-center rounded-lg p-1.5 text-mist-300 transition hover:bg-white/[0.06] hover:text-mist-200 cursor-pointer;
 }
 
 /* ── Spoiler shield ─────────────────────────────────────────────── */
@@ -255,4 +269,259 @@ select:focus-visible {
    or a streaming indicator) so it only appears when the element is live. */
 .glow-gold {
   box-shadow: 0 0 24px rgba(232, 184, 75, 0.25);
+}
+
+/* ── In-world companion FAB (roast2 visual P0) ───────────────────── */
+/* World accent owns the edge in-world. Ink lacquer face — never a solid
+   gold brick fighting Watchlist / mode chrome. Gold ring + glow only when
+   the companion is live (aria-expanded). Brand gold stays on Shell logo. */
+.companion-fab {
+  background: color-mix(
+    in oklab,
+    var(--color-ink-850) 90%,
+    var(--world-accent, var(--color-gold-400)) 10%
+  );
+  color: var(--color-mist-300);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px
+      color-mix(
+        in oklab,
+        var(--world-accent, var(--color-gold-400)) 58%,
+        transparent
+      );
+  transition:
+    color 0.2s var(--ease-state),
+    box-shadow 0.2s var(--ease-state),
+    background-color 0.2s var(--ease-state);
+}
+.companion-fab:hover {
+  color: var(--color-mist-100);
+  background: color-mix(
+    in oklab,
+    var(--color-ink-800) 86%,
+    var(--world-accent, var(--color-gold-400)) 14%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px
+      color-mix(
+        in oklab,
+        var(--world-accent, var(--color-gold-400)) 72%,
+        transparent
+      );
+}
+.companion-fab[aria-expanded="true"] {
+  color: var(--color-gold-300);
+  background: color-mix(
+    in oklab,
+    var(--color-ink-850) 88%,
+    var(--color-gold-400) 12%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1.5px rgba(232, 184, 75, 0.55),
+    0 0 20px rgba(232, 184, 75, 0.22);
+}
+.companion-fab:focus-visible {
+  outline: 2px solid var(--world-accent, var(--color-gold-400));
+  outline-offset: 3px;
+}
+
+/* Claim-desk accent lock — never use Tailwind ring-[var(--x,#gold)]/N:
+   the comma fallback breaks arbitrary parsing → gold ring vs world verbs. */
+.world-accent-fill {
+  background: color-mix(in oklab, var(--world-accent) 90%, transparent);
+  color: var(--color-ink-950);
+}
+.world-accent-fill:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--world-accent) 82%, white 8%);
+}
+.world-accent-soft {
+  background: color-mix(in oklab, var(--world-accent) 14%, transparent);
+  box-shadow: 0 0 0 1px
+    color-mix(in oklab, var(--world-accent) 42%, transparent);
+}
+.world-accent-soft:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--world-accent) 24%, transparent);
+}
+.world-accent-cue {
+  box-shadow: 0 0 0 1px
+    color-mix(in oklab, var(--world-accent) 28%, transparent);
+}
+
+/* Guided deepen open: reserve right rail so Tonight shelf Claim job stays clear.
+   CompanionPanel is a sibling of <main>; body:has bridges the trees.
+   Pad the shelf only (not claim-stage) to avoid nested double padding. */
+body:has([data-companion-mode="guided-deepen"]) [data-testid="guided-shelf"] {
+  padding-right: min(21rem, calc(100vw - 1.5rem));
+}
+
+/* ── Density-as-place (B8) ──────────────────────────────────────── */
+/* An ignored title reads as "set aside": dimmed + desaturated so it recedes
+   into the shelf background without vanishing entirely. */
+.density-dimmed {
+  opacity: 0.6;
+  filter: grayscale(0.6);
+}
+
+/* ── Instrument Ink: bespoke geometry (the recurring silhouette) ──────
+   Corner registration ticks — like a crop mark on certificate paper. The
+   signature detail that beats a default rectangle. Place on a panel; the
+   ticks sit in the corners, hairline, in the signal color at low opacity. */
+.reg-ticks {
+  position: relative;
+}
+.reg-ticks::before,
+.reg-ticks::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: var(--signal);
+  border-style: solid;
+  border-width: 0;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.reg-ticks::before {
+  top: 10px;
+  left: 10px;
+  border-top-width: 1px;
+  border-left-width: 1px;
+}
+.reg-ticks::after {
+  bottom: 10px;
+  right: 10px;
+  border-bottom-width: 1px;
+  border-right-width: 1px;
+}
+
+/* Hairline etched rule — an etched bezel line, not a hard divider.
+   Rounded caps; tones from the surface, low contrast. Used to separate
+   Instrument Ink sections instead of a bare rule. */
+.etched-rule {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(205, 205, 217, 0.18) 12%,
+    rgba(205, 205, 217, 0.18) 88%,
+    transparent
+  );
+}
+
+/* ── Cinematic signature (Wave 3) ───────────────────────────────────────
+   Film grain + sparse dust motes behind the hero — the literal texture of
+   cinema, specific to a film-memory app. Premium noise (slop.md: "you feel
+   it, not see it"), NOT the banned colored-orb aurora. Always behind
+   content (z-0); never opacity-gated, so content is visible without JS.
+   Reduced-motion: frozen (no drift). */
+
+/* Grain: an SVG fractal-noise tile at very low opacity, blended over the
+   carbon. Feels tactile, never a flat fill. */
+.film-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+/* A single dust mote — a tiny warm speck, barely there. Positioned per
+   instance via inline style; this is the treatment only. */
+.dust-mote {
+  position: absolute;
+  z-index: 0;
+  border-radius: 9999px;
+  background: rgba(232, 184, 75, 0.5);
+  pointer-events: none;
+  opacity: 0;
+  animation: dust-drift 14s ease-in-out infinite;
+}
+
+@keyframes dust-drift {
+  0%   { opacity: 0;   transform: translateY(8px); }
+  35%  { opacity: 0.65; transform: translateY(0); }
+  70%  { opacity: 0.35; transform: translateY(-6px); }
+  100% { opacity: 0;   transform: translateY(-14px); }
+}
+
+/* Constellation web — a slow, calm breath so the signature atmosphere is
+   alive, not dead (slop.md: "dead-looking is a fail"). Whole-web opacity
+   drift only; never gates content. Reduced-motion: frozen. */
+.constellation-web {
+  animation: constellation-breathe 9s ease-in-out infinite;
+}
+@keyframes constellation-breathe {
+  0%, 100% { opacity: 0.14; }
+  50%      { opacity: 0.24; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dust-mote { animation: none; opacity: 0.25; }
+  .film-grain { opacity: 0.04; }
+  .constellation-web { animation: none; }
+}
+
+/* ── Worlds stage gaps (Arrange A1.1) ─────────────────────────────
+   Tight inside a stage/cluster; generous only between major stages.
+   Do not inflate fold length — redistribute equal Hub 20px marches. */
+:root {
+  --worlds-gap-tight: 0.625rem; /* 10px — disclosure siblings */
+  --worlds-gap-cluster: 0.75rem; /* 12px — within chrome/map/desk */
+  --worlds-gap-stage: 1.25rem; /* 20px — between major stages */
+}
+
+.worlds-gap-tight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--worlds-gap-tight);
+}
+
+.worlds-gap-cluster {
+  display: flex;
+  flex-direction: column;
+  gap: var(--worlds-gap-cluster);
+}
+
+.worlds-gap-stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--worlds-gap-stage);
+}
+
+/* ── Mode-split B: Self↔Guided stage enter (GenreExperience seam) ─
+   Booth hush: opacity + 6px rise only. Never width/height. Applied only
+   under prefers-reduced-motion: no-preference so reduce users never see
+   an opacity:0 flash (global 0.01ms crush still leaves a one-frame blink). */
+.mode-stage {
+  contain: layout style;
+}
+
+@keyframes mode-stage-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mode-stage {
+    animation: mode-stage-enter 240ms var(--ease-out-expo) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-stage {
+    animation: none;
+  }
 }

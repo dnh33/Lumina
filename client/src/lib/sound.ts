@@ -20,7 +20,7 @@ const listeners = new Set<() => void>();
 
 function loadPref(): boolean {
   const raw = localStorage.getItem(SOUND_KEY);
-  return raw === null ? true : raw === "1"; // on by default
+  return raw === null ? false : raw === "1"; // off by default (local-first: no surprise audio)
 }
 
 function applyPolicy() {
@@ -63,6 +63,20 @@ export function useSound(): {
 } {
   const enabled = useSyncExternalStore(subscribe, () => userPref);
   return { enabled, setEnabled: setPref };
+}
+
+/**
+ * Reads the user's persisted sound preference. Returns false when SOUND_KEY
+ * is unset (the new default — no surprise audio on a fresh visit) and true
+ * only when the user has explicitly opted in (SOUND_KEY === "1").
+ *
+ * This is the gate for unmediated, gesture-free cues (e.g. the world "open"
+ * beat fired on page mount). It honors local-first intent: a visitor hears
+ * nothing until they enable sound. Reduced-motion is layered on separately by
+ * applyPolicy()/cuelume's setEnabled, so callers need only check this.
+ */
+export function getSoundEnabled(): boolean {
+  return loadPref();
 }
 
 /**

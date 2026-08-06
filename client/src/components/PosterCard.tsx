@@ -160,7 +160,7 @@ export const PosterCard = memo(function PosterCard({
         className="absolute inset-0 z-[5] rounded-xl"
       />
 
-      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-ink-700 ring-1 ring-white/10 transition-all duration-300 group-hover:ring-gold-400/50 group-hover:shadow-[0_12px_40px_-8px_rgba(232,184,75,0.25)]">
+      <div className={`relative aspect-[2/3] overflow-hidden rounded-xl bg-ink-700 ring-1 ring-white/10 transition-all duration-300 group-hover:ring-gold-400/50 group-hover:shadow-[0_12px_40px_-8px_rgba(232,184,75,0.25)] ${ignored ? "density-dimmed" : ""}`}>
         {src && !imgFailed ? (
           <img
             src={src}
@@ -192,6 +192,17 @@ export const PosterCard = memo(function PosterCard({
           <div className="absolute right-2 top-2 z-[6] rounded-md bg-gold-400 px-1.5 py-0.5 text-2xs font-bold tabular-nums text-ink-950">
             {myRating}
           </div>
+        )}
+        {/* density-as-place: a title in your library reads as a "lit" star,
+            tinted with the world accent so it stays metaphor-tinted. */}
+        {saved && (
+          <span
+            data-density="lit"
+            aria-label="In your library"
+            className="absolute left-1/2 top-2 z-[6] flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--world-accent)]/90 text-ink-950 shadow-[0_0_10px_var(--world-accent)] ring-1 ring-white/30"
+          >
+            <Star className="h-3 w-3 fill-ink-950" aria-hidden />
+          </span>
         )}
         {ignored && (
           <div className="absolute left-1/2 top-1/2 z-[6] -translate-x-1/2 -translate-y-1/2 rounded-md bg-ink-950/85 px-2 py-1 text-2xs font-semibold uppercase tracking-wider text-mist-400 ring-1 ring-white/15 backdrop-blur">

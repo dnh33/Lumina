@@ -19,6 +19,8 @@ export interface CatalogItem {
    *  rating is `rating` on LibraryEntry / the hero number — kept separate. */
   imdbRating?: number | null;
   rtRating?: number | null;
+  /** Genre-module enrichment (director/seasons/providers/geo/argument). */
+  enrichment?: GenreItemEnrichment;
 }
 
 export interface PersonCredit {
@@ -300,8 +302,98 @@ export interface SuggestionItem {
   title: string;
   year?: number;
   /** one-clause taste rationale from the model */
-  /** one-clause taste rationale from the model */
   reason?: string;
   /** safe = squarely their taste, stretch = adventurous */
   pick?: "safe" | "stretch";
+}
+
+export interface GenreAnchor {
+  tmdbId: number;
+  mediaType: MediaType;
+  title: string;
+  rating: number | null;
+  /** Release year of the anchor title — used to bucket anchors onto the\n   *  TimelineScrubber decade axis (C9 taste-evolution overlay). Optional
+   *  because older anchors may not carry it. */
+  year?: number | null;
+}
+
+/** Per-title enrichment the genre modules render (server-computed). */
+export interface GenreItemEnrichment {
+  director: string | null;
+  directorId: number | null;
+  seasons?: { seasonNumber: number; name: string; episodeCount: number }[];
+  watchProviders: unknown | null;
+  originCountry: string[];
+  imdbRating?: number | null;
+  rtRating?: number | null;
+  argument?: { thesis: string; counterpoint?: { title: string; relation: string } | null } | null;
+}
+
+export type GenreItem = CatalogItem;
+
+export interface GenreExperience {
+  key: string;
+  genres: string[];
+  mode: "self" | "guided";
+  /** Optional: intro is now fetched separately via genreIntro(). */
+  intro?: { hook: string; tone: string; basedOn: string[] } | null;
+  items: GenreItem[];
+  anchorsUsed: GenreAnchor[];
+  profileState: ProfileState;
+}
+
+export interface GenreExperienceIntro {
+  hook: string;
+  tone: string;
+  basedOn: string[];
+}
+
+/* ── Guided tour (Worlds G1) ─────────────────────────────────────────── */
+
+export type GuidedBeatId = "tempo" | "era" | "risk";
+
+export interface GuidedBeatChoice {
+  id: string;
+  label: string;
+  hint: string;
+}
+
+export interface GuidedBeat {
+  id: GuidedBeatId;
+  prompt: string;
+  choices: GuidedBeatChoice[];
+}
+
+export interface GuidedAct {
+  tmdbId: number;
+  mediaType: MediaType;
+  action: "watchlist" | "dismiss" | "open";
+  at: string;
+}
+
+export interface GuidedPick {
+  tmdbId: number;
+  mediaType: MediaType;
+  title: string;
+  year: number | null;
+  posterPath: string | null;
+  voteAverage: number | null;
+  inLibrary: boolean;
+}
+
+export interface GuidedSession {
+  slug: string;
+  mediaType: MediaType;
+  status: "active" | "complete" | "abandoned";
+  answers: Partial<Record<GuidedBeatId, string>>;
+  picks: GuidedPick[];
+  acted: GuidedAct[];
+  conversationId: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GuidedSessionPayload {
+  session: GuidedSession;
+  beats: GuidedBeat[];
 }

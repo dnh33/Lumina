@@ -38,6 +38,7 @@ miscRouter.get("/insight/:type/:tmdbId", async (req, res) => {
     Number(req.params.tmdbId),
     mediaType,
     req.query.refresh === "1",
+    req.query.skipAnchorLog === "1",
   );
   res.json(insight);
 });

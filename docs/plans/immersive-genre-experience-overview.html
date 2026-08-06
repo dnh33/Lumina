@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lumina - Immersive Genre Experience: Ideation Overview</title>
+<style>
+  /* Real Lumina tokens (verified client/src/theme.css:1-46) */
+  :root{
+    --ink-950:#08080d; --ink-900:#0b0b10; --ink-850:#0e0e15; --ink-800:#12121a;
+    --ink-700:#1a1a24; --ink-600:#242433;
+    --mist-400:#8b8ba3; --mist-300:#a9a9bd; --mist-200:#cdcdd9;
+    --gold-300:#f2d288; --gold-400:#e8b84b; --gold-500:#d9a532; --gold-600:#b9871f;
+    --amber-300:#fcd34d; --amber-400:#fbbf24; --amber-500:#f59e0b;
+    --rt-500:#fa320a; --tmdb-500:#01b4e4;
+    --font-display:"Fraunces",Georgia,serif;
+    --font-sans:"Inter",system-ui,sans-serif;
+    --ease-out-expo:cubic-bezier(0.22,1,0.36,1);
+    --maxw:1100px;
+  }
+  *{box-sizing:border-box;}
+  html{color-scheme:dark;}
+  body{
+    margin:0; background:var(--ink-950); color:var(--mist-200);
+    font-family:var(--font-sans); line-height:1.6; -webkit-font-smoothing:antialiased;
+    font-size:16px;
+  }
+  /* film-grain overlay (mirrors theme.css .grain) */
+  .grain{position:fixed; inset:0; z-index:40; pointer-events:none; opacity:.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px 96px;}
+  /* header */
+  header{padding:64px 0 32px; border-bottom:1px solid rgba(139,139,163,.14);}
+  .eyebrow{font-size:12px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--gold-400);}
+  h1{font-family:var(--font-display); font-weight:600; font-size:clamp(34px,5vw,56px); line-height:1.05; margin:14px 0 10px; color:#fff; letter-spacing:-.01em;}
+  .lede{color:var(--mist-300); max-width:68ch; font-size:18px; margin:0;}
+  .meta{margin-top:22px; display:flex; flex-wrap:wrap; gap:10px;}
+  .pill{display:inline-flex; align-items:center; gap:7px; padding:7px 13px; border-radius:11px; font-size:13px; font-weight:500; background:rgba(255,255,255,.045); color:var(--mist-200); border:1px solid rgba(255,255,255,.08);}
+  .pill .dot{width:7px; height:7px; border-radius:50%; background:var(--gold-400);}
+  .pill.warn .dot{background:var(--amber-400);} .pill.block .dot{background:var(--rt-500);}
+  /* sections */
+  section{padding:44px 0; border-bottom:1px solid rgba(139,139,163,.1);}
+  h2{font-family:var(--font-display); font-weight:600; font-size:28px; color:#fff; margin:0 0 6px;}
+  h3{font-family:var(--font-display); font-weight:600; font-size:20px; color:#fff; margin:30px 0 10px;}
+  .sub{color:var(--mist-400); font-size:14px; margin:0 0 18px; max-width:70ch;}
+  p{margin:0 0 14px; max-width:72ch;}
+  strong{color:var(--gold-300); font-weight:600;}
+  a{color:var(--gold-400); text-decoration:none; border-bottom:1px solid rgba(232,184,75,.35);}
+  a:hover{color:var(--gold-300);}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.85em; background:var(--ink-700); color:var(--gold-300); padding:1px 6px; border-radius:5px;}
+  /* two-col on desktop */
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:8px;}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr;}}
+  .card{background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.07); border-radius:16px; padding:20px 22px;}
+  .card h4{margin:0 0 8px; font-size:15px; font-weight:700; color:#fff; letter-spacing:.01em;}
+  .card p{font-size:14px; color:var(--mist-300); margin:0;}
+  .card .tag{display:inline-block; font-size:11px; font-weight:600; color:var(--gold-400); text-transform:uppercase; letter-spacing:.12em; margin-bottom:6px;}
+  /* table */
+  table{width:100%; border-collapse:collapse; font-size:14px; margin-top:6px;}
+  th,td{text-align:left; padding:11px 12px; border-bottom:1px solid rgba(139,139,163,.12); vertical-align:top;}
+  th{color:var(--mist-400); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.08em;}
+  td:first-child{color:#fff; font-weight:600; white-space:nowrap;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  /* metaphor row */
+  .met{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:10px;}
+  @media(max-width:760px){.met{grid-template-columns:1fr;}}
+  .met .card .sym{font-family:var(--font-display); font-size:30px; color:var(--gold-400); line-height:1;}
+  /* doc exemplar features */
+  .feat{display:grid; grid-template-columns:1fr 1fr; gap:12px 22px; margin-top:10px;}
+  @media(max-width:760px){.feat{grid-template-columns:1fr;}}
+  .feat div{display:flex; gap:10px; padding:9px 0; border-bottom:1px solid rgba(139,139,163,.08); font-size:14px;}
+  .feat b{color:#fff; min-width:34px; display:inline-block;}
+  .feat span{color:var(--mist-300);}
+  .asset{font-size:11px; color:var(--tmdb-500); margin-left:6px;}
+  /* grill findings */
+  .finding{display:flex; gap:14px; padding:16px 0; border-bottom:1px solid rgba(139,139,163,.1);}
+  .finding .id{flex:0 0 54px; font-family:var(--font-display); font-size:22px; color:var(--gold-400);}
+  .finding .body{flex:1;}
+  .finding .status{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; padding:2px 9px; border-radius:7px; display:inline-block; margin-bottom:5px;}
+  .status.s-block{background:rgba(250,50,10,.16); color:#ff8a66;}
+  .status.s-safe{background:rgba(232,184,75,.14); color:var(--gold-300);}
+  .status.s-cut{background:rgba(1,180,228,.14); color:var(--tmdb-500);}
+  .finding p{font-size:14px; color:var(--mist-300); margin:0;}
+  .finding code{font-size:.8em;}
+  /* forks */
+  .fork{display:grid; grid-template-columns:48px 1fr; gap:16px; padding:15px 0; border-bottom:1px solid rgba(139,139,163,.1);}
+  .fork .n{font-family:var(--font-display); font-size:20px; color:var(--gold-400);}
+  .fork .rec{font-size:14px; color:var(--mist-200);}
+  .fork .rec b{color:#fff;}
+  .fork .rec i{color:var(--mist-400); font-style:normal; font-size:13px; display:block; margin-top:3px;}
+  /* verdict banner */
+  .banner{margin:30px 0 0; padding:22px 24px; border-radius:16px; background:linear-gradient(180deg,rgba(232,184,75,.10),rgba(232,184,75,.03)); border:1px solid rgba(232,184,75,.28);}
+  .banner h3{margin:0 0 8px; color:var(--gold-300);}
+  .banner p{margin:0; color:var(--mist-200); font-size:15px;}
+  .banner .gate{margin-top:12px; font-size:13px; color:var(--amber-300);}
+  footer{padding:40px 0 0; color:var(--mist-400); font-size:12.5px;}
+  footer span{color:var(--mist-300);}
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important;}
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Lumina · Ideation Overview</div>
+    <h1>Immersive Curated Genre-Specific Experience</h1>
+    <p class="lede">A new standalone page where you pick a genre and go deep: an atmospheric "world" plus curated rails, optionally guided by the existing Companion. This is the consolidated pre-plan snapshot of everything researched, grilled, and decided so far.</p>
+    <div class="meta">
+      <span class="pill"><span class="dot"></span>Branch: immersive-curated-genre-specific-experie</span>
+      <span class="pill block"><span class="dot"></span>Status: DESIGN, build gated</span>
+      <span class="pill"><span class="dot"></span>12 research strands + 4-agent grill</span>
+      <span class="pill warn"><span class="dot"></span>5 STILL-BLOCKING to resolve</span>
+    </div>
+  </header>
+
+  <!-- 1. CONCEPT -->
+  <section id="concept">
+    <h2>1. The concept</h2>
+    <p class="sub">The inverse of today's breadth-first Discover. <code>discoverService.forYou</code> already OR's your top-3 genres into one spread; this reuses the same engine with an <em>explicit</em> genre seed for a <strong>focused, narrative, deep</strong> dive. It must feel like entering a world, not scrolling a list, while staying usable, fast, and accessible.</p>
+    <div class="grid2">
+      <div class="card"><span class="tag">Positioning</span><h4>The world, not the feed</h4><p>A poster rail is the fallback. The goal is genre-scoped immersion: a threshold entry, a curated spine, and AI guidance that walks you through a place that knows your taste.</p></div>
+      <div class="card"><span class="tag">Reuse, don't invent</span><h4>Built on what exists</h4><p>Anti-fatigue anchor machinery (<code>anchorService</code>) is the differentiator: the world <em>reads</em> fatigue, never writes it. <code>insightService.titleInsight</code>, <code>contextBuilder</code>, <code>chatService</code>, <code>tools</code> all feed it.</p></div>
+    </div>
+  </section>
+
+  <!-- 2. PER-GENRE FEEL -->
+  <section id="feel">
+    <h2>2. The per-genre feel layer</h2>
+    <p class="sub">The blunt verdict from the feature-richness audit: a tint-swap is not enough. Feel is a <strong>parameter map over the locked system</strong>, not new assets. True structural difference lives in the genre-module blocks (Timeline, Geo, Watch-order, Topic-cluster), not in decoration.</p>
+    <h3>Six spatial metaphors (each drives hero composition + one signature gesture + Companion register)</h3>
+    <div class="met">
+      <div class="card"><div class="sym">✦</div><h4>Sci-Fi · Constellation</h4><p>Posters as charted stars; Memory Constellation motif. Precision, glacial awe.</p></div>
+      <div class="card"><div class="sym">⌖</div><h4>Horror · Threshold</h4><p>Dread then visceral hold, then confront, then release. Tight, uneasy type.</p></div>
+      <div class="card"><div class="sym">❡</div><h4>Documentary · Reading Room</h4><p>Curiosity to absorption to counter-argument to understanding. Editorial, credible.</p></div>
+      <div class="card"><div class="sym">♡</div><h4>Romance · Warm Interior</h4><p>Anticipation, intimacy, reflection, warmth. Soft, generous tracking.</p></div>
+      <div class="card"><div class="sym">⌒</div><h4>Western · Frontier</h4><p>Restlessness, expanse, trial, settlement. Woodcut-weight, blunt.</p></div>
+      <div class="card"><div class="sym">▦</div><h4>Anime · Panel</h4><p>Discovery, kinetic immersion, lore. Most expressive optical setting.</p></div>
+    </div>
+    <h3>Locked tokens (verified, not assumed)</h3>
+    <div class="grid2">
+      <div class="card"><span class="tag">Type</span><h4>Fraunces + Inter</h4><p><code>--font-display:"Fraunces"</code> + <code>--font-sans:"Inter"</code> (theme.css:32-33). Per-genre = register variation (weight/tracking/tempo), never new families.</p></div>
+      <div class="card"><span class="tag">Accent</span><h4>Gold-400 + Amber-400</h4><p><code>gold-400 #e8b84b</code> for active/rating (rare, glow only on live states). <code>amber-400 #fbbf24</code> reserved for the passive "over-used" nudge.</p></div>
+      <div class="card"><span class="tag">Motion</span><h4>EASE_OUT_EXPO</h4><p><code>--ease-out-expo</code> + <code>--ease-state</code> (theme.css:36-37); <code>stagger60</code>/<code>posterDeal</code> from <code>lib/motion.ts</code>. Transform/opacity only.</p></div>
+      <div class="card"><span class="tag">Sound + Voice</span><h4>10 cues, one agent</h4><p><code>lib/sound.ts</code> = only 10 fixed cues; genre = beat-mapping. Companion = one agent; per-genre = register block, not a second LLM.</p></div>
+    </div>
+  </section>
+
+  <!-- 3. DOCUMENTARY EXEMPLAR -->
+  <section id="doc">
+    <h2>3. Documentary deep-dive (the exemplar)</h2>
+    <p class="sub">Documentaries are the hardest case (truth-claims, makers, topics, eras, series, credibility) so they prove the model. 11 signature features, each wired to a real Lumina asset. Sci-Fi/Horror get lighter treatment first.</p>
+    <div class="feat">
+      <div><b>F1</b><span>Voices rail (filmmaker spotlight)<span class="asset">favoriteDirectors · normalizePerson</span></span></div>
+      <div><b>F2</b><span>Topic/theme threading<span class="asset">keywords · similar · topTags</span></span></div>
+      <div><b>F3</b><span>"The Argument" thesis + counterpoint<span class="asset">insightService</span></span></div>
+      <div><b>F4</b><span>Credibility / source framing<span class="asset">watchProviders · ratingsService</span></span></div>
+      <div><b>F5</b><span>Watch-order for docu-series<span class="asset">seasons · upNext</span></span></div>
+      <div><b>F6</b><span>"Where to start" on-ramp<span class="asset">forYou generalized</span></span></div>
+      <div><b>F7</b><span>Era / recency scrubber<span class="asset">TMDB date filters</span></span></div>
+      <div><b>F8</b><span>Sub-genre split (true-crime/nature)<span class="asset">genreMap</span></span></div>
+      <div><b>F9</b><span>Anchor-framed "Like X, but…" Echoes<span class="asset">anchorService</span></span></div>
+      <div><b>F10</b><span>Maker cross-pollination<span class="asset">/tmdb/person/:id</span></span></div>
+      <div><b>F11</b><span>Commitment-cost / runtime band<span class="asset">runtime · episodesCount</span></span></div>
+      <div><b>+</b><span>Scene walkthrough: threshold → voices → a title → topic thread<span class="asset">doc §13.4</span></span></div>
+    </div>
+    <p class="sub" style="margin-top:14px;"><strong>Real gap:</strong> <code>keywords</code> (F2) is not yet normalized in <code>normalize.ts</code>. Needs a small mapping or falls back to <code>similar</code> + <code>topTags</code>. F3/F4 (heaviest) and F5 deferred to v1.5.</p>
+  </section>
+
+  <!-- 4. SCOPE / MVP -->
+  <section id="scope">
+    <h2>4. Scope: what actually ships</h2>
+    <p class="sub">The grill corrected an overclaim: "8 universal devices" was itself a recolored shell. The MVP must include <strong>one real structural module</strong> to not be a tint-swap.</p>
+    <div class="grid2">
+      <div class="card"><span class="tag">v1 (MVP, not a shell)</span><h4>Universal + Timeline module</h4><p>Shell + 4 editorial devices (Argument spine, Maker spotlight, You-Are-Here, Echoes) + 4 universal elements (Compare, Critic/Credibility, Start-Here, Save/Resume) + <strong>ONE cross-genre module: the Timeline/Era scrubber</strong>, live for all genres via <code>genreWorld</code> config. Real scrubbable temporal axis.</p></div>
+      <div class="card"><span class="tag">v1.5 (modules)</span><h4>Genre modules via config</h4><p>Geo Map, Topic Cluster, Watch-order Sequencer, Critic nuance, switched on per genre. One component parameterized over <code>genreWorld</code>, not N page variants.</p></div>
+    </div>
+    <p class="sub" style="margin-top:16px;"><strong>Proof-genre scope:</strong> ship 3 proof genres (Documentary, Sci-Fi, Horror) with distinct registers. Defer the full 13-genre matrix. Cut Quote pull-quotes + Mood/Soundtrack cue-mapping from v1.</p>
+  </section>
+
+  <!-- 5. GRILL FINDINGS -->
+  <section id="grill">
+    <h2>5. Grill findings (pre-plan must-fix)</h2>
+    <p class="sub">A 4-agent <code>grill-with-docs</code> team challenged the design against the real repo. Verified by me, not agent-assertion. These become hard code-review gates in the build.</p>
+
+    <div class="finding"><div class="id">G1</div><div class="body"><span class="status s-block">Still-blocking</span><p><strong>forYou has no genre-seed param</strong> (<code>discoverService.ts:99</code>). "Reuse with explicit seed" is a modification, not a drop-in call. Phase-2 scopes a new/modified engine (explicit seed → <code>ids.join("|")</code> OR logic).</p></div></div>
+
+    <div class="finding"><div class="id">G2</div><div class="body"><span class="status s-block">Still-blocking</span><p><strong>bare <code>filterCatalog</code> is a silent regression.</strong> It does NOT read <code>getExcludedGenres</code> (default <code>[]</code>); only <code>flag()</code> does (<code>discoverService.ts:27-50</code>). New service MUST call <code>flag(db, items)</code> or it silently shows ignored/genre-excluded titles. Hard gate.</p></div></div>
+
+    <div class="finding"><div class="id">G3</div><div class="body"><span class="status s-block">Still-blocking</span><p><strong>Doc self-contradicts on anchor logging.</strong> §7 "on view logs anchor" vs R3 "never on view." Current code logs only on title-open (<code>insightService.ts:234</code> take, <code>:272</code> insight_neighbors ×3, <code>tools.ts:586</code> compare_titles). Forbid log-on-view; reuse <code>:263-273</code> only inside a real open action.</p></div></div>
+
+    <div class="finding"><div class="id">G4</div><div class="body"><span class="status s-block">Still-blocking</span><p><strong>ChatDock collision.</strong> Global, hidden ONLY on <code>/chat</code> (<code>App.tsx:16,51</code>) → it floats over <code>/genre</code>, double-companioning the world's own surface. Decision: hide ChatDock on <code>/genre</code> too.</p></div></div>
+
+    <div class="finding"><div class="id">G5</div><div class="body"><span class="status s-block">Still-blocking</span><p><strong>v1-universal-only is STILL a recolored shell.</strong> Corrected: true structural differentiation needs v1.5 genre-modules. v1 must include ≥1 real module (Timeline) to not be a tint-swap.</p></div></div>
+
+    <div class="finding"><div class="id">G6</div><div class="body"><span class="status s-safe">Verified-safe</span><p>"One batched LLM call" is admitted-NEW code (not drop-in); <code>keywords</code>/<code>origin_country</code> gap real; <code>anchorService</code> exports + <code>discover_titles</code> OR/year caps + ChatDock existence all confirmed; documentary exemplar F1/F10 anchors ALL REAL.</p></div></div>
+
+    <div class="finding"><div class="id">G7</div><div class="body"><span class="status s-safe">Verified-safe</span><p>§13.7 overclaim corrected: "8 interaction families = rich enough" conflated device count with structural differentiation. v1 = shell + 4 devices + 4 elements + Timeline module.</p></div></div>
+
+    <div class="finding"><div class="id">G8</div><div class="body"><span class="status s-cut">Scope cut</span><p>13-genre matrix → 3 proof genres (Doc/Sci-Fi/Horror). Keep Argument spine, Maker spotlight, You-Are-Here, Echoes; cut Quote pull-quotes + Mood/Soundtrack. F2/F3/F4/F5 deferred to v1.5.</p></div></div>
+  </section>
+
+  <!-- 6. OPEN FORKS -->
+  <section id="forks">
+    <h2>6. Open forks (your go / no-go)</h2>
+    <p class="sub">Everything below is a decision, not analysis. Build stays gated until you pick.</p>
+    <div class="fork"><div class="n">1</div><div class="rec"><b>Routing: standalone <code>/genre/:slug</code></b><i>Confirmed by strands.</i></div></div>
+    <div class="fork"><div class="n">2</div><div class="rec"><b>Genre-count: single default, multi opt-in via <code>+</code></b><i>OR'd grab-bag weakens the "world".</i></div></div>
+    <div class="fork"><div class="n">3</div><div class="rec"><b>AI-guided: opt-in</b><i>Honors ADR-0006 no-notification.</i></div></div>
+    <div class="fork"><div class="n">4</div><div class="rec"><b>Shell nav: add a 5th "Worlds" item</b><i>Justified by richness; aids discoverability.</i></div></div>
+    <div class="fork"><div class="n">5</div><div class="rec"><b>Per-genre scope: v1 = shell + 4 devices + 4 elements + Timeline module; v1.5 = genre-modules via <code>genreWorld</code></b><i>Do NOT ship universal-only (recolored shell).</i></div></div>
+    <div class="fork"><div class="n">6</div><div class="rec"><b>Proof genres: Documentary, Sci-Fi, Horror</b><i>Distinct registers; defer full 13-genre matrix.</i></div></div>
+    <div class="fork"><div class="n">7</div><div class="rec"><b>ChatDock on <code>/genre</code>: hide it</b><i>Avoid double-companion collision (G4).</i></div></div>
+    <div class="fork"><div class="n">8</div><div class="rec"><b>Anchor logging: forbid log-on-view</b><i>Reuse <code>insightService.ts:263-273</code> only inside real open (G3).</i></div></div>
+    <div class="fork"><div class="n">9</div><div class="rec"><b>Font stack: keep real Fraunces/Inter, or migrate to Cabinet Grotesk/Geist</b><i>Affects the feel-doc type registers.</i></div></div>
+  </section>
+
+  <div class="banner">
+    <h3>Where this stands</h3>
+    <p>Research, reasoning, and a 4-agent grill are complete. The design is corrected, verified against the repo, and grilled. Nothing has been built. Five STILL-BLOCKING items (G1-G5) are folded in as hard code-review gates, not blockers to starting.</p>
+    <p class="gate">GATE: approve + pick the forks above → Phase 2 (writing-plans → TDD build via Claude Code, two-stage review). Build does not start without your go.</p>
+  </div>
+
+  <footer>
+    <p><span>Lumina · Immersive Genre Experience ideation overview.</span> Single self-contained HTML file, opens directly in a browser. Tokens verified against <code>client/src/theme.css</code>. Source of truth: <code>docs/plans/2026-07-15-immersive-genre-experience-design.md</code> (§13.9 grill findings, §14 forks) + <code>2026-07-15-genre-experience-CONTEXT-TEMP.md</code>. Em-dash banned per project style. Reduced-motion honored.</p>
+  </footer>
+
+</div>
+</body>
+</html>

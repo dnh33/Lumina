@@ -97,6 +97,43 @@ describe("TMDB normalizers", () => {
     expect(d.runtime).toBe(55);
   });
 
+  it("normalizes movie keywords (raw.keywords)", () => {
+    const d = normalizeDetails(
+      {
+        id: 27205,
+        title: "Inception",
+        release_date: "2010-07-15",
+        keywords: [
+          { id: 1, name: "dream" },
+          { id: 2, name: "heist" },
+        ],
+      },
+      "movie",
+    );
+    expect(d.keywords).toEqual([
+      { id: 1, name: "dream" },
+      { id: 2, name: "heist" },
+    ]);
+  });
+
+  it("normalizes tv keywords (raw.keywords.results)", () => {
+    const d = normalizeDetails(
+      {
+        id: 1399,
+        name: "Game of Thrones",
+        first_air_date: "2011-04-17",
+        keywords: { results: [{ id: 5, name: "politics" }] },
+      },
+      "tv",
+    );
+    expect(d.keywords).toEqual([{ id: 5, name: "politics" }]);
+  });
+
+  it("defaults keywords to empty when absent", () => {
+    const d = normalizeDetails({ id: 1, title: "X", release_date: "2020-01-01" }, "movie");
+    expect(d.keywords).toEqual([]);
+  });
+
   it("normalizes season episodes", () => {
     const eps = normalizeSeason({
       episodes: [

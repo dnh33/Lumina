@@ -63,6 +63,25 @@ describe("useTokenBuffer (T6)", () => {
     expect(result.current.text).toBe("hello");
   });
 
+  it("accumulates across multiple flush cadences (does not replace)", () => {
+    const onFlush = vi.fn();
+    const { result } = renderHook(() => useTokenBuffer(onFlush, 24));
+
+    act(() => {
+      result.current.push("Hello");
+      vi.advanceTimersByTime(24);
+    });
+    expect(result.current.text).toBe("Hello");
+    expect(onFlush).toHaveBeenLastCalledWith("Hello");
+
+    act(() => {
+      result.current.push(" world");
+      vi.advanceTimersByTime(24);
+    });
+    expect(result.current.text).toBe("Hello world");
+    expect(onFlush).toHaveBeenLastCalledWith("Hello world");
+  });
+
   it("reset clears buffered text", () => {
     const { result } = renderHook(() => useTokenBuffer(undefined, 24));
     act(() => {

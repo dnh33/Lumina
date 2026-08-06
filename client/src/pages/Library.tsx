@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { Heart, Plus, Search, Tag } from "lucide-react";
 import { api } from "../lib/api";
 import { PosterCard } from "../components/PosterCard";
@@ -17,6 +18,11 @@ const STATUS_TABS = [
 ] as const;
 
 type StatusKey = (typeof STATUS_TABS)[number]["key"];
+
+function parseStatusParam(raw: string | null): StatusKey {
+  if (raw && STATUS_TABS.some((t) => t.key === raw)) return raw as StatusKey;
+  return "all";
+}
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -84,7 +90,10 @@ const EMPTY_COPY: Record<StatusKey, string> = {
 };
 
 export default function Library() {
-  const [status, setStatus] = useState<StatusKey>("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [status, setStatus] = useState<StatusKey>(() =>
+    parseStatusParam(searchParams.get("status")),
+  );
   const [type, setType] = useState("");
   const [genre, setGenre] = useState("");
   const [tag, setTag] = useState("");
@@ -92,6 +101,24 @@ export default function Library() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search, 250);
   const [addOpen, setAddOpen] = useState(false);
+
+  // Honor deep links (Worlds tonight-bag → /library?status=watchlist).
+  useEffect(() => {
+    setStatus(parseStatusParam(searchParams.get("status")));
+  }, [searchParams]);
+
+  const selectStatus = (next: StatusKey) => {
+    setStatus(next);
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        if (next === "all") p.delete("status");
+        else p.set("status", next);
+        return p;
+      },
+      { replace: true },
+    );
+  };
 
   const params = useMemo(() => {
     const p: Record<string, string> = { status, sort };
@@ -114,7 +141,7 @@ export default function Library() {
     status !== "all" || !!type || !!genre || !!tag || !!debouncedSearch.trim();
 
   const clearFilters = () => {
-    setStatus("all");
+    selectStatus("all");
     setType("");
     setGenre("");
     setTag("");
@@ -164,7 +191,7 @@ export default function Library() {
             label="Favorites"
             value={stats.data.favorites}
             active={status === "favorites"}
-            onClick={() => setStatus(status === "favorites" ? "all" : "favorites")}
+            onClick={() => selectStatus(status === "favorites" ? "all" : "favorites")}
           />
           <StatCard label="Avg rating" value={stats.data.avgRating ?? "—"} />
           <StatCard label="Hours" value={`≈${stats.data.estimatedHours}`} />
@@ -178,7 +205,7 @@ export default function Library() {
               key={t.key}
               type="button"
               data-cuelume-toggle="tick"
-              onClick={() => setStatus(t.key)}
+              onClick={() => selectStatus(t.key)}
               aria-pressed={status === t.key}
               className={`pill flex items-center gap-1.5 ${status === t.key ? "pill-active" : ""}`}
             >

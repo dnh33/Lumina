@@ -1,8 +1,33 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sounds } from "cuelume";
+import { getSoundEnabled } from "./sound.js";
+
+const SOUND_KEY = "lumina:sound";
+
+beforeEach(() => {
+  // jsdom provides localStorage; reset between tests for deterministic pref reads.
+  window.localStorage.clear();
+});
+
+describe("getSoundEnabled", () => {
+  it("returns false when SOUND_KEY is unset (default OFF / local-first)", () => {
+    expect(window.localStorage.getItem(SOUND_KEY)).toBeNull();
+    expect(getSoundEnabled()).toBe(false);
+  });
+
+  it("returns true when SOUND_KEY is set to '1'", () => {
+    window.localStorage.setItem(SOUND_KEY, "1");
+    expect(getSoundEnabled()).toBe(true);
+  });
+
+  it("returns false when SOUND_KEY is set to anything other than '1'", () => {
+    window.localStorage.setItem(SOUND_KEY, "0");
+    expect(getSoundEnabled()).toBe(false);
+  });
+});
 
 /**
  * play() silently no-ops on unknown names, so a typo in a cue name would

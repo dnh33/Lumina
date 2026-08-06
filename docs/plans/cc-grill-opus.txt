@@ -1,0 +1,73 @@
+I've verified everything I need against the actual code. Here's the grill.
+
+---
+
+# GRILL VERDICT — Worlds UI/UX Refinement Plan
+
+Read the plan in full and re-verified every load-bearing claim against the repo. Bottom line: **the plan is structurally sound and most file:line claims check out, but P1's headline ("UI waits on AI") is only half-true — the items path itself carries per-title LLM latency the plan never addresses.** One of the orchestrator's own "verified" premises (ChatDock over `/genre`) is stale.
+
+---
+
+## Axis 1 — Technical fidelity
+
+**`curatorIntro` splits cleanly — SAFE.** `curatorIntro` (`genreExperienceService.ts:187-224`) is already a pure function: reads `db`, `genres`, `anchors`, `profileState`, returns a value, no writes, degrades to `null` on failure. `buildGenreIntro` can wrap it by recomputing `selectAnchors` (`:278`) + `profileStateOf(computeTasteProfile(db))` (`:276-277`). No shared mutable state with the items build. *Fix: none — but reconcile the return type (see below).*
+
+**Return-type mismatch — STILL-BLOCKING (minor).** Plan Task 1.1 says `buildGenreIntro` returns `{ hook, tone }`, but `GenreExperienceIntro` (`:43-47`, and client `types.ts:335`) also carries `basedOn: string[]`, which `curatorIntro` populates (`:216-219`). Dropping it silently is a type lie. *Fix: return the full `GenreExperienceIntro`, or explicitly narrow the type in both server and `client/src/lib/types.ts`.*
+
+**P5 "existing TMDB discover query builder" — STILL-BLOCKING (inaccurate premise, easy fix).** Confirmed the orchestrator's suspicion: **there is no discover query builder.** The discover call is an inline object literal at `genreExperienceService.ts:258-263` passing only `with_genres`, `sort_by`, `vote_count.gte`, `include_adult`. `tmdbGet` (`tmdb/client.ts:41-56`) is a generic serializer — it will forward *any* param key verbatim, so `with_keywords`/`with_watch_providers`/`primary_release_date.gte`/`with_original_language` are trivially addable. But the plan's phrasing ("pass straight to the existing builder") implies an abstraction that doesn't exist; the implementer must edit the inline literal and thread new opts through `GenreExperienceOpts` (`:66-72`). *Fix: reword — "extend the inline discover params object at :258; add fields to `GenreExperienceOpts`."*
+
+**Test references are real — SAFE.** `memoryDb`, `seedEntry`, `makeDetails` are imported and used (`test/genreExperience.test.ts:100, 107`). `genreMap` async is real (`tmdb/client.ts:112`, mocked at test `:7`). The existing G3 test (`:128-137`) passes only because `titleInsight` is mocked (`:81-98`) — see Axis 3 for why that matters.
+
+---
+
+## Axis 2 — Architecture / composition
+
+**Two-endpoint split composes with cache/route — SAFE.** Route layer (`catalog.ts:128-137`) is a thin handler; adding `/discover/genre-intro` alongside is mechanical. Separate cache keys are fine — current code already caches the whole blob under `genre-exp:${key}` (`:236, 293`).
+
+**ChatDock double-companion regression — SAFE (orchestrator's premise is STALE).** The brief claims "ChatDock hidden only on `/chat` — floats over `/genre`." **False.** `App.tsx:19` defines `onGenrePage = location.pathname.startsWith("/genre")` and `:56` gates `{!onChatPage && !onGenrePage && <ChatDock />}`. ChatDock is *already* suppressed on `/genre`. The "Steer this World" CTA (P5.3) will **not** collide with a floating dock. *No fix needed — correcting the record.*
+
+**Cache-key explosion from `keyword` — SAFE (plan over-worries).** The genre-exp blob key adds `:keyword:decade:sort:…` → many SQLite `settings` rows, but enrichment caches (`fetchDetailsFromTmdb`, `titleInsight`) are keyed **by title, not by experience** (`insightService.ts:197` `insight:${mediaType}:${tmdbId}`; tmdbGet by URL). So steering variants reuse warm per-title data and only pay a cached `/discover` call. The 1h TTL on variants bounds row count adequately. The real cost is the *first cold world load*, not the variants — see Axis 3.
+
+**Double-filtering decade (P2 client vs P5 server) — STILL-BLOCKING (minor conflict).** P2/P3 filter `data.items` client-side by `decadeOf(i.year)`; P5 also adds a server `decade` → `primary_release_date.gte/lte`. If both are active they use *different boundary logic* (client floors `year`; server filters release date) and can disagree at decade edges. Redundant at best, mismatched at worst. *Fix: pick one authority — client filter for the fast path, server `decade` only when re-querying; don't run both on the same selection.*
+
+**AnimatePresence nesting — SAFE.** New Tabs/FilterChips/TitleCard nest under the page `motion.div` (`App.tsx:32-54`); PosterCard's own `AnimatePresence` (`PosterCard.tsx:212`) is independent. No conflict.
+
+---
+
+## Axis 3 — Scope / blind-spots
+
+**🔴 P1 does NOT decouple the items path from AI — STILL-BLOCKING (the big one).** P1's stated goal is "rails paint before the AI responds." But the curator intro is **one** LLM call; the *items* path fires **N per-title AI calls** before returning. `buildGenreExperience` → `enrichGenreItems` (`:107-160`) → for `argument` worlds calls `titleInsight` **per item** (`:149`), and `titleInsight` on cache-miss does a full LLM completion (`insightService.ts:225+`). Documentary — the demo genre — has `argument` enabled (`genreWorld.ts:24`), as do war-politics, history, sci-fi, horror, romance, thriller, fantasy, crime, mystery, noir. On a **cold cache**, splitting the curator out still leaves the items endpoint blocking on N insight LLM calls + N detail fetches. The rails do **not** paint fast for exactly the worlds the plan showcases. *Fix: P1 must also return items *before* enrichment and stream/lazy-load per-title enrichment (per-card `useQuery`), or the "UI waits on AI" complaint survives P1 for every argument-world.*
+
+**🔴 `titleInsight` writes an anchor log during enrichment — STILL-BLOCKING (latent G3 violation the plan inherits).** `titleInsight` calls `logAnchor(db, …, "take")` on cache-miss (`insightService.ts:233-235`). So building an `argument` world **logs a "take" for every title in the genre** — the "whole-genre storm" analog of the bug that comment warns about. The G3 test (`test:128`) is green **only because the test mocks `titleInsight`** (`:81`). P4 (TitleCard surfaces argument everywhere) and P5 (steering churns cold titles) both lean harder on this path. *Fix: the plan should call this out and gate/deduplicate `logAnchor` during batch enrichment — it's a real write side-effect masquerading as read-only curation.*
+
+**`openGuided` / Companion button break after P1 — STILL-BLOCKING (unstated dependency).** `GenreExperience.tsx:27` reads `data?.intro?.hook` and `:114` renders the Companion button on `data.intro?.hook`. Once `buildGenreExperience` drops `intro`, `data.intro` is `undefined` → button vanishes, prefill loses its hook. Task 1.4 says "replace single useQuery with two" but never says "rewire `openGuided` + the `{data.intro?.hook}` button to the intro query." *Fix: name it explicitly in Task 1.4.*
+
+**`buildTopics` label fix has no client genre-name source — STILL-BLOCKING (underspecified).** Plan Task 4.3 says "use TMDB `genreMap` or a local name lookup." `genreMap` is **server-only and async** (`tmdb/client.ts:112`) — unusable synchronously inside `buildTopics` (`GenreModules.tsx:27`). Client `CatalogItem` carries `genreIds: number[]` only (`types.ts:13`), no names. There **is** a `/tmdb/genres` id→name endpoint (`catalog.ts:37-52`), but nothing fetches it client-side. *Fix: either ship a static id→name constant on the client or add a `genres` query and thread names into `buildTopics`; the plan must pick one.*
+
+**`decadeOf` not exported — SAFE (trivial).** Task 2.3 uses `decadeOf(i.year)` at page scope, but it's local to `TimelineScrubber.tsx:9`. *Fix: export it (or hoist to a util). Trivial.*
+
+**PosterCard quick-actions preserved — SAFE.** P4.1/P2.2 compose `PosterCard` directly, so hover bubble, ignore, watchlist/watched survive (`PosterCard.tsx:212-327`). Note: retire-anchor only renders with `libraryId` (`:258`), which discovery items don't carry — correct behavior, not a regression.
+
+**Filtered-empty / decade-with-0-titles — SAFE (plan handles it).** Risks section (plan `:150`) explicitly requires a graceful empty state, and `NICHE_THRESHOLD` gate (`GenreExperience.tsx:14, 70`) is preserved. Just ensure the *post-filter* count (not just server count) triggers it.
+
+---
+
+## Axis 4 — UX / feel vs the locked system
+
+**P6 metaphor theming partially collides with the font lock — STILL-BLOCKING (scope the gesture).** Fonts are tokenized/locked: `TimelineScrubber.tsx:37` uses `font-[var(--font-display)]`, `:75` `font-[var(--font-sans)]`. P6.1's "Reading Room = **serif labels**" introduces a font outside the two locked tokens unless one is already serif — that contradicts the "fixed fonts" lock. The **color accent token** per metaphor is safe and effective; the **font/layout gesture** is where decoration risks fighting the system. *Fix: express metaphor via accent color + spacing/border gesture only; drop per-metaphor font swaps unless a serif token already exists in the locked set.*
+
+**Is metaphor theming "immersive" or decoration? — Honest read: mostly decoration under the lock, but P4 is not.** With fonts/motion/sound fixed, P6 accents (one color + one border gesture) read as *tasteful differentiation*, not immersion — and that's fine; immersion here comes from **composition** (P4 TitleCard) and **interactivity** (P2/P3), not chrome. The plan's own instinct (P6 is "polish," last) is correct.
+
+**Phased order — SAFE, with one caveat.** P1–P3 make the page *interactive* (arrows, clickable, filters) and close complaints #1/#2/#4-client. But the "unfinished wall-of-panels" complaint is **only** fixed by P4 — the highest-risk, largest-diff phase. So "feels done" ≠ "P1–P3 done." P4 is the value keystone and carries the most regression surface (TitleCard must re-host 6 sub-components without losing PosterCard behavior). *Consideration: don't let P4 slip; it's the phase that actually retires the headline complaint.*
+
+---
+
+## TOP 3 most likely to break or disappoint
+
+1. **P1 won't make the demo worlds paint fast.** Documentary/war-politics/etc. block the items endpoint on N per-title `titleInsight` LLM calls (`genreExperienceService.ts:149` → `insightService.ts:225`), which the curator split doesn't touch. On any cold cache the "UI waits on AI" complaint survives P1 unless enrichment is also made lazy/streamed. **This is the plan's central under-delivery.**
+
+2. **Hidden write side-effect during enrichment.** `titleInsight`'s `logAnchor("take")` (`insightService.ts:233`) fires for every title in an `argument` world — a real G3-style contamination the current test suite hides by mocking. P4 and P5 both amplify this path; the plan is silent on it.
+
+3. **`openGuided`/Companion button silently breaks + `buildTopics` has no name source.** Two concrete "surfaces only at click-through" gaps: `data.intro` goes `undefined` after P1 (`GenreExperience.tsx:27,114`) with no rewire named, and P4.3's genre-name lookup has no client-side source (`genreMap` is server-async; `CatalogItem` has ids only). Both are cheap to fix but will bite at build/click time if left as written.
+
+**Net:** Ship P2/P3 as-is (solid, low-risk, closes #1/#2/#4-client). Rework P1 to lazy-load enrichment, not just split the curator. Tighten P4.3 and the `data.intro` rewire before coding. Constrain P6 to color/spacing gestures under the font lock.

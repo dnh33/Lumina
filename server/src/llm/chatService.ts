@@ -2,6 +2,8 @@ import type OpenAI from "openai";
 import type { DB } from "../db/connection.js";
 import { buildChatContext, renderContextBlock } from "../rag/contextBuilder.js";
 import { indexMessage } from "../rag/memory.js";
+import { syncGuidedWatchlistFromChat } from "../services/guidedSessionService.js";
+import type { MediaType } from "../tmdb/types.js";
 import { currentModel, getLlm } from "./openrouter.js";
 import { luminaSystemPrompt } from "./prompts.js";
 import { executeTool, toolDefinitions } from "./tools.js";
@@ -35,6 +37,35 @@ const WRITE_TOOLS = new Set([
   "update_library_entry",
   "set_episode_progress",
 ]);
+
+/**
+ * Companion → guided: when add_to_library succeeds on a linked tour conversation,
+ * mirror watchlist onto the same settings session (no second store).
+ */
+function mirrorGuidedWatchlist(
+  db: DB,
+  conversationId: number,
+  argsJson: string,
+  resultJson: string,
+): void {
+  try {
+    const result = JSON.parse(resultJson) as { saved?: boolean };
+    if (!result.saved) return;
+    const args = JSON.parse(argsJson || "{}") as {
+      tmdb_id?: unknown;
+      media_type?: unknown;
+      status?: unknown;
+    };
+    const status = typeof args.status === "string" ? args.status : "watchlist";
+    if (status !== "watchlist") return;
+    const tmdbId = Number(args.tmdb_id);
+    const mediaType = args.media_type === "tv" ? "tv" : "movie";
+    if (!Number.isFinite(tmdbId) || tmdbId <= 0) return;
+    syncGuidedWatchlistFromChat(db, conversationId, tmdbId, mediaType as MediaType);
+  } catch {
+    /* never break the chat turn for guided sync */
+  }
+}
 
 /** Turn a write-tool result into a short human receipt, or undefined. */
 function writeReceipt(name: string, resultJson: string): string | undefined {
@@ -220,6 +251,9 @@ export async function runChatTurn(
         send({ type: "tool", name: call.name, detail });
         toolsUsed.push(call.name);
         const result = await executeTool(db, call.name, call.arguments);
+        if (call.name === "add_to_library") {
+          mirrorGuidedWatchlist(db, conversationId, call.arguments, result);
+        }
         const summary = WRITE_TOOLS.has(call.name)
           ? writeReceipt(call.name, result)
           : undefined;

@@ -140,6 +140,14 @@ export function normalizeDetails(
     return s.tmdbId !== raw.id;
   });
 
+  // TMDB keyword tags: movie `raw.keywords` ({id,name}[]), tv `raw.keywords.results`.
+  const kw = raw.keywords as
+    | { id: number; name: string }[]
+    | { results?: { id: number; name: string }[] }
+    | undefined;
+  const rawKeywords = Array.isArray(kw) ? kw : (kw?.results ?? []);
+  const keywords = rawKeywords.map((k) => ({ id: k.id, name: k.name }));
+
   return {
     ...base,
     tagline: raw.tagline ?? "",
@@ -158,6 +166,7 @@ export function normalizeDetails(
     logoPath,
     trailerKey,
     watchProviders: normalizeWatchProviders(raw, region),
+    keywords,
     imdbId: raw.external_ids?.imdb_id ?? null,
     nextEpisodeToAir: raw.next_episode_to_air
       ? {
@@ -179,6 +188,7 @@ export function normalizeDetails(
       })),
     imdbRating: null,
     rtRating: null,
+    originCountry: raw.origin_country ?? [],
   };
 }
 

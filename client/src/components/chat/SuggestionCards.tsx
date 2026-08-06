@@ -49,7 +49,7 @@ function LegacyCard({ item }: { item: SuggestionItem }) {
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full items-center justify-center p-2 text-center text-2xs text-mist-400">
+          <div className="flex h-full items-center justify-center p-2 text-center text-2xs text-mist-300">
             {item.title}
           </div>
         )}
@@ -66,7 +66,7 @@ function LegacyCard({ item }: { item: SuggestionItem }) {
         )}
       </div>
       <p className="mt-1.5 truncate text-2xs font-medium text-mist-300">{item.title}</p>
-      <p className="flex items-center gap-1 text-2xs text-mist-400">
+      <p className="flex items-center gap-1 text-2xs text-mist-300">
         {details?.year ?? item.year ?? ""}
         {details?.voteAverage != null && (
           <>
@@ -82,7 +82,7 @@ function LegacyCard({ item }: { item: SuggestionItem }) {
         </p>
       )}
       {item.reason && (
-        <p className="mt-1 line-clamp-3 text-2xs leading-snug text-mist-400">{item.reason}</p>
+        <p className="mt-1 line-clamp-3 text-2xs leading-snug text-mist-300">{item.reason}</p>
       )}
     </Link>
   );
@@ -128,7 +128,7 @@ function PosterCard({ s, reduce }: { s: Suggestion; reduce: boolean }) {
         />
       </div>
       {s.subtitle && (
-        <p className="mt-2 text-2xs leading-snug text-mist-400">{s.subtitle}</p>
+        <p className="mt-2 text-2xs leading-snug text-mist-300">{s.subtitle}</p>
       )}
     </motion.button>
   );
