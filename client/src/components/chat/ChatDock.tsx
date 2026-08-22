@@ -10,12 +10,23 @@ import {
 import { Maximize2, MessageSquarePlus, Sparkles, X } from "lucide-react";
 import { api } from "../../lib/api";
 import { playCue } from "../../lib/sound";
+import { usePushToTalk } from "../../hooks/usePushToTalk";
+import { useSpeechSynthesis } from "../../hooks/useSpeechSynthesis";
 import { ChatThread } from "./ChatThread";
 import { DOCK_CONVERSATION_KEY as DOCK_KEY } from "../../lib/keys";
 
 export function ChatDock() {
   const [open, setOpen] = useState(false);
-  const [conversationId, setConversationId] = useState<number | null>(() => {
+
+  // Voice I/O: push-to-talk (long-press FAB) + text-to-speech (speak assistant replies)
+  const { isRecording, start: startPTT, stop: stopPTT, isSupported: pttSupported } =
+    usePushToTalk((transcript) => {
+      window.dispatchEvent(
+        new CustomEvent("lum:transcript", { detail: { text: transcript } }),
+      );
+    });
+  const { speaking: isSpeaking, speak: speakText, stop: stopSpeaking, supported: ttsSupported } =
+    useSpeechSynthesis();  const [conversationId, setConversationId] = useState<number | null>(() => {
     const raw = localStorage.getItem(DOCK_KEY);
     const n = raw ? Number(raw) : NaN;
     return Number.isFinite(n) ? n : null;
@@ -130,19 +141,26 @@ export function ChatDock() {
         )}
       </AnimatePresence>
 
-      <motion.button
+<motion.button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={open && pttSupported ? undefined : () => setOpen((o) => !o)}
+        onPointerDown={open && pttSupported ? startPTT : undefined}
+        onPointerUp={open && pttSupported ? stopPTT : undefined}
+        onPointerLeave={open && pttSupported ? stopPTT : undefined}
         data-cuelume-hover="whisper"
         data-cuelume-toggle="toggle"
         whileTap={{ scale: 0.94 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
         aria-label={open ? "Close Lumina chat" : "Talk to Lumina"}
         aria-expanded={open}
-        title="Talk to Lumina"
+        title={open ? "Hold to talk" : "Talk to Lumina"}
         className="fab-toggle fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-br from-gold-300 to-gold-500 text-ink-950 shadow-[0_10px_36px_-6px_rgba(232,184,75,0.55)] md:bottom-8 md:right-8"
       >
-        {open ? (
+        {isRecording ? (
+          <span className="h-6 w-6 text-2xl">🎙</span>
+        ) : open && pttSupported ? (
+          <span className="h-6 w-6 text-2xl">⏺</span>
+        ) : open ? (
           <X className="h-6 w-6" />
         ) : (
           <svg viewBox="0 0 100 100" className="h-7 w-7" aria-hidden>

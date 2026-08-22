@@ -432,6 +432,17 @@ export function useChat(
     abortRef.current?.abort();
   }, [tokenBuffer]);
 
+  // Voice I/O: listen for push-to-talk transcript and inject it as the message
+  useEffect(() => {
+    const onTranscript = (e: Event) => {
+      const text = (e as CustomEvent<{ text: string }>).detail.text;
+      if (text.trim()) send(text);
+    };
+    window.addEventListener("lum:transcript", onTranscript);
+    return () => window.removeEventListener("lum:transcript", onTranscript);
+  }, [send]);
+
+
   // `streaming` means an active request is in flight; once we stop/abort it is
   // false even though `stream` may still briefly exist during cleanup.
   const isStreaming =
