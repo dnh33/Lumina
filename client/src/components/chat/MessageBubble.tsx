@@ -1,6 +1,6 @@
 import { memo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Clapperboard, Lock } from "lucide-react";
+import { Clapperboard, Lock, Play } from "lucide-react";
 import { SuggestionCards } from "./SuggestionCards";
 import { MarkdownMessage } from "./MarkdownMessage";
 import type { SuggestionItem } from "../../lib/types";
@@ -177,6 +177,23 @@ export const MessageBubble = memo(function MessageBubble({
         className="prose-lumina"
         streaming={streaming}
       />
+      {!streaming && (
+        <button
+          type="button"
+          title="Read aloud"
+          aria-label="Read this reply aloud"
+          onClick={() => {
+            const evt = new CustomEvent("lum:speak", {
+              detail: { text: content.replace(/```[a-z]*\n[\s\S]*?```/g, "").trim() },
+            });
+            window.dispatchEvent(evt);
+          }}
+          className="mt-2 flex items-center gap-1 rounded-lg bg-white/[0.04] px-2 py-1 text-2xs font-medium text-mist-300 opacity-60 transition-opacity hover:opacity-100 hover:bg-gold-400/15 hover:text-gold-300"
+        >
+          <Play className="h-3 w-3" />
+          Read aloud
+        </button>
+      )}
       {items.length > 0 && !streaming && <SuggestionCards items={items} />}
       {chips.length > 0 && !streaming && onChip && (
         <div className="mt-2.5 flex flex-wrap gap-1.5">

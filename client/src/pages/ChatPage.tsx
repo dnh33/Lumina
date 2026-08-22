@@ -7,6 +7,7 @@ import { api } from "../lib/api";
 import { DOCK_CONVERSATION_KEY as DOCK_KEY } from "../lib/keys";
 import { ChatThread } from "../components/chat/ChatThread";
 import type { ConversationSummary } from "../lib/types";
+import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 
 function ConversationItem({
   c,
@@ -81,6 +82,17 @@ export default function ChatPage() {
   const qc = useQueryClient();
   const prefill = (location.state as { prefill?: string } | null)?.prefill;
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Voice I/O: listen for "read aloud" requests from MessageBubble
+  const { speak: speakText, supported: ttsSupported } = useSpeechSynthesis();
+  useEffect(() => {
+    const onSpeak = (e: CustomEvent<{ text: string }>) => {
+      const text = e.detail?.text;
+      if (text && ttsSupported) speakText(text);
+    };
+    window.addEventListener("lum:speak", onSpeak as EventListener);
+    return () => window.removeEventListener("lum:speak", onSpeak as EventListener);
+  }, [ttsSupported, speakText]);
 
   const conversations = useQuery({
     queryKey: ["conversations"],
