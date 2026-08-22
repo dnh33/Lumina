@@ -83,7 +83,9 @@ function seedChatState(overrides: {
   failedText?: string | null;
   stream?: StreamState | null;
   streamedText?: string;
-  isStreaming?: boolean;
+    isStreaming?: boolean;
+  errorRetryAttempted?: boolean;
+  companionState?: CompanionState;
   send?: ReturnType<typeof vi.fn>;
   companionState?: CompanionState;
 } = {}) {
@@ -102,6 +104,7 @@ function seedChatState(overrides: {
     send: overrides.send ?? vi.fn(),
     stop: vi.fn(),
     isStreaming: overrides.isStreaming ?? false,
+    errorRetryAttempted: overrides.errorRetryAttempted ?? false,
   });
 }
 
@@ -228,6 +231,20 @@ describe("ChatThread — error recovery contract", () => {
     expect(screen.getByText(GENERIC_ERROR_COPY)).toBeInTheDocument();
     expect(screen.queryByText(NO_DATA_LOST)).not.toBeInTheDocument();
     expect(screen.queryByText(INTERRUPTED_COPY)).not.toBeInTheDocument();
+  });
+
+  it("shows 'Lumina is trying again...' when retryAttempted is true", () => {
+    seedChatState({
+      error: "retry timeout",
+      failedText: "what should i watch?",
+      isStreaming: false,
+      errorRetryAttempted: true,
+      stream: makeStream({ phase: "thinking", assistantText: "" }),
+    });
+    renderThread();
+
+    expect(screen.getByText("Lumina is trying again…")).toBeInTheDocument();
+    expect(screen.queryByText(GENERIC_ERROR_COPY)).not.toBeInTheDocument();
   });
 
   it("Retry click calls send with failedText", () => {
