@@ -182,7 +182,7 @@ describe("ChatThread — phase-driven skeleton", () => {
 const INTERRUPTED_COPY =
   "Lumina stopped mid-response. What's above is saved — nothing lost.";
 const NO_DATA_LOST = "The response above is yours. Retry sends the same request.";
-const GENERIC_ERROR_COPY = "Something went wrong on our end. Try again?";
+const GENERIC_ERROR_COPY = "Lumina couldn't finish that response. Try again?";
 const PARTIAL_ASSISTANT = "Try Counterpart — then pause before the reveal.";
 
 describe("ChatThread — error recovery contract", () => {

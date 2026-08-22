@@ -18,7 +18,7 @@ export function WaveformSkeleton({ phase }: { phase: "starting" | "thinking" | "
         <motion.span
           key={i}
           data-part="waveform-bar"
-          className="w-[2px] rounded bg-gold-300/70"
+          className="keep-transform-transition w-[2px] rounded bg-gold-300/70"
           style={{ height: 12, opacity: 0.45 }}
           animate={
             reduce

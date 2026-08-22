@@ -116,20 +116,40 @@ select:focus-visible {
   outline: none;
 }
 
-/* Reduced motion: drop position/transform animations (confusing/motion-sickness),
-   but KEEP opacity/color transitions (they aid comprehension — AUDIT.md principle). */
+/* Reduced motion: drop decorative movement (position/transform animations),
+   but KEEP comprehension-aiding animations (skeleton shimmer, pulseSoft) and
+   opacity/color transitions. AUDIT.md: "reduced motion means fewer and gentler
+   animations, not zero" — the skeleton shimmer tells users content is loading. */
 @media (prefers-reduced-motion: reduce) {
+  /* Kill all animations by default (decorative) */
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    /* Keep opacity + color transitions for comprehension cues */
+    /* Keep opacity/color transitions for comprehension */
     transition-property: opacity, color, background-color, border-color !important;
     transition-duration: 200ms !important;
-    transition-timing-function: ease-out !important;
+    transition-timing-function: var(--ease-state, ease-out) !important;
     scroll-behavior: auto !important;
   }
+  /* Exception: comprehension-aiding animations keep running */
+  .skeleton::after,
+  .animate-pulse-soft,
+  [data-part="star-core"],
+  .glow-gold {
+    animation-duration: var(--animation-duration, 2s) !important;
+    animation-iteration-count: infinite !important;
+  }
+  /* Exception: transforms that aid comprehension (bar height during streaming) */
+  .keep-transform-transition {
+    transition-property: transform, opacity, color, background-color, border-color !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dust-mote { animation: none; opacity: 0.25; }
+  .film-grain { opacity: 0.04; }
+  .constellation-web { animation: none; }
 }
 
 /* ── Film grain overlay ─────────────────────────────────────────── */

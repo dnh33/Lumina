@@ -144,14 +144,14 @@ function AssistantTurn({
 
         <ToolRibbon steps={steps} />
 
-        <AnimatePresence initial={false}>
+        <AnimatePresence mode="wait" initial={false}>
           {thinking && !content ? (
             <motion.div
               key="skeleton"
               className="flex items-center gap-2 text-[0.85rem] text-mist-300"
               initial={{ opacity: 0, y: 2 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, transition: { duration: 0.15 } }}
+              exit={{ opacity: 0, transition: { duration: 0.3, ease: EASE_OUT_EXPO } }}
               transition={{ duration: 0.2, ease: EASE_OUT_EXPO }}
             >
               <SparkAvatar state={companionState} hideWhisper />
@@ -164,7 +164,7 @@ function AssistantTurn({
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.15, ease: EASE_OUT_EXPO }}
+              transition={{ duration: 0.25, ease: EASE_OUT_EXPO, delay: 0.1 }}
             >
               <MessageBubble
                 role="assistant"
@@ -529,7 +529,7 @@ export function ChatThread({
                 <p className="text-sm text-red-300">
                   {stream?.assistantText
                     ? "Lumina stopped mid-response. What's above is saved — nothing lost."
-                    : "Something went wrong on our end. Try again?"}
+                    : "Lumina couldn't finish that response. Try again?"}
                 </p>
                 {stream?.assistantText ? (
                   <p className="text-2xs text-mist-300">
