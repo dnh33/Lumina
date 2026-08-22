@@ -40,6 +40,7 @@ export interface ChatContext {
     memoryHits: number;
     librarySize: number;
     guidedWorld: string | null;
+    dormant: boolean;
   };
 }
 
@@ -66,12 +67,16 @@ export function buildChatContext(
       memoryHits: memory.length,
       librarySize: profile.librarySize,
       guidedWorld: guided?.slug ?? null,
+      dormant: memory.length === 0 && profile.librarySize < 10,
     },
   };
 }
 
 export function renderContextBlock(ctx: ChatContext): string {
   const parts: string[] = [];
+  if (ctx.meta.dormant) {
+    parts.push(`## Context note\nThis is a dormant session — the user's profile is thin and there are no recent memory hits. Use the warmer welcome register.`);
+  }
   parts.push(`## The user's taste profile (from their local library)\n${ctx.profileText}`);
   if (ctx.libraryText) {
     parts.push(
