@@ -135,12 +135,12 @@ export function ChatDock() {
         onClick={() => setOpen((o) => !o)}
         data-cuelume-hover="whisper"
         data-cuelume-toggle="toggle"
-        whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
         aria-label={open ? "Close Lumina chat" : "Talk to Lumina"}
         aria-expanded={open}
         title="Talk to Lumina"
-        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-br from-gold-300 to-gold-500 text-ink-950 shadow-[0_10px_36px_-6px_rgba(232,184,75,0.55)] md:bottom-8 md:right-8"
+        className="fab-toggle fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-br from-gold-300 to-gold-500 text-ink-950 shadow-[0_10px_36px_-6px_rgba(232,184,75,0.55)] md:bottom-8 md:right-8"
       >
         {open ? (
           <X className="h-6 w-6" />

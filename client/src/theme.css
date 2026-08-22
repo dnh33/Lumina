@@ -44,9 +44,11 @@
      Gold is "fuel": never decoration, never a default glow. */
   --signal: var(--color-gold-400);
 
-  /* Motion easings (P13 / R16). --ease-out-expo = entrances, --ease-state = state changes. */
+  /* Motion easings (P13 / R16). --ease-out-expo = entrances, --ease-state = state changes.
+     --ease-loop-weak = gentle symmetric curves for ambient infinite loops (dust, constellation). */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-state: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-loop-weak: cubic-bezier(0.4, 0, 0.2, 1); /* ease-in-out equivalent via custom curve */
 
   /* Type scale: 2xs → xs → sm → base → lg (micro-labels to prose) */
   --text-2xs: 0.72rem;
@@ -54,7 +56,7 @@
 
   --animate-shimmer: shimmer 1.8s linear infinite;
   --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-pulse-soft: pulseSoft 2.2s ease-in-out infinite;
+  --animate-pulse-soft: pulseSoft 2.2s var(--ease-loop-weak) infinite;
 }
 
 @keyframes shimmer {
@@ -84,16 +86,7 @@
     opacity: 1;
   }
 }
-@keyframes error-pulse {
-  0%,
-  100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
+|
 html {
   color-scheme: dark;
 }
@@ -123,13 +116,18 @@ select:focus-visible {
   outline: none;
 }
 
+/* Reduced motion: drop position/transform animations (confusing/motion-sickness),
+   but KEEP opacity/color transitions (they aid comprehension — AUDIT.md principle). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    /* Keep opacity + color transitions for comprehension cues */
+    transition-property: opacity, color, background-color, border-color !important;
+    transition-duration: 200ms !important;
+    transition-timing-function: ease-out !important;
     scroll-behavior: auto !important;
   }
 }
@@ -337,6 +335,16 @@ select:focus-visible {
   outline-offset: 3px;
 }
 
+/* FAB hover scale — gated behind @media (hover: hover) so it doesn't fire
+   false-positive hover on touch devices (tap = hover on iOS). Framer Motion's
+   whileHover fires on tap; CSS :hover only fires on true hover devices. */
+@media (hover: hover) and (pointer: fine) {
+  .fab-toggle:hover {
+    scale: 1.06;
+    transition: scale 0.2s var(--ease-state);
+  }
+}
+
 /* Claim-desk accent lock — never use Tailwind ring-[var(--x,#gold)]/N:
    the comma fallback breaks arbitrary parsing → gold ring vs world verbs. */
 .world-accent-fill {
@@ -450,7 +458,7 @@ body:has([data-companion-mode="guided-deepen"]) [data-testid="guided-shelf"] {
   background: rgba(232, 184, 75, 0.5);
   pointer-events: none;
   opacity: 0;
-  animation: dust-drift 14s ease-in-out infinite;
+  animation: dust-drift 14s var(--ease-loop-weak) infinite;
 }
 
 @keyframes dust-drift {
@@ -464,7 +472,7 @@ body:has([data-companion-mode="guided-deepen"]) [data-testid="guided-shelf"] {
    alive, not dead (slop.md: "dead-looking is a fail"). Whole-web opacity
    drift only; never gates content. Reduced-motion: frozen. */
 .constellation-web {
-  animation: constellation-breathe 9s ease-in-out infinite;
+  animation: constellation-breathe 9s var(--ease-loop-weak) infinite;
 }
 @keyframes constellation-breathe {
   0%, 100% { opacity: 0.14; }

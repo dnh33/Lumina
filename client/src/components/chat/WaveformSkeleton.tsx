@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
+import { EASE_OUT_EXPO } from "../../lib/motion";
 
 export function WaveformSkeleton({ phase }: { phase: "starting" | "thinking" | "tooling" | "writing" }) {
   const reduce = useReducedMotion();
@@ -27,7 +28,7 @@ export function WaveformSkeleton({ phase }: { phase: "starting" | "thinking" | "
           transition={{
             duration: reduce ? 2 : 1.1,
             repeat: Infinity,
-            ease: "easeOut",
+            ease: EASE_OUT_EXPO,
             delay: i * 0.06,
           }}
         />

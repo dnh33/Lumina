@@ -128,7 +128,7 @@ function Ripples({ reduce }: { reduce: boolean }) {
               : {
                   duration: 2.4,
                   repeat: Infinity,
-                  ease: "easeOut",
+                  ease: EASE_OUT_EXPO,
                   delay: i * 0.6,
                 }
           }
@@ -298,7 +298,9 @@ export function SparkAvatar({
       case "writing":
         return { opacity: [0.7, 1, 0.7] }; // core tracks token cadence
       case "error":
-        return { scale: 1, opacity: 1 };
+        return !reduce
+          ? { opacity: [0.7, 1, 0.7] }
+          : { scale: 1, opacity: 1 };
       default:
         return { scale: 1, opacity: 1 };
     }
@@ -311,13 +313,16 @@ export function SparkAvatar({
         return { duration: 3.2, repeat: Infinity, ease: "easeInOut" };
       case "writing":
         return { duration: 1.1, repeat: Infinity, ease: "easeInOut" };
+      case "error":
+        return !reduce
+          ? { duration: 2.4, repeat: Infinity, ease: "linear" }
+          : { duration: 0.2 };
       default:
         return { duration: 0.3, ease: EASE_OUT_EXPO };
     }
   })();
-
   const coreLoops =
-    !reduce && (state === "idle" || state === "writing");
+    !reduce && (state === "idle" || state === "writing" || state === "error");
 
   const whisper = WHISPER[state];
 
@@ -337,11 +342,10 @@ export function SparkAvatar({
           width: size,
           height: size,
           // error desaturates the whole presence (P14).
+          // Note: error-pulse is now driven by Framer Motion on StarCore,
+          // NOT a CSS animation on this wrapper — CSS animation on a layout-
+          // adjacent element forces style recalc every frame (perf P1).
           filter: state === "error" ? "grayscale(0.85)" : glow?.filter,
-          animation:
-            !reduce && state === "error"
-              ? "error-pulse 2.4s ease-in-out infinite"
-              : undefined,
         }}
       >
         <StarCore

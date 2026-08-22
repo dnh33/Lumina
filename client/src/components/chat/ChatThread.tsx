@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-  type Variants,
-} from "framer-motion";
-import {
   ArrowDown,
   BookmarkCheck,
   Loader2,
@@ -25,7 +19,8 @@ import { SparkAvatar } from "./SparkAvatar";
 import { WaveformSkeleton } from "./WaveformSkeleton";
 import { TOOL_LABELS, useChat, type ToolStep, type TurnPhase } from "./useChat";
 import type { CompanionState } from "../../hooks/useCompanionState";
-import { messageEnter, stagger60 } from "../../lib/motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { messageEnter, stagger60, EASE_OUT_EXPO } from "../../lib/motion";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -149,20 +144,37 @@ function AssistantTurn({
 
         <ToolRibbon steps={steps} />
 
-        {thinking && !content ? (
-          <div className="flex items-center gap-2 text-[0.85rem] text-mist-300">
-            <SparkAvatar state={companionState} hideWhisper />
-            <span>{phaseLabel(phase ?? "thinking")}</span>
-            <WaveformSkeleton phase={phase ?? "thinking"} />
-          </div>
-        ) : (
-          <MessageBubble
-            role="assistant"
-            content={content}
-            streaming={streaming}
-            onChip={onChip}
-          />
-        )}
+        <AnimatePresence initial={false}>
+          {thinking && !content ? (
+            <motion.div
+              key="skeleton"
+              className="flex items-center gap-2 text-[0.85rem] text-mist-300"
+              initial={{ opacity: 0, y: 2 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, transition: { duration: 0.15 } }}
+              transition={{ duration: 0.2, ease: EASE_OUT_EXPO }}
+            >
+              <SparkAvatar state={companionState} hideWhisper />
+              <span>{phaseLabel(phase ?? "thinking")}</span>
+              <WaveformSkeleton phase={phase ?? "thinking"} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="message"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15, ease: EASE_OUT_EXPO }}
+            >
+              <MessageBubble
+                role="assistant"
+                content={content}
+                streaming={streaming}
+                onChip={onChip}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <Receipts items={receipts} />
         {stopped && <p className="text-2xs italic text-mist-300">stopped by you</p>}
