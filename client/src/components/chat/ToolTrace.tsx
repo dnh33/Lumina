@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   BookOpen,
   BookmarkPlus,
@@ -134,17 +134,20 @@ export function ToolTrace({ steps, className = "" }: ToolTraceProps) {
         </button>
       )}
 
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            key="rows"
-            ref={railRef}
-            initial={reduceMotion || !allDone ? false : { opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
-            transition={{ duration: 0.18, ease: EXPO }}
-            className={`relative ${allDone ? "mt-1" : ""}`}
-          >
+      {/* Animate via max-height instead of mount/unmount (T13: no jump on collapse) */}
+      <motion.div
+        data-testid="tooltrace-rows"
+        ref={railRef}
+        initial={false}
+        animate={{
+          maxHeight: open ? Math.max(railH, 40) : 0,
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? "auto" : "none",
+        }}
+        transition={{ duration: 0.3, ease: EXPO }}
+        className={`relative overflow-hidden ${allDone ? "mt-1" : ""}`}
+        style={{ maxHeight: open ? Math.max(railH, 40) : 0 }}
+      >
             {/* Connecting vertical line (GPU paint; transform/opacity only). */}
             <div
               data-testid="tooltrace-line"
@@ -262,9 +265,7 @@ export function ToolTrace({ steps, className = "" }: ToolTraceProps) {
                 );
               })}
             </ol>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </motion.div>
     </div>
   );
 }

@@ -71,8 +71,11 @@ describe("ToolTrace (compact trace rail — T11 / T12 / T13 + progressive disclo
     expect(summary.textContent).toContain("Pulled title details");
     expect(summary).toHaveAttribute("aria-expanded", "false");
 
-    // The full rows are tucked away.
-    expect(screen.queryByTestId("tooltrace-node")).not.toBeInTheDocument();
+    // The full rows are tucked away (max-height transition, not unmount).
+    const rows = screen.getByTestId("tooltrace-rows");
+    expect(rows.style.maxHeight).toBe("0px");
+    // Nodes stay in the DOM (no unmount), but visually collapsed via max-height.
+    expect(screen.getAllByTestId("tooltrace-node").length).toBeGreaterThan(0);
   });
 
   it("expands the collapsed summary on click, revealing the full trace, and collapses again", () => {
@@ -155,6 +158,7 @@ describe("ToolTrace (compact trace rail — T11 / T12 / T13 + progressive disclo
     expect(summary.textContent).toContain("Searched the catalog ×2");
     expect(summary.textContent).toContain("Pulled title details");
     // No individual rows while collapsed
-    expect(screen.queryByTestId("tooltrace-node")).not.toBeInTheDocument();
+    const rows = screen.getByTestId("tooltrace-rows");
+    expect(rows.style.maxHeight).toBe("0px");
   });
 });
