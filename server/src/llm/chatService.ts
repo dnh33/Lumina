@@ -12,6 +12,31 @@ import { toolDetail, toolOutcome } from "./toolPresenter.js";
 const MAX_TOOL_ROUNDS = 3;
 const HISTORY_LIMIT = 30;
 
+/**
+ * Emitted (and persisted) when a turn yields no usable text even after the
+ * in-turn retry. Must stay constant: the trailing-snag cleanup below matches
+ * on this exact string to avoid deleting a real assistant message.
+ */
+const SNAG_MESSAGE =
+  "I hit a snag generating a reply — please try again in a moment.";
+
+/** Remove a persisted snag message from the tail of a conversation, if present.
+ * Called before persisting a real answer so a prior failed turn (or a client
+ * "Retry" that re-ran the turn) never lingers above the resolved reply. */
+function deleteTrailingSnag(db: DB, conversationId: number): void {
+  const row = db
+    .prepare(
+      `SELECT id, role, content FROM messages
+       WHERE conversation_id = ? ORDER BY id DESC LIMIT 1`,
+    )
+    .get(conversationId) as
+    | { id: number; role: string; content: string }
+    | undefined;
+  if (!row || row.role !== "assistant" || row.content !== SNAG_MESSAGE) return;
+  db.prepare("DELETE FROM messages_fts WHERE rowid = ?").run(row.id);
+  db.prepare("DELETE FROM messages WHERE id = ?").run(row.id);
+}
+
 export type ChatEvent =
   | { type: "context"; librarySize: number; matches: string[]; memoryHits: number }
   | { type: "delta"; text: string }
@@ -162,6 +187,11 @@ export async function runChatTurn(
   send: (e: ChatEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
+  // Clean up any snag persisted by a prior failed attempt of this turn
+  // (including a client "Retry" that re-ran runChatTurn) so the resolved
+  // reply never sits below a stale "I hit a snag…" on reload. Must run
+  // *before* the new user message is persisted, or the snag falls off the tail.
+  deleteTrailingSnag(db, conversationId);
   persistMessage(db, conversationId, "user", userText);
   const conversationTitle = autoTitle(db, conversationId, userText);
 
@@ -317,8 +347,7 @@ export async function runChatTurn(
     }
     // If retry also produced nothing, fall through to persistent snag message
     if (!assistantText.trim()) {
-      assistantText =
-        "I hit a snag generating a reply — please try again in a moment.";
+      assistantText = SNAG_MESSAGE;
     }
     send({ type: "delta", text: "\n" });
   }
