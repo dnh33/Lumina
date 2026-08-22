@@ -14,14 +14,12 @@
  * Reuses the same ToolTrace collapse pattern (AnimatePresence + max-height).
  */
 
-import { motion } from "framer-motion";
 import {
   ChevronDown,
   Calendar,
   Clock,
   Star,
 } from "lucide-react";
-import { EASE_OUT_EXPO } from "../../lib/motion";
 import type { ToolNode } from "./buildToolNodes";
 
 type JsonObject = { [k: string]: unknown };
@@ -88,13 +86,9 @@ export function ToolResultCard({ node }: ToolResultCardProps) {
     : "Results grid";
 
   return (
-    <motion.div
+    <div
       data-testid="tool-result-card"
       data-tool={node.name}
-      initial={{ opacity: 0, y: -4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
-      transition={{ duration: 0.18, ease: EASE_OUT_EXPO, delay: 0.05 }}
       className="mt-1.5 overflow-hidden rounded-lg border border-white/5 bg-ink-800/50"
     >
       <details className="group">
@@ -106,7 +100,7 @@ export function ToolResultCard({ node }: ToolResultCardProps) {
           {renderResult(result)}
         </div>
       </details>
-    </motion.div>
+    </div>
   );
 }
 
