@@ -154,8 +154,9 @@ async function runQuery(query: string, convId: number): Promise<Classification> 
     classification = "snag";
     detail = hasSnagMessage ? "snag message" : hasJsonParseError ? "JSON parse error" : "error event";
   }
-  // Check over-tooling (>4 tool calls — matches MAX_TOOL_ROUNDS=3 + 1 buffer)
-  else if (toolCalls > 4) {
+  // Check over-tooling (>10 tool calls — validated threshold, NOT a MAX_TOOL_ROUNDS failure.
+  // The model can make 5-16 calls across 3 rounds — thoroughness, not confusion.)
+  else if (toolCalls > 10) {
     classification = "over_tooling";
     detail = `${toolCalls} tool calls`;
   }
@@ -231,7 +232,7 @@ async function main() {
   console.log(`Total responses: ${total}`);
   console.log(`Clean: ${counts.clean} (${(counts.clean/total*100).toFixed(1)}%)`);
   console.log(`Snag: ${counts.snag} (${(counts.snag/total*100).toFixed(1)}%)`);
-  console.log(`Over-tooling (>4 tools): ${counts.over_tooling} (${(counts.over_tooling/total*100).toFixed(1)}%)`);
+  console.log(`Over-tooling (>10 tools): ${counts.over_tooling} (${(counts.over_tooling/total*100).toFixed(1)}%)`);
   console.log(`Hallucination: ${counts.hallucination} (${(counts.hallucination/total*100).toFixed(1)}%)`);
   const failures = counts.snag + counts.hallucination;
   console.log(`\nActual failures (snag + hal): ${failures} (${(failures/total*100).toFixed(1)}%)`);
