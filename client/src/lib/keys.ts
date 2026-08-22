@@ -14,6 +14,11 @@ export const SOUND_KEY = "lumina:sound";
  *  The slug is appended: `${GENRE_STATE_KEY}:${slug}`. */
 export const GENRE_STATE_KEY = "lumina:genre-state";
 
+/** Stream snapshot key — checkpoint the assistant's partial text mid-stream
+ *  so a browser refresh mid-turn preserves the response in progress.
+ *  Format: `${STREAM_SNAPSHOT_KEY}:${conversationId}`. */
+export const STREAM_SNAPSHOT_KEY = "lumina:stream-snapshot";
+
 /**
  * LocalStorage key for the in-world Companion conversation id.
  * - Self: shared constant (genre hops keep one thread).

@@ -10,6 +10,7 @@ import { executeTool, toolDefinitions } from "./tools.js";
 import { toolDetail, toolOutcome } from "./toolPresenter.js";
 
 const MAX_TOOL_ROUNDS = 3;
+const MIN_RETRY_LENGTH = 40; // below this, retry text is unusable stubs
 const HISTORY_LIMIT = 30;
 
 /**
@@ -43,7 +44,7 @@ export type ChatEvent =
   | { type: "tool"; name: string; detail?: string }
   | { type: "tool_done"; name: string; summary?: string; detail?: string; outcome?: string }
   | { type: "done"; messageId: number; conversationTitle: string }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; retryAttempted?: boolean };
 
 /** One persisted trace entry: what a tool call did, in human terms. */
 export interface ToolTraceEntry {
@@ -342,11 +343,21 @@ export async function runChatTurn(
         send({ type: "delta", text: assistantText });
       }
     } catch (retryErr) {
-      send({ type: "error", message: formatChatLlmError(retryErr, model) });
+      send({ type: "error", message: formatChatLlmError(retryErr, model), retryAttempted: true });
       return;
     }
-    // If retry also produced nothing, fall through to persistent snag message
-    if (!assistantText.trim()) {
+    // If retry produced nothing (or too-short stub e.g. 25 chars), don't
+    // persist a stub. Surface a recoverable error so the client shows
+    // "Lumina is trying again…" with a retry button.
+    const retryLen = assistantText.length;
+    if (!assistantText.trim() || retryLen < MIN_RETRY_LENGTH) {
+      send({
+        type: "error",
+        message: assistantText
+          ? `Retry produced only ${retryLen} chars — try again.`
+          : "Retry produced no response.",
+        retryAttempted: true,
+      });
       assistantText = SNAG_MESSAGE;
     }
     send({ type: "delta", text: "\n" });

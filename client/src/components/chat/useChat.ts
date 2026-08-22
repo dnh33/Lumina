@@ -10,6 +10,7 @@ import {
   type CompanionEvent,
 } from "../../hooks/useCompanionState";
 import { useTokenBuffer } from "../../hooks/useTokenBuffer";
+import { STREAM_SNAPSHOT_KEY } from "../../lib/keys";
 import { buildToolNodes, deriveStopped } from "./buildToolNodes";
 
 export { buildToolNodes, deriveStopped };
@@ -88,8 +89,26 @@ export function useChat(
   onConversationChange: (id: number) => void | Promise<void>,
 ) {
   const qc = useQueryClient();
-  const [stream, setStream] = useState<StreamState | null>(null);
+  // Restore an optimistic turn snapshot saved before a reload. Seeded once
+  // (lazy initializer) so the live stream survives a page refresh — server
+  // persistence catches up behind us. See STREAM_SNAPSHOT_KEY in keys.ts.
+  const [stream, setStream] = useState<StreamState | null>(() => {
+    if (conversationId == null) return null;
+    try {
+      const raw = localStorage.getItem(`${STREAM_SNAPSHOT_KEY}:${conversationId}`);
+      if (!raw) return null;
+      const snap = JSON.parse(raw) as StreamState;
+      // Only restore if the turn was still in flight (not finished/stopped).
+      if (snap.phase === "starting" || snap.phase === "thinking" || snap.phase === "tooling") {
+        return snap;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  });
   const [error, setError] = useState<string | null>(null);
+  const [errorRetryAttempted, setErrorRetryAttempted] = useState(false);
   const [failedText, setFailedText] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const inFlightRef = useRef(false); // synchronous double-send guard
@@ -98,13 +117,35 @@ export function useChat(
   const companion = useCompanionState();
 
   // Wave 3: buffer raw token deltas so we re-render ~1×/24ms, never per-token.
-  const tokenBuffer = useTokenBuffer();
+  // onFlush writes the checkpoint to localStorage so a browser refresh mid-stream
+  // preserves the partial response (snapshot is cleared on turn completion).
+  const tokenBuffer = useTokenBuffer(
+    (text) => {
+      if (conversationId != null) {
+        localStorage.setItem(
+          `${STREAM_SNAPSHOT_KEY}:${conversationId}`,
+          text,
+        );
+      }
+    },
+  );
 
   const messages = useQuery({
     queryKey: ["messages", conversationId],
     queryFn: () => api.messages(conversationId!),
     enabled: conversationId != null,
   });
+
+  // Checkpoint the active optimistic turn to localStorage on each phase/text
+  // change so a browser refresh mid-turn restores what was on screen.
+  useEffect(() => {
+    if (stream && conversationId != null) {
+      localStorage.setItem(
+        `${STREAM_SNAPSHOT_KEY}:${conversationId}`,
+        JSON.stringify(stream),
+      );
+    }
+  }, [stream?.phase, stream?.assistantText, stream?.steps, stream?.contextNote]);
 
   // never leave a stream dangling when the surface unmounts
   useEffect(() => {
@@ -123,6 +164,7 @@ export function useChat(
   // a stale error from one conversation must not haunt another
   useEffect(() => {
     setError(null);
+    setErrorRetryAttempted(false);
     setFailedText(null);
     // Start-fresh (new id while idle) must drop a kept partial. Skip while a
     // send is in flight so the first-message conversation-id handoff keeps
@@ -130,10 +172,32 @@ export function useChat(
     if (!inFlightRef.current) setStream(null);
   }, [conversationId]);
 
+  // Restore a mid-stream snapshot if the last turn didn't complete (e.g. the
+  // browser refreshed while the assistant was still typing). The snapshot is
+  // written on every tokenBuffer flush and cleared on finishTurn.
+  useEffect(() => {
+    if (conversationId == null || messages.data == null) return;
+    const msgs = messages.data;
+    if (msgs.length === 0) return;
+    const last = msgs[msgs.length - 1];
+    // Only restore if the last assistant message looks incomplete.
+    if (last.role !== "assistant") return;
+    if (last.content?.endsWith("\n") || last.content?.length > 100) return;
+    const snapshot = localStorage.getItem(`${STREAM_SNAPSHOT_KEY}:${conversationId}`);
+    if (snapshot) {
+      tokenBuffer.reset();
+      tokenBuffer.push(snapshot);
+    }
+  }, [conversationId, messages.data, tokenBuffer]);
+
   // When the stream ends, flush any pending buffered tokens so the displayed
   // text always resolves to the full accumulated answer (no dangling partial).
   const finishTurn = useCallback(() => {
     tokenBuffer.flush();
+    // Clear the snapshot — turn completed successfully.
+    if (conversationId != null) {
+      localStorage.removeItem(`${STREAM_SNAPSHOT_KEY}:${conversationId}`);
+    }
     setStream(null);
   }, [tokenBuffer]);
 
@@ -147,11 +211,16 @@ export function useChat(
       playCue("tick"); // one acknowledgment covers every entry point
       inFlightRef.current = true;
       setError(null);
+      setErrorRetryAttempted(false);
       setFailedText(null);
 
-      // A new turn begins: reset presence to idle, clear buffered text.
+      // A new turn begins: reset presence to idle, clear buffered text and
+      // any surviving snapshot from a previous incomplete turn.
       companion.dispatch({ type: "RESET" });
       tokenBuffer.reset();
+      if (conversationId != null) {
+        localStorage.removeItem(`${STREAM_SNAPSHOT_KEY}:${conversationId}`);
+      }
 
       // Optimistic: the user bubble and thinking state paint IMMEDIATELY,
       // before any network round-trip. The companion never plays dead.
@@ -228,6 +297,7 @@ export function useChat(
             if (e.type === "error") {
               // model-side failure: always leave a retry path
               setError(e.message);
+              setErrorRetryAttempted(!!e.retryAttempted);
               setFailedText(content);
               hadError = true;
               return;
@@ -309,7 +379,12 @@ export function useChat(
         } else if (!completed) {
           // connection died mid-turn AND nothing was persisted → real failure
           setError((e as Error).message);
+          setErrorRetryAttempted(false);
           setFailedText(content);
+          if (conversationId != null) {
+            localStorage.removeItem(`${STREAM_SNAPSHOT_KEY}:${conversationId}`);
+          }
+          if (conversationId != null) localStorage.removeItem(`${STREAM_SNAPSHOT_KEY}:${conversationId}`);
           hadError = true;
         }
       } finally {
@@ -367,6 +442,7 @@ export function useChat(
     stopped,
     companionState: companion.state as CompanionState,
     error,
+    errorRetryAttempted,
     failedText,
     send,
     stop,

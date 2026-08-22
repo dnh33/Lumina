@@ -294,7 +294,7 @@ export type ChatEvent =
   | { type: "tool"; name: string; detail?: string }
   | { type: "tool_done"; name: string; summary?: string; detail?: string; outcome?: string }
   | { type: "done"; messageId: number; conversationTitle: string }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; retryAttempted?: boolean };
 
 export interface SuggestionItem {
   tmdbId: number;

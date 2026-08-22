@@ -156,7 +156,14 @@ function AssistantTurn({
             >
               <SparkAvatar state={companionState} hideWhisper />
               <span>{phaseLabel(phase ?? "thinking")}</span>
-              <WaveformSkeleton phase={phase ?? "thinking"} />
+              <WaveformSkeleton
+                phase={phase ?? "thinking"}
+                activeTool={
+                  phase === "tooling" && steps.length > 0
+                    ? [...steps].reverse().find((s: ToolStep) => !s.done)?.name
+                    : undefined
+                }
+              />
             </motion.div>
           ) : (
             <motion.div
@@ -252,6 +259,7 @@ export function ChatThread({
     stopped,
     companionState,
     error,
+    errorRetryAttempted,
     failedText,
     send,
     stop,
@@ -529,7 +537,9 @@ export function ChatThread({
                 <p className="text-sm text-red-300">
                   {stream?.assistantText
                     ? "Lumina stopped mid-response. What's above is saved — nothing lost."
-                    : "Lumina couldn't finish that response. Try again?"}
+                    : errorRetryAttempted
+                  ? "Lumina is trying again…"
+                  : "Lumina couldn't finish that response. Try again?"}
                 </p>
                 {stream?.assistantText ? (
                   <p className="text-2xs text-mist-300">
