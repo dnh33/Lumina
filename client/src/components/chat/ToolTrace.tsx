@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { EASE_OUT_EXPO } from "../../lib/motion";
 import { summarizeTrace, groupConcurrentSteps, buildToolNodes } from "./buildToolNodes";
+import { ToolResultCard } from "./ToolResultCard";
 
 /**
  * ToolTrace — the ordered tool-use trace rail (Cluster C / T11–T13),
@@ -179,6 +180,7 @@ export function ToolTrace({ steps, className = "" }: ToolTraceProps) {
                 const Icon = TOOL_ICONS[step.name] ?? Search;
                 const isBatched = (step.count ?? 1) > 1;
                 return (
+                  <>
                   <motion.li
                     key={`${step.name}-${i}`}
                     data-testid="tooltrace-node"
@@ -262,6 +264,8 @@ export function ToolTrace({ steps, className = "" }: ToolTraceProps) {
                       ) : null)}
                     </span>
                   </motion.li>
+                  {step.done && <ToolResultCard node={step} />}
+                </>
                 );
               })}
             </ol>
