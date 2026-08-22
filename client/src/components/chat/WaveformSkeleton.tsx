@@ -29,7 +29,7 @@ export function WaveformSkeleton({
   phase,
   activeTool,
 }: {
-  phase: "starting" | "thinking" | "tooling" | "writing";
+  phase: "starting" | "thinking" | "tooling" | "writing" | "offline";
   /** The in-progress tool name — drives bar animation character during tooling. */
   activeTool?: string;
 }) {

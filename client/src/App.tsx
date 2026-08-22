@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import { initSound } from "./lib/sound";
+import { useOfflineQueue } from "./hooks/useOfflineQueue";
 import { Shell } from "./components/Shell";
 import { ChatDock } from "./components/chat/ChatDock";
 import Discover from "./pages/Discover";
@@ -19,6 +20,7 @@ export default function App() {
   const onChatPage = location.pathname.startsWith("/chat");
   const onGenrePage = location.pathname.startsWith("/genre");
 
+  useOfflineQueue();
   useEffect(() => {
     initSound();
   }, []);

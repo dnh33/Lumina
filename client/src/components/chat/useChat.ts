@@ -10,6 +10,7 @@ import {
   type CompanionEvent,
 } from "../../hooks/useCompanionState";
 import { useTokenBuffer } from "../../hooks/useTokenBuffer";
+import { enqueueMessage } from "../../hooks/useOfflineQueue";
 import { STREAM_SNAPSHOT_KEY } from "../../lib/keys";
 import { buildToolNodes, deriveStopped } from "./buildToolNodes";
 
@@ -36,7 +37,7 @@ const WRITE_TOOLS = new Set([
   "set_episode_progress",
 ]);
 
-export type TurnPhase = "starting" | "thinking" | "tooling" | "writing";
+export type TurnPhase = "starting" | "thinking" | "tooling" | "writing" | "offline";
 
 export interface ToolStep {
   name: string;
@@ -270,6 +271,19 @@ export function useChat(
       setStream((s) => (s ? { ...s, phase: "thinking" } : s));
 
       try {
+        // Offline queue: if the network is down, persist the message and
+        // replay it when connectivity returns. The service worker's
+        // background sync will trigger useOfflineQueue's replay on reconnect.
+        if (!navigator.onLine) {
+          await enqueueMessage(convId, content);
+          setStream((s) =>
+            s
+              ? { ...s, phase: "offline", assistantText: "Queued — Luma will send when you're back online." }
+              : s,
+          );
+          return;
+        }
+
         await streamChat(
           convId,
           content,
