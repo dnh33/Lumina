@@ -17,7 +17,7 @@ import {
   Search,
 } from "lucide-react";
 import { EASE_OUT_EXPO } from "../../lib/motion";
-import { summarizeTrace } from "./buildToolNodes";
+import { summarizeTrace, groupConcurrentSteps, buildToolNodes } from "./buildToolNodes";
 
 /**
  * ToolTrace — the ordered tool-use trace rail (Cluster C / T11–T13),
@@ -86,10 +86,14 @@ export function ToolTrace({ steps, className = "" }: ToolTraceProps) {
   // true/false = the user toggled and their choice wins.
   const [userOpen, setUserOpen] = useState<boolean | null>(null);
 
-  // The earliest not-done step is the one "in flight".
-  const firstPending = steps.findIndex((s) => !s.done);
+  // Group identical concurrent (not-done) tool steps into batched rows so
+  // 6× search_tmdb renders as one line with a count badge, not 6 identical rows.
+  const nodes = groupConcurrentSteps(buildToolNodes(steps));
+
+  // The earliest not-done node is the one "in flight".
+  const firstPending = nodes.findIndex((n) => !n.done);
   const anyRunning = firstPending !== -1;
-  const allDone = steps.length > 0 && !anyRunning;
+  const allDone = nodes.length > 0 && !anyRunning;
   const open = userOpen ?? !allDone;
 
   // Measure the rail so the spark can travel its full height via transform.
@@ -167,9 +171,10 @@ export function ToolTrace({ steps, className = "" }: ToolTraceProps) {
             )}
 
             <ol className="flex flex-col gap-1">
-              {steps.map((step, i) => {
+              {nodes.map((step, i) => {
                 const isActive = i === firstPending;
                 const Icon = TOOL_ICONS[step.name] ?? Search;
+                const isBatched = (step.count ?? 1) > 1;
                 return (
                   <motion.li
                     key={`${step.name}-${i}`}
@@ -232,6 +237,12 @@ export function ToolTrace({ steps, className = "" }: ToolTraceProps) {
                       >
                         {step.summary ?? step.name}
                       </span>
+                      {/* Batch count badge: shows when concurrent calls are merged */}
+                      {isBatched && (
+                        <span className="ml-1 rounded-sm bg-white/10 px-1.5 py-0.5 text-mist-400/80 not-italic">
+                          ×{step.count}
+                        </span>
+                      )}
                       {step.detail && (
                         <span
                           className={isActive ? "text-mist-200" : "text-mist-300/70"}
@@ -240,12 +251,12 @@ export function ToolTrace({ steps, className = "" }: ToolTraceProps) {
                           {step.detail}
                         </span>
                       )}
-                      {step.done && step.outcome && (
+                      {step.done && step.outcome && (!isBatched ? (
                         <span className="text-mist-400/80">
                           {" · "}
                           {step.outcome}
                         </span>
-                      )}
+                      ) : null)}
                     </span>
                   </motion.li>
                 );

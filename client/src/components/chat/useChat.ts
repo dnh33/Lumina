@@ -124,6 +124,10 @@ export function useChat(
   useEffect(() => {
     setError(null);
     setFailedText(null);
+    // Start-fresh (new id while idle) must drop a kept partial. Skip while a
+    // send is in flight so the first-message conversation-id handoff keeps
+    // the optimistic stream.
+    if (!inFlightRef.current) setStream(null);
   }, [conversationId]);
 
   // When the stream ends, flush any pending buffered tokens so the displayed
@@ -166,6 +170,7 @@ export function useChat(
       let wroteToLibrary = false;
       let aborted = false;
       let toolCueFired = false;
+      let hadError = false;
 
       try {
         if (convId == null) {
@@ -186,7 +191,7 @@ export function useChat(
       } catch (e) {
         setError((e as Error).message);
         setFailedText(content);
-        finishTurn();
+        hadError = true;
         inFlightRef.current = false;
         return;
       }
@@ -224,6 +229,7 @@ export function useChat(
               // model-side failure: always leave a retry path
               setError(e.message);
               setFailedText(content);
+              hadError = true;
               return;
             }
             // Push deltas OUTSIDE setState — React Strict Mode double-invokes
@@ -304,18 +310,27 @@ export function useChat(
           // connection died mid-turn AND nothing was persisted → real failure
           setError((e as Error).message);
           setFailedText(content);
+          hadError = true;
         }
       } finally {
         abortRef.current = null;
-        inFlightRef.current = false;
-        // on user-stop, give the server a beat to persist the partial reply
+        // on user-stop, give the server a beat to persist the partial reply.
+        // Delay the cleanup flag until after this window so:
+        //  - the conversationId effect can't wipe the kept stream mid-delay
+        //  - send() can't double-fire if the user clicks fast (inFlight guard)
         if (aborted) await new Promise((r) => setTimeout(r, 450));
+        inFlightRef.current = false;
         await qc.invalidateQueries({ queryKey: ["conversations"] });
         await qc.refetchQueries({ queryKey: ["messages", convId] });
         if (wroteToLibrary) invalidateLibraryData(qc);
-        // Flush pending tokens, then drop the optimistic stream. The persisted
-        // message (including any stopped partial) reloads from the server.
-        finishTurn();
+        if (hadError) {
+          // Keep the optimistic stream so ChatThread can show the partial.
+          tokenBuffer.flush();
+        } else {
+          // Flush pending tokens, then drop the optimistic stream. The persisted
+          // message (including any stopped partial) reloads from the server.
+          finishTurn();
+        }
       }
     },
     [conversationId, onConversationChange, qc, companion, tokenBuffer, finishTurn],

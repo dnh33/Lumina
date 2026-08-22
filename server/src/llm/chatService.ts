@@ -4,12 +4,12 @@ import { buildChatContext, renderContextBlock } from "../rag/contextBuilder.js";
 import { indexMessage } from "../rag/memory.js";
 import { syncGuidedWatchlistFromChat } from "../services/guidedSessionService.js";
 import type { MediaType } from "../tmdb/types.js";
-import { currentModel, getLlm } from "./openrouter.js";
+import { currentModel, getLlm, formatChatLlmError } from "./openrouter.js";
 import { luminaSystemPrompt } from "./prompts.js";
 import { executeTool, toolDefinitions } from "./tools.js";
 import { toolDetail, toolOutcome } from "./toolPresenter.js";
 
-const MAX_TOOL_ROUNDS = 6;
+const MAX_TOOL_ROUNDS = 3;
 const HISTORY_LIMIT = 30;
 
 export type ChatEvent =
@@ -200,7 +200,7 @@ export async function runChatTurn(
           messages,
           tools: toolDefinitions,
           stream: true,
-          temperature: 0.8,
+          temperature: 0.2,
         },
         { signal },
       );
@@ -290,10 +290,37 @@ export async function runChatTurn(
     return;
   }
 
+  // If the model returned no text at all, it likely timed out or hit a rate
+  // limit — NOT a hallucination. Retry once with a lighter payload (no tools,
+  // lower max_tokens). If that also produces nothing, emit a descriptive error.
   if (!assistantText.trim()) {
-    assistantText =
-      "I hit a snag generating a reply — please try again in a moment.";
-    send({ type: "delta", text: assistantText });
+    if (signal?.aborted) return; // user stopped — don't emit a snag message
+    send({ type: "delta", text: "Let me try that again..." });
+    try {
+      const retry = await llm.chat.completions.create(
+        {
+          model,
+          messages,
+          temperature: 0.3,
+          max_tokens: 512,
+        },
+        { signal },
+      );
+      assistantText =
+        retry.choices[0]?.message?.content?.trim() ?? "";
+      if (assistantText) {
+        send({ type: "delta", text: assistantText });
+      }
+    } catch (retryErr) {
+      send({ type: "error", message: formatChatLlmError(retryErr, model) });
+      return;
+    }
+    // If retry also produced nothing, fall through to persistent snag message
+    if (!assistantText.trim()) {
+      assistantText =
+        "I hit a snag generating a reply — please try again in a moment.";
+    }
+    send({ type: "delta", text: "\n" });
   }
 
   const messageId = persistMessage(db, conversationId, "assistant", assistantText, {

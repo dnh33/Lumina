@@ -304,7 +304,7 @@ export async function titleInsight(
   try {
     completion = await llm.chat.completions.create({
       model,
-      temperature: 0.7,
+      temperature: 0.3,
       response_format: { type: "json_object" },
       messages,
     });
@@ -313,7 +313,7 @@ export async function titleInsight(
     if (status !== 400 && status !== 404 && status !== 422) throw err;
     completion = await llm.chat.completions.create({
       model,
-      temperature: 0.7,
+      temperature: 0.3,
       messages,
     });
   }

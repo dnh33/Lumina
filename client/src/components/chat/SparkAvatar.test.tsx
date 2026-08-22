@@ -124,10 +124,10 @@ describe("SparkAvatar — presence system (Task 4)", () => {
     expect(screen.getByText("reaching into your library…")).toBeInTheDocument();
     cleanup();
 
+    // error state is silent — no whisper (system copy handles the error notice)
     render(<SparkAvatar state="error" />);
-    expect(
-      screen.getByText("something slipped — try again"),
-    ).toBeInTheDocument();
+    expect(screen.queryByText("something slipped — try again")).not.toBeInTheDocument();
+    expect(screen.queryByText("something went wrong")).not.toBeInTheDocument();
   });
 
   it("preserves the legacy public API (size + className) without breaking", () => {
@@ -163,5 +163,51 @@ describe("SparkAvatar — presence system (Task 4)", () => {
       const root = container.querySelector("[data-state='idle']");
       expect(root?.getAttribute("data-reduced")).toBe("false");
     });
+  });
+});
+
+describe("SparkAvatar — presence polish (Task 5)", () => {
+  function sizeWrapper(container: HTMLElement) {
+    return container.querySelector(
+      "[data-state] > .relative.inline-block",
+    ) as HTMLElement | null;
+  }
+
+  it("idle core breathes with opacity [0.88, 1, 0.88] when motion is on", () => {
+    setReducedMotion(false);
+    const { container } = render(<SparkAvatar state="idle" />);
+    const core = container.querySelector("[data-part='star-core']");
+    expect(core?.getAttribute("data-animating")).toBe("true");
+  });
+
+  it("writing renders a gold caret-trail driven by cadence", () => {
+    setReducedMotion(false);
+    const { container } = render(<SparkAvatar state="writing" />);
+    expect(container.querySelector("[data-part='caret-trail']")).not.toBeNull();
+    expect(container.querySelector("[data-part='comet']")).not.toBeNull();
+
+    cleanup();
+    const idle = render(<SparkAvatar state="idle" />);
+    expect(idle.container.querySelector("[data-part='caret-trail']")).toBeNull();
+  });
+
+  it("error with reduced motion off sets data-error-pulse on the root span", () => {
+    setReducedMotion(false);
+    const { container } = render(<SparkAvatar state="error" />);
+    const root = container.querySelector("[data-state='error']");
+    expect(root?.getAttribute("data-shake")).not.toBe("true");
+    expect(root?.getAttribute("data-error-pulse")).toBe("true");
+    expect(container.querySelector("[data-part='fault-line']")).not.toBeNull();
+
+    const wrapper = sizeWrapper(container);
+    expect(wrapper?.style.animation ?? "").toContain("error-pulse");
+
+    cleanup();
+    setReducedMotion(true);
+    const reduced = render(<SparkAvatar state="error" />);
+    const reducedRoot = reduced.container.querySelector("[data-state='error']");
+    expect(reducedRoot?.getAttribute("data-error-pulse")).toBe("false");
+    const reducedWrapper = sizeWrapper(reduced.container);
+    expect(reducedWrapper?.style.animation ?? "").not.toContain("error-pulse");
   });
 });

@@ -115,4 +115,46 @@ describe("ToolTrace (compact trace rail — T11 / T12 / T13 + progressive disclo
     );
     expect(screen.getByTestId("tooltrace-spark")).toBeInTheDocument();
   });
+
+  it("groups identical concurrent (not-done) tool calls into one batched row", () => {
+    reducedRef.current = false;
+    render(
+      <ToolTrace
+        steps={[
+          { name: "search_tmdb", done: false, summary: "Searching the catalog", detail: "\"korean thrillers\"" },
+          { name: "search_tmdb", done: false, summary: "Searching the catalog", detail: "\"slow burn\"" },
+          { name: "search_tmdb", done: false, summary: "Searching the catalog", detail: "\"giallo\"" },
+          { name: "get_title_details", done: false, summary: "Pulling title details" },
+        ]}
+      />,
+    );
+
+    const nodes = screen.getAllByTestId("tooltrace-node");
+    // 3 search_tmdb calls batched into 1 + 1 get_title_details = 2 nodes
+    expect(nodes).toHaveLength(2);
+    expect(nodes[0].textContent).toContain("Searching the catalog");
+    // Count badge shows the batch count
+    expect(nodes[0].textContent).toContain("×3");
+    expect(nodes[1].textContent).toContain("Pulling title details");
+  });
+
+  it("does not group done steps — each finished call stays separate for the summary", () => {
+    reducedRef.current = false;
+    render(
+      <ToolTrace
+        steps={[
+          { name: "search_tmdb", done: true, summary: "Searching the catalog", detail: "\"korean\"" },
+          { name: "search_tmdb", done: true, summary: "Searching the catalog", detail: "\"slow\"" },
+          { name: "get_title_details", done: true, summary: "Pulling title details" },
+        ]}
+      />,
+    );
+
+    // All done → collapsed summary
+    const summary = screen.getByTestId("tooltrace-summary");
+    expect(summary.textContent).toContain("Searched the catalog ×2");
+    expect(summary.textContent).toContain("Pulled title details");
+    // No individual rows while collapsed
+    expect(screen.queryByTestId("tooltrace-node")).not.toBeInTheDocument();
+  });
 });

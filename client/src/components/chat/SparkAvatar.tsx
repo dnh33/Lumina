@@ -17,6 +17,7 @@
  */
 
 import {
+  animate,
   motion,
   useMotionValue,
   useReducedMotion,
@@ -24,6 +25,7 @@ import {
   type TargetAndTransition,
   type Transition,
 } from "framer-motion";
+import { useEffect } from "react";
 import { EASE_OUT_EXPO } from "../../lib/motion";
 import type { CompanionState } from "../../hooks/useCompanionState";
 
@@ -46,7 +48,7 @@ const WHISPER: Record<CompanionState, string> = {
   thinking: "considering…",
   tooling: "reaching into your library…",
   writing: "composing…",
-  error: "something slipped — try again",
+  error: "",
 };
 
 /** Distinct accessible label per state. */
@@ -163,33 +165,57 @@ function ToolingLayer({ reduce }: { reduce: boolean }) {
 /* ── Writing: gold comet riding the caret path (P3, R7) ─────────── */
 
 function Comet({ reduce }: { reduce: boolean }) {
-  // A MotionValue for token cadence; useTransform derives the trail's glow so
-  // the comet brightens/dims with cadence (GPU-only opacity, no re-render).
   const cadence = useMotionValue(reduce ? 1 : 0);
   const trailOpacity = useTransform(cadence, [0, 1], [0.45, 1]);
+  const trailGlow = useTransform(
+    cadence,
+    [0, 1],
+    [`0 0 4px ${GOLD}`, `0 0 16px ${GOLD}, 0 0 10px ${GOLD_SOFT}`],
+  );
+
+  useEffect(() => {
+    if (reduce) return;
+    const controls = animate(cadence, 1, {
+      duration: 1.1,
+      repeat: Infinity,
+      repeatType: "reverse",
+      ease: "easeInOut",
+    });
+    return () => controls.stop();
+  }, [reduce, cadence]);
 
   return (
-    <motion.span
-      data-part="comet"
-      className="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-1.5 rounded-full"
-      style={{
-        background: GOLD_SOFT,
-        boxShadow: `0 0 8px ${GOLD}, 0 0 14px rgba(232,184,75,0.5)`,
-        opacity: trailOpacity,
-        offsetPath: `path("M50 8 L58 38 L88 46 L58 54 L50 88 L42 54 L12 46 L42 38 Z")`,
-        offsetDistance: reduce ? "50%" : undefined,
-      }}
-      animate={
-        reduce
-          ? { opacity: 0.6 }
-          : { offsetDistance: ["0%", "100%"] as unknown as string[] }
-      }
-      transition={
-        reduce
-          ? { duration: 0.2 }
-          : { duration: 2.2, repeat: Infinity, ease: "linear" }
-      }
-    />
+    <>
+      <motion.span
+        data-part="comet"
+        className="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-1.5 rounded-full"
+        style={{
+          background: GOLD_SOFT,
+          boxShadow: `0 0 8px ${GOLD}, 0 0 14px rgba(232,184,75,0.5)`,
+          opacity: trailOpacity,
+          offsetPath: `path("M50 8 L58 38 L88 46 L58 54 L50 88 L42 54 L12 46 L42 38 Z")`,
+          offsetDistance: reduce ? "50%" : undefined,
+        }}
+        animate={
+          reduce
+            ? { opacity: 0.6 }
+            : { offsetDistance: ["0%", "100%"] as unknown as string[] }
+        }
+        transition={
+          reduce
+            ? { duration: 0.2 }
+            : { duration: 2.2, repeat: Infinity, ease: "linear" }
+        }
+      />
+      <motion.span
+        data-part="caret-trail"
+        className="absolute left-1/2 top-1/2 h-1 w-3 -translate-x-1/2 rounded"
+        style={{
+          background: GOLD,
+          boxShadow: reduce ? `0 0 8px ${GOLD}` : trailGlow,
+        }}
+      />
+    </>
   );
 }
 
@@ -268,7 +294,7 @@ export function SparkAvatar({
     if (reduce) return { scale: 1, opacity: state === "idle" ? 0.9 : 1 };
     switch (state) {
       case "idle":
-        return { scale: [1, 1.035, 1] }; // R5 breathing ~3.2s
+        return { scale: [1, 1.035, 1], opacity: [0.88, 1, 0.88] }; // R5 breathing ~3.2s
       case "writing":
         return { opacity: [0.7, 1, 0.7] }; // core tracks token cadence
       case "error":
@@ -300,6 +326,7 @@ export function SparkAvatar({
       data-state={state}
       data-reduced={reduce ? "true" : "false"}
       data-shake="false"
+      data-error-pulse={!reduce && state === "error" ? "true" : "false"}
       role="img"
       aria-label={ARIA[state]}
       className={`inline-flex flex-col items-center gap-1 ${className}`}
@@ -311,6 +338,10 @@ export function SparkAvatar({
           height: size,
           // error desaturates the whole presence (P14).
           filter: state === "error" ? "grayscale(0.85)" : glow?.filter,
+          animation:
+            !reduce && state === "error"
+              ? "error-pulse 2.4s ease-in-out infinite"
+              : undefined,
         }}
       >
         <StarCore

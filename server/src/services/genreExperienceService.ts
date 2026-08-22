@@ -382,7 +382,8 @@ async function curatorIntro(
           content: `Genres: ${genres.join(" + ")}\n\nTheir library titles closest to this world:\n${anchorBlock}`,
         },
       ],
-      temperature: 0.8,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
     });
     const raw = completion.choices[0]?.message?.content ?? "";
     const parsed = JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g, ""));

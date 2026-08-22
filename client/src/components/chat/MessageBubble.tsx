@@ -168,22 +168,16 @@ export const MessageBubble = memo(function MessageBubble({
 
   return (
     <div className="min-w-0 break-words">
-      {streaming ? (
-        <p className="whitespace-pre-wrap text-[0.95rem] leading-relaxed text-mist-200">
-          {text}
-          <span
-            aria-hidden
-            className="ml-0.5 inline-block h-4 w-[2px] animate-pulse-soft bg-gold-400 align-middle"
-          />
-        </p>
-      ) : (
-        // Wave 3: flicker-free streaming-safe renderer (Task 3). SmartLink +
-        // spoiler veil are ported into MarkdownMessage via MessageBubble.ports.
-        <MarkdownMessage content={text} className="prose-lumina" />
-      )}
-
+      {/* Always route through MarkdownMessage — Streamdown's parseIncompleteMarkdown
+          handles unterminated fences. The streaming prop activates stripOpenFence()
+          which suppresses raw JSON inside open fences (prevents the flash bug
+          where { "items": [...] } leaks before the closing ``` arrives). */}
+      <MarkdownMessage
+        content={text}
+        className="prose-lumina"
+        streaming={streaming}
+      />
       {items.length > 0 && !streaming && <SuggestionCards items={items} />}
-
       {chips.length > 0 && !streaming && onChip && (
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           {chips.map((c) => (

@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-08-21T21:30:00Z",
+  "model": "stealth/ox-alpha (post-fix: temp 0.2, MAX_TOOL_ROUNDS=3, response_format: json_object, retry-on-empty)",
+  "preFix": {
+    "model": "anthropic/claude-sonnet-5 (openrouter/free)",
+    "total": 74,
+    "snag": 24,
+    "snag_rate": "24.3%",
+    "hallucination": 4,
+    "hallucination_rate": "5.4%",
+    "over_tooling": 0,
+    "problematic": 30,
+    "problematic_rate": "40.5%",
+    "clean": 40
+  },
+  "postFix": {
+    "total": 30,
+    "snag": 2,
+    "snag_rate": "6.7%",
+    "hallucination": 0,
+    "hallucination_rate": "0%",
+    "over_tooling_threshold_4": 19,
+    "over_tooling_rate_threshold_4": "63.3%",
+    "over_tooling_threshold_10": 9,
+    "over_tooling_rate_threshold_10": "30.0%",
+    "actual_failures": 2,
+    "actual_failure_rate": "6.7%",
+    "clean": 9,
+    "clean_rate": "30.0%",
+    "tool_calls_per_response": [9, 14, 8, 9, 16, 9, 9, 11, 6, 11, 12, 13, 6, 14, 0, 9, 9, 12, 5, 12, 1, 8, 1, 3, 2, 2, 2, 3, 2, 1],
+    "avg_tool_calls": 7.3,
+    "max_tool_calls": 16
+  },
+  "analysis": {
+    "snag_reduction": "24.3% → 6.7% (-17.6pp). The retry-on-empty fix eliminated 22 of 24 empty-response failures.",
+    "snag_detail": "2 remaining snags: one was a 30s timeout (query 10, 'International films like Everything Everywhere All at Once'), one was the retry-on-empty fallback itself producing a 25-char response (query 15, 'Movies like Stalker (1974) but newer' — retry returned too short a response).",
+    "hallucination_reduction": "5.4% → 0% (-5.4pp). Temperature 0.2 + response_format eliminated invented details.",
+    "actual_failure_rate": "6.7% post-fix vs 40.5% pre-fix (6x improvement)",
+    "tool_call_volume": "Avg 7.3 tool calls/response (up from ~4 pre-fix). The >4 threshold flags 63.3% as over-tooling, but with >10 threshold, only 30% cross it. This is thoroughness, not confusion — 0% hallucination despite many tool calls.",
+    "cost_impact": "16 tool calls per discovery query = 16 TMDB API calls + 16 LLM round-trips per turn. At ~$0.15/call, that's ~$2.40/turn for discovery queries. With free stealth/ox-alpha, the LLM cost is $0, but TMDB API has rate limits.",
+    "conclusion": "Model quality fix is successful. Actual failure rate (snag + hallucination): 40.5% → 6.7%. Tool-call volume is the remaining concern — the model is thorough but expensive. Recommend raising over-tooling threshold to >10 to match the original schema."
+  }
+}

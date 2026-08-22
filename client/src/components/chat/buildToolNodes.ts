@@ -18,8 +18,11 @@ export interface ToolNode {
   name: string;
   done: boolean;
   summary?: string;
+  /** Salient argument (""korean thrillers""), joined if batched. */
   detail?: string;
   outcome?: string;
+  /** Number of identical steps merged into this node (1 = no batching). */
+  count?: number;
 }
 
 /** Map a list of in-flight ToolStep into ToolTrace nodes. */
@@ -30,7 +33,62 @@ export function buildToolNodes(steps: ToolStep[]): ToolNode[] {
     summary: s.summary ?? undefined,
     detail: s.detail,
     outcome: s.outcome,
+    count: 1,
   }));
+}
+
+/**
+ * Group identical concurrent (not-done) tool steps into a single batched node.
+ *
+ * During streaming, the model often fires multiple identical tool calls in one
+ * round (e.g. 6× search_tmdb for different titles). Rendering each as a
+ * separate row reads as chaotic. This collapses same-name, not-done steps into
+ * one node with a count badge: "Searching the catalog ×6".
+ *
+ * Done steps are left as-is (they're already collapsed via summarizeTrace
+ * when all steps complete). Only concurrent pending steps are grouped.
+ */
+export function groupConcurrentSteps(nodes: ToolNode[]): ToolNode[] {
+  const result: ToolNode[] = [];
+  // Track pending groups: name → { firstIndex, nodes[] }
+  const pendingGroups = new Map<string, { firstIndex: number; nodes: ToolNode[] }>();
+
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (!node.done) {
+      const key = node.name;
+      if (!pendingGroups.has(key)) {
+        pendingGroups.set(key, { firstIndex: i, nodes: [] });
+      }
+      pendingGroups.get(key)!.nodes.push(node);
+    } else {
+      result.push({ ...node });
+    }
+  }
+
+  // Insert pending groups at their first-occurrence position to preserve order
+  const groups = [...pendingGroups.values()].sort((a, b) => a.firstIndex - b.firstIndex);
+  for (const { nodes: group } of groups) {
+    if (group.length === 1) {
+      result.push({ ...group[0] });
+    } else {
+      const first = group[0];
+      const details = group
+        .map((g) => g.detail)
+        .filter(Boolean)
+        .join(" · ");
+      result.push({
+        name: first.name,
+        done: false,
+        summary: first.summary,
+        detail: details || first.detail,
+        outcome: first.outcome,
+        count: group.length,
+      });
+    }
+  }
+
+  return result;
 }
 
 /** Past-tense verb per tool, for the collapsed one-line trace summary. */

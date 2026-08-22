@@ -22,7 +22,8 @@ import { SuggestionCards, DEFAULT_SUGGESTIONS, type Suggestion } from "./Suggest
 import { MemoryConstellation } from "./MemoryConstellation";
 import { ToolRibbon } from "./ToolRibbon";
 import { SparkAvatar } from "./SparkAvatar";
-import { TOOL_LABELS, useChat, type ToolStep } from "./useChat";
+import { WaveformSkeleton } from "./WaveformSkeleton";
+import { TOOL_LABELS, useChat, type ToolStep, type TurnPhase } from "./useChat";
 import type { CompanionState } from "../../hooks/useCompanionState";
 import { messageEnter, stagger60 } from "../../lib/motion";
 
@@ -94,6 +95,23 @@ interface TurnProps {
   onChip?: (c: string) => void;
   /** Wired presence state for the SparkAvatar (Wave 3). */
   companionState?: CompanionState;
+  /** Live stream phase; omitted on persisted turns. */
+  phase?: TurnPhase;
+}
+
+function phaseLabel(phase: TurnPhase): string {
+  switch (phase) {
+    case "starting":
+      return "Lumina is waking…";
+    case "thinking":
+      return "Lumina is thinking…";
+    case "tooling":
+      return "Reaching into your library…";
+    case "writing":
+      return "Composing…";
+    default:
+      return "Lumina is thinking…";
+  }
 }
 
 function AssistantTurn({
@@ -107,6 +125,7 @@ function AssistantTurn({
   time,
   onChip,
   companionState = "idle",
+  phase,
 }: TurnProps) {
   return (
     <div className="flex gap-3">
@@ -131,7 +150,11 @@ function AssistantTurn({
         <ToolRibbon steps={steps} />
 
         {thinking && !content ? (
-          <p className="text-[0.8rem] italic text-mist-300">Thinking…</p>
+          <div className="flex items-center gap-2 text-[0.85rem] text-mist-300">
+            <SparkAvatar state={companionState} hideWhisper />
+            <span>{phaseLabel(phase ?? "thinking")}</span>
+            <WaveformSkeleton phase={phase ?? "thinking"} />
+          </div>
         ) : (
           <MessageBubble
             role="assistant"
@@ -188,6 +211,8 @@ interface Props {
   dormant?: boolean;
   /** Optional context-aware welcome posters; falls back to a tasteful default. */
   welcomeSuggestions?: Suggestion[];
+  /** Poster URLs for the welcome value-proof strip. Omitted/empty hides it. */
+  welcomePosters?: string[];
   /** Ref to the scroll container, set by ChatDock for R15 compression. */
   scrollRef?: React.RefObject<HTMLDivElement | null>;
 }
@@ -199,6 +224,7 @@ export function ChatThread({
   compact,
   dormant,
   welcomeSuggestions,
+  welcomePosters,
   scrollRef: scrollRefProp,
 }: Props) {
   const reduceMotion = useReducedMotion();
@@ -386,9 +412,24 @@ export function ChatThread({
               {dormant && <MemoryConstellation className="mt-3" />}
 
               <p className="mt-3 max-w-md text-sm leading-relaxed text-mist-300">
-                I know every title, rating and note in your archive, and I never
-                spoil. What are we looking for?
+                I know your library, and I never spoil. What are we looking for?
               </p>
+
+              {welcomePosters && welcomePosters.length > 0 && (
+                <div
+                  data-testid="welcome-posters"
+                  className="mt-5 flex max-w-2xl flex-wrap justify-center gap-2"
+                >
+                  {welcomePosters.map((src, i) => (
+                    <img
+                      key={`${src}-${i}`}
+                      src={src}
+                      alt=""
+                      className="h-24 rounded-lg object-cover ring-1 ring-white/10"
+                    />
+                  ))}
+                </div>
+              )}
 
               {/* Cinematic dealt-in poster suggestions (Task 6) */}
               <SuggestionCards
@@ -464,22 +505,47 @@ export function ChatThread({
                 receipts={stream.receipts}
                 contextNote={stream.contextNote}
                 stopped={stopped}
-                companionState={companionState}
+                companionState={error ? "error" : (companionState ?? "idle")}
+                phase={stream.phase}
               />
             </>
           )}
 
           {error && (
             <div className="flex items-center justify-between gap-3 rounded-xl bg-red-500/10 px-4 py-3 ring-1 ring-red-500/25">
-              <p className="text-sm text-red-300">{error}</p>
+              <div className="min-w-0">
+                <p className="text-sm text-red-300">
+                  {stream?.assistantText
+                    ? "Lumina stopped mid-response. What's above is saved — nothing lost."
+                    : "Something went wrong on our end. Try again?"}
+                </p>
+                {stream?.assistantText ? (
+                  <p className="text-2xs text-mist-300">
+                    The response above is yours. Retry sends the same request.
+                  </p>
+                ) : null}
+              </div>
               {failedText && !isStreaming && (
-                <button
-                  type="button"
-                  className="btn-ghost shrink-0"
-                  onClick={() => void send(failedText)}
-                >
-                  Retry
-                </button>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm"
+                    onClick={() => void send(failedText)}
+                  >
+                    Retry
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm"
+                    onClick={async () => {
+                      const created = await api.createConversation();
+                      playCue("droplet");
+                      await Promise.resolve(onConversationChange(created.id));
+                    }}
+                  >
+                    Start fresh
+                  </button>
+                </div>
               )}
             </div>
           )}
