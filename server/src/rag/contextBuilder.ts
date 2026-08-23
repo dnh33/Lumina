@@ -8,6 +8,7 @@ import { renderLibraryMatches, retrieveLibrary } from "./retrieval.js";
 import { renderMemory, retrieveMemory } from "./memory.js";
 import { renderTasteSignals } from "../services/feedbackService.js";
 import { getConversationSummary, needsCompression, renderSummary, type ConversationSummary } from "./summarization.js";
+import { renderNudges } from "../cron/nudges.js";
 
 /**
  * RAG · Context builder.
@@ -40,6 +41,8 @@ export interface ChatContext {
   summaryText: string;
   /** Stated taste signals from the Taste Feedback Loop. */
   signalsText: string;
+  /** Passive nudges from the background cron (while-you-were-away). */
+  nudgeText: string;
   /** For persistence/debugging: what the retrieval layers surfaced. */
   meta: {
     libraryMatches: string[];
@@ -64,6 +67,7 @@ export function buildChatContext(
     : "";
 
   const summary = getConversationSummary(db, conversationId);
+  const nudgeText = renderNudges(db);
   const summaryText = summary ? renderSummary(summary) : "";
   const signalsText = renderTasteSignals(db);
 
@@ -74,6 +78,7 @@ export function buildChatContext(
     guidedText,
     summaryText,
     signalsText,
+    nudgeText,
     meta: {
       libraryMatches: matches.map((m) => m.title),
       memoryHits: memory.length,
@@ -88,6 +93,9 @@ export function renderContextBlock(ctx: ChatContext): string {
   const parts: string[] = [];
   if (ctx.summaryText) {
     parts.push(ctx.summaryText);
+  }
+  if (ctx.nudgeText) {
+    parts.push(ctx.nudgeText);
   }
   if (ctx.signalsText) {
     parts.push(ctx.signalsText);
