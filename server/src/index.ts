@@ -82,6 +82,20 @@ try {
   console.warn("[lumina] anchor_usage prune skipped:", (err as Error).message);
 }
 
+// Proactive nudge scheduler — every 6h, evaluate library state and
+// store passive context notes. Never throws at boot; a scheduling
+// failure must not block the API from starting.
+try {
+  const { generateNudges } = await import("./cron/nudges.js");
+  void generateNudges(getDb()).catch((e) => console.warn("[lumina] nudge schedule skipped:", (e as Error).message));
+  setInterval(() => {
+    void generateNudges(getDb()).catch((e) => console.warn("[lumina] nudge generation error:", (e as Error).message));
+  }, 6 * 60 * 60 * 1000);
+  console.log("  ✦ Nudge scheduler armed (every 6h)");
+} catch (err) {
+  console.warn("[lumina] nudge scheduler skipped:", (err as Error).message);
+}
+
 app.listen(env.port, env.host, () => {
   console.log(`
   ✦ Lumina API listening on http://${env.host}:${env.port}
