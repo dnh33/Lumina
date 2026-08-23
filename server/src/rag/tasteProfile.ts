@@ -1,6 +1,7 @@
 import type { DB } from "../db/connection.js";
 import { ignoredTmdbIds } from "../services/libraryService.js";
 import { fatigueScores } from "../services/anchorService.js";
+import { getSignals } from "../services/feedbackService.js";
 
 /**
  * RAG · Layer 1 — Taste profile.
@@ -37,6 +38,7 @@ export interface TasteProfile {
   watchlistSample: { title: string; year: number | null }[];
   currentlyWatching: { title: string; progress: string }[];
   fatiguedLovedTitles: string[]; // loved titles with fatigue score >= 0.6
+  signals: { kind: string; target: string; reason: string }[];
 }
 
 interface EntryRow {
@@ -193,7 +195,9 @@ export function computeTasteProfile(db: DB): TasteProfile {
     .map((r) => r.title);
 
   const rated = watched.filter((r) => r.rating != null);
-  return {
+    const signals = getSignals(db).map((s) => ({ kind: s.kind, target: s.target, reason: s.reason }));
+
+return {
     librarySize: rows.length,
     movies: rows.filter((r) => r.media_type === "movie").length,
     shows: rows.filter((r) => r.media_type === "tv").length,
@@ -211,6 +215,7 @@ export function computeTasteProfile(db: DB): TasteProfile {
     watchlistSample,
     currentlyWatching,
     fatiguedLovedTitles,
+    signals,
   };
 }
 

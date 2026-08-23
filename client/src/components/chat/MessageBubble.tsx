@@ -1,4 +1,5 @@
 import { memo, useState, type ReactNode } from "react";
+import { api, type SignalKind } from "../../lib/api";
 import { Link } from "react-router-dom";
 import { Clapperboard, Lock, Play } from "lucide-react";
 import { SuggestionCards } from "./SuggestionCards";
@@ -146,6 +147,8 @@ interface Props {
   streaming?: boolean;
   /** tap handler for follow-up chips (settled assistant turns only) */
   onChip?: (chip: string) => void;
+  /** conversation id, enables the Taste Feedback Loop ("Not right") control */
+  conversationId?: number;
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -153,7 +156,12 @@ export const MessageBubble = memo(function MessageBubble({
   content,
   streaming,
   onChip,
+  conversationId,
 }: Props) {
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [feedbackErr, setFeedbackErr] = useState<string | null>(null);
   if (role === "user") {
     return (
       <div className="flex justify-end">
@@ -193,6 +201,71 @@ export const MessageBubble = memo(function MessageBubble({
           <Play className="h-3 w-3" />
           Read aloud
         </button>
+      )}
+      {!streaming && conversationId && !feedbackSent && (
+        <button
+          type="button"
+          title="Tell Lumina this was wrong"
+          aria-label="Tell Lumina this was wrong"
+          onClick={() => setFeedbackOpen((o) => !o)}
+          className="mt-2 flex items-center gap-1 rounded-lg bg-white/[0.04] px-2 py-1 text-2xs font-medium text-mist-300 opacity-60 transition-opacity hover:opacity-100 hover:bg-gold-400/15 hover:text-gold-300"
+        >
+          ✕ Not right
+        </button>
+      )}
+      {feedbackOpen && conversationId && (
+        <form
+          className="mt-2 flex flex-col gap-1 rounded-lg bg-white/[0.04] p-2"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const form = e.currentTarget;
+            const target = (form.elements.namedItem("target") as HTMLInputElement).value.trim();
+            const reason = (form.elements.namedItem("reason") as HTMLInputElement).value.trim();
+            if (!target) return;
+            setFeedbackBusy(true);
+            setFeedbackErr(null);
+            try {
+              await api.feedback(conversationId, "correction" as SignalKind, target, reason);
+              setFeedbackSent(true);
+              setFeedbackOpen(false);
+            } catch (err) {
+              setFeedbackErr(err instanceof Error ? err.message : "Could not save feedback");
+            } finally {
+              setFeedbackBusy(false);
+            }
+          }}
+        >
+          <input
+            name="target"
+            placeholder="What was wrong? (e.g. 'the 1998 remake')"
+            className="w-full rounded bg-black/30 px-2 py-1 text-2xs text-mist-200 outline-none ring-1 ring-white/10 focus:ring-gold-400/40"
+          />
+          <input
+            name="reason"
+            placeholder="Why? (optional)"
+            className="w-full rounded bg-black/30 px-2 py-1 text-2xs text-mist-200 outline-none ring-1 ring-white/10 focus:ring-gold-400/40"
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={feedbackBusy}
+              className="rounded bg-gold-400/20 px-2 py-1 text-2xs font-medium text-gold-200 hover:bg-gold-400/30 disabled:opacity-50"
+            >
+              {feedbackBusy ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFeedbackOpen(false)}
+              className="rounded px-2 py-1 text-2xs text-mist-400 hover:text-mist-200"
+            >
+              Cancel
+            </button>
+          </div>
+          {feedbackErr && <p className="text-2xs text-red-300">{feedbackErr}</p>}
+        </form>
+      )}
+      {feedbackSent && (
+        <p className="mt-2 text-2xs italic text-mist-400">Noted — Lumina will avoid that next time.</p>
       )}
       {items.length > 0 && !streaming && <SuggestionCards items={items} />}
       {chips.length > 0 && !streaming && onChip && (

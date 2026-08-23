@@ -25,6 +25,7 @@ import type {
   RetiredAnchor,
   UpNextItem,
 } from "./types";
+export type SignalKind = "avoid_title" | "avoid_genre" | "avoid_director" | "avoid_actor" | "preference" | "correction";
 
 async function j<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -220,6 +221,20 @@ export const api = {
 
   /* chat */
   conversations: () => get<ConversationSummary[]>("/api/conversations"),
+
+  /* Taste Feedback Loop */
+  feedback: (
+    conversationId: number,
+    kind: SignalKind,
+    target: string,
+    reason = "",
+  ) =>
+    send<{ id: number; kind: SignalKind; target: string; reason: string; created_at: string }>(
+      "POST",
+      `/api/conversations/${conversationId}/feedback`,
+      { kind, target, reason },
+    ),
+
   createConversation: (title?: string) =>
     send<{ id: number }>("POST", "/api/conversations", { title }),
   messages: (conversationId: number) =>

@@ -161,6 +161,17 @@ const migrations: string[] = [
   CREATE INDEX IF NOT EXISTS idx_summaries_conversation
     ON conversation_summaries (conversation_id, created_at DESC);
   `,
+  // ── v8: explicit taste signals (Taste Feedback Loop) ───────────
+  `
+  CREATE TABLE IF NOT EXISTS taste_signals (
+    id         INTEGER PRIMARY KEY,
+    kind       TEXT NOT NULL CHECK (kind IN ('avoid_title','avoid_genre','avoid_director','avoid_actor','preference','correction')),
+    target     TEXT NOT NULL,
+    reason     TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_taste_signals_kind ON taste_signals (kind);
+  `,
 ];
 
 export function migrate(db: DB): void {

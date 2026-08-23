@@ -6,6 +6,7 @@ import {
   type ChatEvent,
 } from "../llm/chatService.js";
 import { currentModel, formatChatLlmError } from "../llm/openrouter.js";
+import { recordSignal, type SignalKind } from "../services/feedbackService.js";
 
 export const chatRouter = Router();
 
@@ -99,4 +100,22 @@ chatRouter.post("/conversations/:id/messages", async (req, res) => {
   } finally {
     if (!res.writableEnded) res.end();
   }
+});
+
+/**
+ * Taste Feedback Loop — record an explicit user correction/preference.
+ * Body: { kind: SignalKind, target: string, reason?: string }
+ */
+chatRouter.post("/conversations/:id/feedback", (req, res) => {
+  const body = req.body as { kind?: string; target?: string; reason?: string };
+  const kind = body.kind as SignalKind;
+  const target = String(body.target ?? "").trim();
+  const valid: SignalKind[] = [
+    "avoid_title", "avoid_genre", "avoid_director", "avoid_actor", "preference", "correction",
+  ];
+  if (!valid.includes(kind) || !target) {
+    return void res.status(400).json({ error: "kind + target required; kind must be valid" });
+  }
+  const signal = recordSignal(getDb(), kind, target, String(body.reason ?? "").trim());
+  res.status(201).json(signal);
 });

@@ -50,12 +50,23 @@ export function needsCompression(db: DB, conversationId: number, threshold: numb
  * Compress conversation history into a structured summary.
  * Uses the oldest messages (those about to fall out of HISTORY_LIMIT).
  */
+function emptySummary(): ConversationSummary {
+  return { keyFacts: [], openThreads: [], tasteSignals: [], lastUpdated: new Date().toISOString() };
+}
+
 export async function compressHistory(db: DB, conversationId: number): Promise<ConversationSummary> {
   const rows = db
     .prepare(
       `SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id ASC`,
     )
     .all(conversationId) as { role: "user" | "assistant"; content: string }[];
+
+  const count = rows.length;
+  // Throttle: only re-compress roughly every 10 new messages past the threshold,
+  // and never when there is too little to summarize. Re-summarizing every turn
+  // wastes tokens and slowly erodes earlier facts as the window slides.
+  if (count < 40) return getConversationSummary(db, conversationId) ?? emptySummary();
+  if (count % 10 !== 0) return getConversationSummary(db, conversationId) ?? emptySummary();
 
   const historyText = rows
     .map((r) => `[${r.role.toUpperCase()}] ${r.content}`)
@@ -67,15 +78,25 @@ export async function compressHistory(db: DB, conversationId: number): Promise<C
 2. **openThreads**: unresolved questions, recommendations not yet decided, titles to check out
 3. **tasteSignals**: explicit taste preferences expressed ("prefers slow-burn," "dislikes horror," "loved the cinematography," etc.)
 
+If an existing summary is provided, MERGE it: keep durable facts, open-threads and taste
+signals that are still true, update or drop ones that are resolved, and add new ones from
+the conversation. Do not discard earlier taste signals unless explicitly contradicted.
 Return ONLY JSON in this exact shape (no prose, no markdown fences):
 {"keyFacts": ["fact1", "fact2"], "openThreads": ["thread1"], "tasteSignals": ["signal1"]}`;
 
+  const prevSummary = getConversationSummary(db, conversationId);
   const llm = getLlm();
   const response = await llm.chat.completions.create({
     model: SUMMARY_MODEL,
     messages: [
       { role: "system", content: prompt },
-      { role: "user", content: historyText.slice(-8000) }, // token budget
+      {
+        role: "user",
+        content:
+          (prevSummary
+            ? `EXISTING SUMMARY (merge with it):\n${JSON.stringify(prevSummary)}\n\nNEW CONVERSATION TURNS:\n`
+            : "") + historyText.slice(-8000),
+      }, // token budget
     ],
     temperature: 0.3,
     max_tokens: 512,

@@ -92,6 +92,8 @@ interface TurnProps {
   companionState?: CompanionState;
   /** Live stream phase; omitted on persisted turns. */
   phase?: TurnPhase;
+  /** conversation id, enables the Taste Feedback Loop control */
+  conversationId?: number;
 }
 
 function phaseLabel(phase: TurnPhase): string {
@@ -121,6 +123,7 @@ function AssistantTurn({
   onChip,
   companionState = "idle",
   phase,
+  conversationId,
 }: TurnProps) {
   return (
     <div className="flex gap-3">
@@ -178,6 +181,7 @@ function AssistantTurn({
                 content={content}
                 streaming={streaming}
                 onChip={onChip}
+                conversationId={conversationId}
               />
             </motion.div>
           )}
@@ -191,7 +195,7 @@ function AssistantTurn({
 }
 
 /** map a persisted message's meta into the same turn anatomy */
-function persistedTurnProps(m: ChatMessageRow, onChip?: (c: string) => void): TurnProps {
+function persistedTurnProps(m: ChatMessageRow, onChip?: (c: string) => void, conversationId?: number): TurnProps {
   const meta = parseMeta(m.meta);
   // Prefer the rich toolTrace (detail + outcome per call); older rows only
   // carry toolsUsed names — both render through the same ToolStep shape.
@@ -216,6 +220,7 @@ function persistedTurnProps(m: ChatMessageRow, onChip?: (c: string) => void): Tu
     stopped: meta.stopped,
     time: m.created_at?.slice(11, 16),
     onChip,
+    conversationId,
   };
 }
 
@@ -497,9 +502,9 @@ export function ChatThread({
                       </p>
                     )}
                     {m.role === "user" ? (
-                      <MessageBubble role="user" content={m.content} />
+                      <MessageBubble role="user" content={m.content} conversationId={conversationId ?? undefined} />
                     ) : (
-                      <AssistantTurn {...persistedTurnProps(m, chip)} />
+                      <AssistantTurn {...persistedTurnProps(m, chip, conversationId ?? undefined)} />
                     )}
                   </motion.div>
                 );
@@ -515,9 +520,10 @@ export function ChatThread({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
               >
-                <MessageBubble role="user" content={stream.userText} />
+                <MessageBubble role="user" content={stream.userText} conversationId={conversationId ?? undefined} />
               </motion.div>
               <AssistantTurn
+                conversationId={conversationId ?? undefined}
                 content={streamedText || stream.assistantText}
                 streaming={stream.phase === "writing"}
                 thinking={stream.phase !== "writing"}
