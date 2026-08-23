@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
@@ -6,6 +6,7 @@ import { History, MessageSquarePlus, Pencil, Trash2, X, GitFork } from "lucide-r
 import { api } from "../lib/api";
 import { DOCK_CONVERSATION_KEY as DOCK_KEY } from "../lib/keys";
 import { ChatThread } from "../components/chat/ChatThread";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import type { ConversationSummary } from "../lib/types";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 
@@ -99,6 +100,19 @@ export default function ChatPage() {
   const qc = useQueryClient();
   const prefill = (location.state as { prefill?: string } | null)?.prefill;
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  const listContentRef = useRef<HTMLDivElement>(null);
+
+  // Mobile polish: pull-to-refresh on the conversation list. Arms only at
+  // scrollTop===0; refreshes the conversations query (invalidate + refetch).
+  const { isRefreshing } = usePullToRefresh({
+    scrollRef: listScrollRef,
+    contentRef: listContentRef,
+    onRefresh: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      void conversations.refetch();
+    },
+  });
 
   // Voice I/O: listen for "read aloud" requests from MessageBubble
   const { speak: speakText, supported: ttsSupported } = useSpeechSynthesis();
@@ -175,8 +189,24 @@ export default function ChatPage() {
       >
         <MessageSquarePlus className="h-4 w-4" /> New conversation
       </button>
-      <div className="panel min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
-        {conversations.isLoading &&
+      {/* Pull-to-refresh: scrollRef is the scroller (overscroll-contain so the
+          gesture doesn't chain to <body>); contentRef carries the translate.
+          Hook arms only at scrollTop===0, so it never fights the native PTR. */}
+      <div
+        ref={listScrollRef}
+        className="panel min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain p-2"
+      >
+        {isRefreshing && (
+          <div
+            aria-live="polite"
+            className="flex items-center justify-center gap-2 py-1 font-display text-[0.55rem] uppercase tracking-wider text-gold-300/90"
+          >
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border border-gold-400/40 border-t-gold-400/80" />
+            Opdaterer…
+          </div>
+        )}
+        <div ref={listContentRef}>
+          {conversations.isLoading &&
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="skeleton h-14 rounded-xl" />
           ))}
@@ -218,6 +248,7 @@ export default function ChatPage() {
             onFork={() => fork.mutate(c.id)}
           />
         ))}
+        </div>
       </div>
     </>
   );

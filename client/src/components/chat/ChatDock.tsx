@@ -14,9 +14,20 @@ import { usePushToTalk } from "../../hooks/usePushToTalk";
 import { useSpeechSynthesis } from "../../hooks/useSpeechSynthesis";
 import { ChatThread } from "./ChatThread";
 import { DOCK_CONVERSATION_KEY as DOCK_KEY } from "../../lib/keys";
+import { useSwipeToClose } from "../../hooks/useSwipeToClose";
+import { useHaptics } from "../../hooks/useHaptics";
 
 export function ChatDock() {
   const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const haptic = useHaptics();
+
+  // Mobile polish: swipe the dock left (>=24px inside its left edge, >=33% of
+  // width) to dismiss it. No scrim — the slide is the feedback (hush).
+  useSwipeToClose({
+    panelRef,
+    onClose: () => setOpen(false),
+  });
 
   // Voice I/O: push-to-talk (long-press FAB) + text-to-speech (speak assistant replies)
   const { isRecording, start: startPTT, stop: stopPTT, isSupported: pttSupported } =
@@ -88,6 +99,7 @@ return (
       <AnimatePresence>
         {open && (
           <motion.div
+            ref={panelRef}
             role="dialog"
             aria-modal="false"
             aria-label="Lumina chat"
@@ -95,7 +107,7 @@ return (
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.97 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-[min(620px,72dvh)] w-[min(430px,calc(100vw-2rem))] origin-bottom-right flex-col overflow-hidden rounded-3xl bg-ink-850/95 ring-1 ring-white/10 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl md:bottom-8 md:right-8"
+            className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-[min(620px,72dvh)] w-[min(430px,calc(100vw-2rem))] origin-bottom-right touch-pan-y flex-col overflow-hidden rounded-3xl bg-ink-850/95 ring-1 ring-white/10 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl md:bottom-8 md:right-8"
           >
             {/* R15 — scroll-reactive dock compression: the body scales to ~0.92
                 and dims slightly as the conversation scrolls down (transform /
@@ -145,7 +157,7 @@ return (
                   type="button"
                   title="Close"
                   aria-label="Close chat"
-                  onClick={() => setOpen(false)}
+                  onClick={() => { haptic(10); setOpen(false); }}
                   className="icon-btn"
                 >
                   <X className="h-4 w-4" />
@@ -165,7 +177,7 @@ return (
 
 <motion.button
         type="button"
-        onClick={open && pttSupported ? undefined : () => setOpen((o) => !o)}
+        onClick={open && pttSupported ? undefined : () => { haptic(10); setOpen((o) => !o); }}
         onPointerDown={open && pttSupported ? startPTT : undefined}
         onPointerUp={open && pttSupported ? stopPTT : undefined}
         onPointerLeave={open && pttSupported ? stopPTT : undefined}

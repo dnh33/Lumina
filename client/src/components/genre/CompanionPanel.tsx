@@ -5,6 +5,8 @@ import { ChatThread } from "../chat/ChatThread";
 import { genreCompanionConversationKey } from "../../lib/keys";
 import { api } from "../../lib/api";
 import { accentVar } from "../../lib/metaphor";
+import { useSwipeToClose } from "../../hooks/useSwipeToClose";
+import { useHaptics } from "../../hooks/useHaptics";
 import type { GenreWorld } from "../../lib/genreWorld";
 import type { Suggestion } from "../chat/SuggestionCards";
 
@@ -116,8 +118,13 @@ export function CompanionPanel({
   );
   const [guidedPrefill, setGuidedPrefill] = useState<string | null>(null);
   const [tourDials, setTourDials] = useState<TourDialChip[]>([]);
+  const haptic = useHaptics();
 
   const closePanel = () => setOpen(false);
+
+  // Mobile polish: swipe the panel left (>=24px inside its left edge, >=33% of
+  // width) to dismiss. No scrim — the slide is the feedback (hush).
+  useSwipeToClose({ panelRef, onClose: closePanel });
 
   useEffect(() => {
     onOpenChange?.(open);
@@ -268,8 +275,8 @@ export function CompanionPanel({
 
   const panelClass = guided
     ? // DEEPEN rail: right column; Tonight shelf cleared via body:has padding (theme.css)
-      "companion-deepen-rail fixed top-[max(4.5rem,env(safe-area-inset-top))] bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-40 flex w-[min(320px,calc(100vw-1.5rem))] origin-bottom-right flex-col overflow-hidden overscroll-contain rounded-2xl bg-ink-850/97 ring-1 ring-white/[0.08] shadow-[0_16px_48px_-16px_rgba(0,0,0,0.75)] backdrop-blur-xl md:right-7"
-    : "fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-[min(560px,68dvh)] w-[min(380px,calc(100vw-2rem))] origin-bottom-right flex-col overflow-hidden rounded-3xl bg-ink-850/95 ring-1 ring-white/10 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl md:bottom-8 md:right-8";
+      "companion-deepen-rail fixed top-[max(4.5rem,env(safe-area-inset-top))] bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-40 flex w-[min(320px,calc(100vw-1.5rem))] origin-bottom-right touch-pan-y flex-col overflow-hidden overscroll-contain rounded-2xl bg-ink-850/97 ring-1 ring-white/[0.08] shadow-[0_16px_48px_-16px_rgba(0,0,0,0.75)] backdrop-blur-xl md:right-7"
+    : "fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-[min(560px,68dvh)] w-[min(380px,calc(100vw-2rem))] origin-bottom-right touch-pan-y flex-col overflow-hidden rounded-3xl bg-ink-850/95 ring-1 ring-white/10 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl md:bottom-8 md:right-8";
 
   // Lacquer face + world-accent edge (theme `.companion-fab`). Gold glow only
   // when live — never a solid gold brick fighting in-world verbs (Watchlist).
@@ -319,7 +326,7 @@ export function CompanionPanel({
                     type="button"
                     title="Close companion"
                     aria-label="Close companion"
-                    onClick={closePanel}
+                    onClick={() => { haptic(10); closePanel(); }}
                     className="icon-btn shrink-0"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -373,7 +380,7 @@ export function CompanionPanel({
                   type="button"
                   title="Close companion"
                   aria-label="Close companion"
-                  onClick={closePanel}
+                  onClick={() => { haptic(10); closePanel(); }}
                   className="icon-btn"
                 >
                   <X className="h-4 w-4" />
@@ -396,7 +403,7 @@ export function CompanionPanel({
       <motion.button
         ref={fabRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => { haptic(10); setOpen((o) => !o); }}
         aria-label={
           open
             ? `Close the ${world.slug} companion`
