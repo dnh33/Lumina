@@ -7,6 +7,7 @@ import {
 } from "../llm/chatService.js";
 import { currentModel, formatChatLlmError } from "../llm/openrouter.js";
 import { recordSignal, type SignalKind } from "../services/feedbackService.js";
+import { createFork, getParentFork } from "../services/forkService.js";
 
 export const chatRouter = Router();
 
@@ -15,7 +16,8 @@ chatRouter.get("/conversations", (_req, res) => {
     .prepare(
       `SELECT c.id, c.title, c.created_at, c.updated_at,
               (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) AS message_count,
-              (SELECT substr(content, 1, 120) FROM messages m WHERE m.conversation_id = c.id ORDER BY m.id DESC LIMIT 1) AS last_message
+              (SELECT substr(content, 1, 120) FROM messages m WHERE m.conversation_id = c.id ORDER BY m.id DESC LIMIT 1) AS last_message,
+       (SELECT p.title FROM forks f JOIN conversations p ON p.id = f.parent_conversation_id WHERE f.child_conversation_id = c.id LIMIT 1) AS forked_from
        FROM conversations c ORDER BY c.updated_at DESC`,
     )
     .all();
@@ -44,6 +46,26 @@ chatRouter.patch("/conversations/:id", (req, res) => {
       .run(title.slice(0, 80), Number(req.params.id));
   }
   res.json({ ok: true });
+});
+
+// Minimal forking: branch a conversation's history at a message index.
+// Surfaces as a normal conversation with a "(forked from X)" label in the list.
+chatRouter.post("/conversations/:id/fork", (req, res) => {
+  const db = getDb();
+  const parentId = Number(req.params.id);
+  const forkPoint = Number((req.body as { fork_point?: number })?.fork_point ?? 0);
+  const label = (req.body as { label?: string })?.label?.toString().slice(0, 80);
+
+  const exists = db.prepare("SELECT id FROM conversations WHERE id = ?").get(parentId);
+  if (!exists) return void res.status(404).json({ error: "conversation not found" });
+  if (forkPoint < 0) return void res.status(400).json({ error: "fork_point must be >= 0" });
+
+  try {
+    const fork = createFork(db, parentId, forkPoint, label);
+    res.status(201).json({ forkId: fork.id, childConversationId: fork.child_conversation_id });
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
 });
 
 chatRouter.delete("/conversations/:id", (req, res) => {

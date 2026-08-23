@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { History, MessageSquarePlus, Pencil, Trash2, X } from "lucide-react";
+import { History, MessageSquarePlus, Pencil, Trash2, X, GitFork } from "lucide-react";
 import { api } from "../lib/api";
 import { DOCK_CONVERSATION_KEY as DOCK_KEY } from "../lib/keys";
 import { ChatThread } from "../components/chat/ChatThread";
@@ -15,12 +15,14 @@ function ConversationItem({
   onSelect,
   onRename,
   onDelete,
+  onFork,
 }: {
   c: ConversationSummary;
   active: boolean;
   onSelect: () => void;
   onRename: () => void;
   onDelete: () => void;
+  onFork: () => void;
 }) {
   return (
     <div
@@ -41,8 +43,23 @@ function ConversationItem({
           {c.last_message}
         </p>
       )}
+      {c.forked_from && (
+        <p className="truncate pr-14 text-2xs text-mist-500">forked from {c.forked_from}</p>
+      )}
       {/* actions: always reachable on touch, hover-revealed on desktop */}
       <div className="absolute right-2 top-2.5 flex gap-0.5 lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100 lg:focus-within:opacity-100">
+        <button
+          type="button"
+          title="Fork — branch this conversation"
+          aria-label={`Fork "${c.title}"`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (window.confirm(`Fork "${c.title}" into a new branch?`)) onFork();
+          }}
+          className="icon-btn hover:bg-gold-400/15 hover:text-gold-300"
+        >
+          <GitFork className="h-3.5 w-3.5" />
+        </button>
         <button
           type="button"
           title="Rename"
@@ -129,6 +146,14 @@ export default function ChatPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["conversations"] }),
   });
 
+  const fork = useMutation({
+    mutationFn: (cid: number) => api.forkConversation(cid, 0),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      handleConversationChange(res.childConversationId);
+    },
+  });
+
   const handleConversationChange = useCallback(
     (newId: number) => {
       navigate(`/chat/${newId}`, { replace: true, state: null });
@@ -190,6 +215,7 @@ export default function ChatPage() {
             onDelete={() => {
               if (window.confirm(`Delete "${c.title}"?`)) del.mutate(c.id);
             }}
+            onFork={() => fork.mutate(c.id)}
           />
         ))}
       </div>

@@ -245,6 +245,15 @@ export const api = {
     fetch(`/api/conversations/${id}`, { method: "DELETE" }).then((r) => {
       if (!r.ok) throw new Error("Delete failed");
     }),
+  forkConversation: (id: number, forkPoint: number, label?: string) =>
+    fetch(`/api/conversations/${id}/fork`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fork_point: forkPoint, label }),
+    }).then((r) => {
+      if (!r.ok) throw new Error(`Fork failed: ${r.status}`);
+      return r.json() as Promise<{ forkId: number; childConversationId: number }>;
+    }),
 };
 
 /** Stream a chat turn; invokes onEvent for every SSE event. */

@@ -172,6 +172,20 @@ const migrations: string[] = [
   );
   CREATE INDEX IF NOT EXISTS idx_taste_signals_kind ON taste_signals (kind);
   `,
+  // ── v9: forking (constellation map groundwork) ────────────────────────
+  `CREATE TABLE forks (
+    id                          INTEGER PRIMARY KEY,
+    parent_conversation_id      INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    child_conversation_id       INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    fork_point_message_index    INTEGER NOT NULL,
+    label                       TEXT NOT NULL,
+    anchor_titles               TEXT NOT NULL DEFAULT '[]',
+    created_at                  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_forks_parent ON forks (parent_conversation_id);
+  CREATE INDEX IF NOT EXISTS idx_forks_child  ON forks (child_conversation_id);
+  `,
+
 ];
 
 export function migrate(db: DB): void {

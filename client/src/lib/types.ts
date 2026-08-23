@@ -203,6 +203,7 @@ export interface ConversationSummary {
   updated_at: string;
   message_count: number;
   last_message: string | null;
+  forked_from: string | null;
 }
 
 export interface ChatMessageRow {
