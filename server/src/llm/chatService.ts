@@ -2,6 +2,7 @@ import type OpenAI from "openai";
 import type { DB } from "../db/connection.js";
 import { buildChatContext, renderContextBlock } from "../rag/contextBuilder.js";
 import { needsCompression, compressHistory } from "../rag/summarization.js";
+import { extractSignalsFromMessage } from "../services/feedbackExtractor.js";
 import { indexMessage } from "../rag/memory.js";
 import { syncGuidedWatchlistFromChat } from "../services/guidedSessionService.js";
 import type { MediaType } from "../tmdb/types.js";
@@ -383,4 +384,10 @@ export async function runChatTurn(
       /* never break the chat turn for summarization */
     });
   }
+
+  // Taste feedback extraction — scan the user's last message for explicit
+  // correction/preference patterns. Fire-and-forget (post-turn), never blocks.
+  void extractSignalsFromMessage(db, conversationId, userText).catch(() => {
+    /* never break the chat turn for feedback extraction */
+  });
 }
