@@ -7,7 +7,7 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
-import { Maximize2, MessageSquarePlus, Sparkles, X } from "lucide-react";
+import { Maximize2, MessageSquarePlus, Sparkles, Volume2, X } from "lucide-react";
 import { api } from "../../lib/api";
 import { playCue } from "../../lib/sound";
 import { usePushToTalk } from "../../hooks/usePushToTalk";
@@ -72,7 +72,18 @@ export function ChatDock() {
   const dockScale = useTransform(dockScaleRaw, [0, 320], [1, 0.92], { clamp: true });
   const dockOpacity = useTransform(dockScaleRaw, [0, 320], [1, 0.92], { clamp: true });
 
-  return (
+  
+  // Voice I/O: listen for "read aloud" button on assistant messages
+  useEffect(() => {
+    const onSpeak = (e: Event) => {
+      const text = (e as CustomEvent<{ text: string }>).detail.text;
+      speakText(text);
+    };
+    window.addEventListener("lum:speak", onSpeak);
+    return () => window.removeEventListener("lum:speak", onSpeak);
+  }, [speakText]);
+
+return (
     <>
       <AnimatePresence>
         {open && (
@@ -164,7 +175,7 @@ export function ChatDock() {
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
         aria-label={open ? "Close Lumina chat" : "Talk to Lumina"}
         aria-expanded={open}
-        title={open ? "Hold to talk" : "Talk to Lumina"}
+        title={open ? (pttSupported ? "Hold to talk" : "Close chat") : "Talk to Lumina"}
         className="fab-toggle fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-br from-gold-300 to-gold-500 text-ink-950 shadow-[0_10px_36px_-6px_rgba(232,184,75,0.55)] md:bottom-8 md:right-8"
       >
         {isRecording ? (
@@ -172,7 +183,7 @@ export function ChatDock() {
         ) : open && pttSupported ? (
           <span className="h-6 w-6 text-2xl">⏺</span>
         ) : open ? (
-          <X className="h-6 w-6" />
+          <Volume2 className="h-5 w-5" />
         ) : (
           <svg viewBox="0 0 100 100" className="h-7 w-7" aria-hidden>
             <path
