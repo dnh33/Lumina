@@ -6,6 +6,7 @@ import {
 import { computeTasteProfile, renderTasteProfile } from "./tasteProfile.js";
 import { renderLibraryMatches, retrieveLibrary } from "./retrieval.js";
 import { renderMemory, retrieveMemory } from "./memory.js";
+import { getConversationSummary, needsCompression, renderSummary, type ConversationSummary } from "./summarization.js";
 
 /**
  * RAG · Context builder.
@@ -34,6 +35,8 @@ export interface ChatContext {
   memoryText: string;
   /** Worlds guided tour, when this conversation is linked to a session. */
   guidedText: string;
+  /** Rolling summary from older turns (when history exceeds HISTORY_LIMIT). */
+  summaryText: string;
   /** For persistence/debugging: what the retrieval layers surfaced. */
   meta: {
     libraryMatches: string[];
@@ -57,11 +60,15 @@ export function buildChatContext(
     ? clip(renderGuidedSessionContext(guided), BUDGET.guided)
     : "";
 
+  const summary = getConversationSummary(db, conversationId);
+  const summaryText = summary ? renderSummary(summary) : "";
+
   return {
     profileText: clip(renderTasteProfile(profile), BUDGET.profile),
     libraryText: clip(renderLibraryMatches(matches), BUDGET.library),
     memoryText: clip(renderMemory(memory), BUDGET.memory),
     guidedText,
+    summaryText,
     meta: {
       libraryMatches: matches.map((m) => m.title),
       memoryHits: memory.length,
@@ -74,6 +81,9 @@ export function buildChatContext(
 
 export function renderContextBlock(ctx: ChatContext): string {
   const parts: string[] = [];
+  if (ctx.summaryText) {
+    parts.push(ctx.summaryText);
+  }
   if (ctx.meta.dormant) {
     parts.push(`## Context note\nThis is a dormant session — the user's profile is thin and there are no recent memory hits. Use the warmer welcome register.`);
   }

@@ -150,6 +150,17 @@ const migrations: string[] = [
   CREATE INDEX IF NOT EXISTS idx_anchor_usage_created
     ON anchor_usage (created_at);
   `,
+  // ── v7: conversation summaries (rolling context beyond HISTORY_LIMIT) ──
+  `
+  CREATE TABLE IF NOT EXISTS conversation_summaries (
+    id              INTEGER PRIMARY KEY,
+    conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    content         TEXT NOT NULL,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_summaries_conversation
+    ON conversation_summaries (conversation_id, created_at DESC);
+  `,
 ];
 
 export function migrate(db: DB): void {

@@ -289,7 +289,7 @@ export interface TitleInsight {
 }
 
 export type ChatEvent =
-  | { type: "context"; librarySize: number; matches: string[]; memoryHits: number }
+  | { type: "context"; librarySize: number; matches: string[]; memoryHits: number; dormant?: boolean }
   | { type: "delta"; text: string }
   | { type: "tool"; name: string; detail?: string }
   | { type: "tool_done"; name: string; summary?: string; detail?: string; outcome?: string }

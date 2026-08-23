@@ -1,6 +1,7 @@
 import type OpenAI from "openai";
 import type { DB } from "../db/connection.js";
 import { buildChatContext, renderContextBlock } from "../rag/contextBuilder.js";
+import { needsCompression, compressHistory } from "../rag/summarization.js";
 import { indexMessage } from "../rag/memory.js";
 import { syncGuidedWatchlistFromChat } from "../services/guidedSessionService.js";
 import type { MediaType } from "../tmdb/types.js";
@@ -12,6 +13,7 @@ import { toolDetail, toolOutcome } from "./toolPresenter.js";
 const MAX_TOOL_ROUNDS = 3;
 const MIN_RETRY_LENGTH = 40; // below this, retry text is unusable stubs
 const HISTORY_LIMIT = 30;
+const SUMMARY_THRESHOLD = 30; // beyond this, summarize older messages
 
 /**
  * Emitted (and persisted) when a turn yields no usable text even after the
@@ -39,7 +41,7 @@ function deleteTrailingSnag(db: DB, conversationId: number): void {
 }
 
 export type ChatEvent =
-  | { type: "context"; librarySize: number; matches: string[]; memoryHits: number }
+  | { type: "context"; librarySize: number; matches: string[]; memoryHits: number; dormant: boolean; summaryText: string | null }
   | { type: "delta"; text: string }
   | { type: "tool"; name: string; detail?: string }
   | { type: "tool_done"; name: string; summary?: string; detail?: string; outcome?: string }
@@ -165,6 +167,70 @@ function history(db: DB, conversationId: number): Msg[] {
   return rows.reverse().map((r) => ({ role: r.role, content: r.content }));
 }
 
+/**
+ * Rolling summary — when a conversation exceeds SUMMARY_THRESHOLD messages,
+ * condense the oldest messages into a single summary so the context window
+ * doesn't grow unbounded. The summary is injected as the first history entry
+ * so the model has rolling context of what came before.
+ *
+ * Replaces messages[0..splitAt) with a single { role: "assistant", content: summary }
+ * entry, keeping recent messages intact.
+ */
+async function summarizeOldHistory(
+  db: DB,
+  conversationId: number,
+  messages: Msg[],
+): Promise<Msg[]> {
+  if (messages.length <= SUMMARY_THRESHOLD) return messages;
+
+  const splitAt = Math.floor(messages.length / 2);
+  const oldHistory = messages.slice(0, splitAt);
+  const recentHistory = messages.slice(splitAt);
+
+  // Count total messages in DB to avoid re-summarizing repeatedly
+  const totalCount = db
+    .prepare("SELECT COUNT(*) as n FROM messages WHERE conversation_id = ?")
+    .get(conversationId) as { n: number };
+
+  // Only re-summarize every 10 new messages to avoid thrashing
+  if (totalCount.n % 10 !== 0) return messages;
+
+  const oldText = oldHistory
+    .map((m) => `${m.role}: ${m.content}`)
+    .join("\n\n");
+
+  if (oldText.length < 200) return messages;
+
+  try {
+    const llm = getLlm();
+    const summary = await llm.chat.completions.create({
+      model: currentModel(db),
+      temperature: 0.2,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a context compression agent. Summarize the following conversation history into a single concise paragraph (3-5 sentences). Preserve key decisions, recommendations made, topics discussed, and the user's stated preferences. Do NOT add information not present. If the user mentioned specific titles they like/dislike, record those. Output only the summary, no headers or formatting.",
+        },
+        { role: "user", content: oldText },
+      ],
+    });
+
+    const summaryText = summary.choices[0]?.message?.content?.trim() ?? "";
+    if (summaryText) {
+      return [
+        { role: "assistant", content: `[Rolling summary] ${summaryText}` },
+        ...recentHistory,
+      ];
+    }
+  } catch (e) {
+    // If summarization fails, return un-summarized history
+    // (the summary is a quality-of-life feature, not a correctness requirement)
+  }
+
+  return messages;
+}
+
 function autoTitle(db: DB, conversationId: number, firstUserMessage: string): string {
   const existing = db
     .prepare("SELECT title FROM conversations WHERE id = ?")
@@ -202,6 +268,8 @@ export async function runChatTurn(
     librarySize: ctx.meta.librarySize,
     matches: ctx.meta.libraryMatches.slice(0, 5),
     memoryHits: ctx.meta.memoryHits,
+    dormant: ctx.meta.dormant,
+    summaryText: ctx.summaryText || null,
   });
 
   const llm = getLlm();
@@ -209,7 +277,7 @@ export async function runChatTurn(
 
   const messages: Msg[] = [
     { role: "system", content: luminaSystemPrompt(renderContextBlock(ctx)) },
-    ...history(db, conversationId),
+    ...(await summarizeOldHistory(db, conversationId, history(db, conversationId))),
   ];
 
   const toolsUsed: string[] = [];
@@ -371,4 +439,13 @@ export async function runChatTurn(
     model,
   });
   send({ type: "done", messageId, conversationTitle });
+
+  // Trigger rolling summary compression if conversation exceeds HISTORY_LIMIT.
+  // Fire-and-forget — don't block the response. The next turn picks up the
+  // compressed summary from the context block.
+  if (needsCompression(db, conversationId)) {
+    void compressHistory(db, conversationId).catch(() => {
+      /* never break the chat turn for summarization */
+    });
+  }
 }
