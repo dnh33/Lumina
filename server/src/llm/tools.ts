@@ -585,6 +585,19 @@ export async function executeTool(
             if (!isRetired(db, id, mt) && (fatigue.get(`${mt}:${id}`) ?? 0) < 0.6) {
               logAnchor(db, id, mt, "compare_titles");
             }
+            // Verdict computation (brand-faithful: only "The one" earns gold)
+            const genreOverlap = d.genres.filter((g) => topGenres.has(g));
+            const directorIsFav = !!d.director && lovedDirs.has(d.director);
+            const inLib = owned ? { status: owned.status, rating: owned.rating, tags: owned.tags } : false;
+            const isRewatch = inLib && inLib.rating != null && inLib.rating >= 8;
+            const isTheOne = (genreOverlap.length >= 1 && directorIsFav) ||
+                             (genreOverlap.length >= 2 && (d.voteAverage ?? 0) >= 7);
+            const verdict: "The one" | "Safe pick" | "Stretch" | "Rewatch" | null =
+              isRewatch ? "Rewatch" :
+              isTheOne ? "The one" :
+              genreOverlap.length >= 1 ? "Safe pick" :
+              (d.voteAverage ?? 0) >= 7.5 ? "Stretch" : null;
+
             return {
               tmdbId: id,
               mediaType: mt,
@@ -594,13 +607,12 @@ export async function executeTool(
                 mt === "tv"
                   ? `${d.seasonsCount ?? "?"} seasons / ${d.episodesCount ?? "?"} eps`
                   : `${d.runtime ?? "?"} min`,
-              genreOverlapWithTheirStrengths: d.genres.filter((g) => topGenres.has(g)),
-              directorIsAFavorite: !!d.director && lovedDirs.has(d.director),
+              genreOverlapWithTheirStrengths: genreOverlap,
+              directorIsAFavorite: directorIsFav,
               director: d.director,
               tmdbRating: d.voteAverage,
-              inLibrary: owned
-                ? { status: owned.status, rating: owned.rating, tags: owned.tags }
-                : false,
+              inLibrary: inLib,
+              verdict,
             };
           }),
         );

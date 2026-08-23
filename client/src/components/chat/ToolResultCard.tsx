@@ -127,6 +127,7 @@ function renderCompare(parsed: JsonObject): React.ReactNode {
           const title = jstr(o, "title") ?? jstr(o, "name") ?? "Untitled";
           const year = jnum(o, "year") ?? jnum(o, "release_year");
           const rating = jnum(o, "tmdbRating") ?? jnum(o, "vote_average");
+          const verdict = jstr(o ?? null, "verdict");
           const poster = posterUrl(o ?? {});
           return (
             <div key={i} className="flex w-32 shrink-0 flex-col">
@@ -142,6 +143,15 @@ function renderCompare(parsed: JsonObject): React.ReactNode {
               </div>
               <p className="mt-1 font-display text-[0.7rem] font-semibold text-mist-100">{title}</p>
               {year && <p className="text-2xs text-mist-400">{year}</p>}
+              {verdict && (
+                <div className={`mt-1.5 inline-flex items-center rounded-sm px-2 py-0.5 font-display text-[0.55rem] font-semibold ${
+                  verdict === "The one"
+                    ? "ring-1 ring-gold-400/30 bg-gold-400/10 text-gold-300"
+                    : "bg-ink-700/30 text-mist-200"
+                }`}>
+                  {verdict}
+                </div>
+              )}
               {rating !== undefined && (
                 <div className="mt-1 flex items-center gap-1">
                   <Star className="h-3 w-3 fill-gold-400 text-gold-400" />
